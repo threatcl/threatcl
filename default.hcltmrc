@@ -1,0 +1,6 @@
+config_version              = "0.0.1"
+initiative_sizes            = ["Undefined", "Small", "Medium", "Large"]
+default_initiative_size     = "Undefined"
+info_classifications        = ["Restricted", "Confidential", "Public"]
+default_info_classification = "Confidential"
+impact_types                = ["Confidentiality", "Integrity", "Availability"]
