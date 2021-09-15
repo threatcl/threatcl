@@ -4,7 +4,15 @@ Threat Modeling with HCL
 
 ## Overview
 
-This repository is the home of the `hcltm` cli software. The `hcltm` [spec](spec.hcl) is based on [HCL2](https://github.com/hashicorp/hcl/tree/hcl2) and allows practitioners to define a system threat model in HCL, for example.
+There are many different ways in which a threat model can be documented. From a simple text file, to more in-depth word documents, to fully instrumented threat models in a centralised solution. Two of the most valuable attributes of a threat model are being able to clearly document the threats, and to be able to drive valuable change. 
+
+`hcltm` aims to provide a DevOps-first approach to documenting a [system threat model](https://owasp.org/www-community/Threat_Modeling) by focusing on the following goals:
+
+* Simple text-file format
+* Simple cli-driven user experience
+* Integration into version control systems (VCS)
+
+This repository is the home of the `hcltm` cli software. The `hcltm` [spec](spec.hcl) is based on [HCL2](https://github.com/hashicorp/hcl/tree/hcl2), HashiCorp's Configuration Language, which aims to be "_pleasant to read and write for humans, and a JSON-based variant that is easier for machines to generate and parse_". Combining the `hcltm` cli software and the `hcltm` spec allows practitioners to define a system threat model in HCL, for example:
 
 ```hcl
 threatmodel "Tower of London" {
@@ -44,7 +52,21 @@ threatmodel "Tower of London" {
 }
 ```
 
-To see a full description of the spec, see [here](spec.hcl) or run `hcltm generate boilerplate`.
+To see a full description of the spec, see [here](spec.hcl) or run:
+
+```bash
+$ hcltm generate boilerplate
+```
+
+## Why HCL?
+
+HCL is the primary configuration language used in the products by HashiCorp, in-particularly, [Terraform](https://www.terraform.io/) - their open-source Infrastructure-as-Code software. I worked at HashiCorp for a while and the language really grew on me, plus, if DevOps and Software engineers are using the language, then simplifying how they document threat models aligns with `hcltm`'s goals.
+
+## Kudos and References
+
+One of the features of `hcltm` is the automatic generation of [data flow diagrams](#data_flow_diagram) from HCL files. This leverages the [go-dfd](https://github.com/marqeta/go-dfd) package by Marqeta and [Blake Hitchcock](https://github.com/rbhitchcock). Definitely check out their blog post on [Threat models at the speed of DevOps](https://community.marqeta.com/t5/engineering-blogs/threat-models-at-the-speed-of-devops/ba-p/40).
+
+Additionally I'd like to extend thanks to [Jamie Finnigan](https://twitter.com/chair6) and [Talha Tariq](https://twitter.com/0xtbt) at HashiCorp for allowing me to continue working on this open-source tool even after I'd finished up with HashiCorp.
 
 # hcltm cli
 
@@ -92,7 +114,7 @@ Most of the `hcltm` commands have a `-config` flag that allows you to specify a 
 
 For example:
 
-```
+```hcl
 initiative_sizes = ["S", "M", "L"]
 default_initiative_size = "M"
 info_classifications = ["1", "2"]
@@ -161,23 +183,3 @@ Successfully created 'testout/tm2-modellymodel.png'
 ```
 
 If your `threatmodel` doesn't include a `diagram_link`, but does include a `data_flow_diagram`, then this will also be rendered when running `hcltm dashboard`.
-
-## Automatic Releases
-
-Git commit messages will be auto-converted into Release change log text based on these prefixes:
-
-```
-feat = 'Features',
-fix = 'Bug Fixes',
-docs = 'Documentation',
-style = 'Styles',
-refactor = 'Code Refactoring',
-perf = 'Performance Improvements',
-test = 'Tests',
-build = 'Builds',
-ci = 'Continuous Integration',
-chore = 'Chores',
-revert = 'Reverts',
-```
-
-From https://github.com/marvinpinto/actions/blob/f2f409029c432b82229a4eacb8a313bc09abf48e/packages/automatic-releases/src/utils.ts#L38-L50
