@@ -27,7 +27,7 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           name: linux-pkg
-          path: pkg/hcltm-linux-amd64.tar.gz
+          path: out/hcltm-linux-amd64.tar.gz
 
   pre-release-osx:
     runs-on: macos-latest
@@ -48,7 +48,7 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           name: osx-pkg
-          path: pkg/hcltm-darwin-amd64.tar.gz
+          path: out/hcltm-darwin-amd64.tar.gz
 
   pre-release:
     runs-on: ubuntu-latest
