@@ -64,7 +64,7 @@ HCL is the primary configuration language used in the products by HashiCorp, in-
 
 ## Kudos and References
 
-One of the features of `hcltm` is the automatic generation of [data flow diagrams](#data_flow_diagram) from HCL files. This leverages the [go-dfd](https://github.com/marqeta/go-dfd) package by Marqeta and [Blake Hitchcock](https://github.com/rbhitchcock). Definitely check out their blog post on [Threat models at the speed of DevOps](https://community.marqeta.com/t5/engineering-blogs/threat-models-at-the-speed-of-devops/ba-p/40).
+One of the features of `hcltm` is the automatic generation of [data flow diagrams](#data-flow-diagram) from HCL files. This leverages the [go-dfd](https://github.com/marqeta/go-dfd) package by Marqeta and [Blake Hitchcock](https://github.com/rbhitchcock). Definitely check out their blog post on [Threat models at the speed of DevOps](https://community.marqeta.com/t5/engineering-blogs/threat-models-at-the-speed-of-devops/ba-p/40).
 
 Additionally I'd like to extend thanks to [Jamie Finnigan](https://twitter.com/chair6) and [Talha Tariq](https://twitter.com/0xtbt) at HashiCorp for allowing me to continue working on this open-source tool even after I'd finished up with HashiCorp.
 
