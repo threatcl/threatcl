@@ -74,6 +74,12 @@ Additionally I'd like to extend thanks to [Jamie Finnigan](https://twitter.com/c
 
 Download the latest version from [releases](https://github.com/xntrik/hcltm/releases) and move the `hcltm` binary into your PATH.
 
+## Run with Docker
+
+```bash
+$ docker run --rm -it xntrik/hcltm
+```
+
 ## Building from Source
 
 1. Clone this repository.

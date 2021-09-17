@@ -1,5 +1,6 @@
 GO_CMD?=go
 BINNAME=hcltm
+DOCKERNAME=xntrik/hcltm
 GOPATH?=$$($(GO_CMD) env GOPATH)
 EXTERNAL_TOOLS=\
 	golang.org/x/tools/cmd/goimports \
@@ -11,6 +12,10 @@ default: help
 
 image: ## Create the docker image from the Dockerfile
 	@docker build -t $(BINNAME):latest .
+
+imagepush: ## Create a fresh docker image and push to the configured repo
+	@docker build --rm --force-rm -t $(DOCKERNAME):latest .
+	@docker push $(DOCKERNAME)
 
 dev: ## Build hcltm and copy to your GOPATH/bin
 	$(GO_CMD) build -o ${BINNAME} ./cmd/hcltm
