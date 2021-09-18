@@ -62,6 +62,10 @@ $ hcltm generate boilerplate
 
 HCL is the primary configuration language used in the products by HashiCorp, in-particularly, [Terraform](https://www.terraform.io/) - their open-source Infrastructure-as-Code software. I worked at HashiCorp for a while and the language really grew on me, plus, if DevOps and Software engineers are using the language, then simplifying how they document threat models aligns with `hcltm`'s goals.
 
+## Why not just document them in MD?
+
+I liked the idea of using a format that could be programmatically interacted with.
+
 ## Kudos and References
 
 One of the features of `hcltm` is the automatic generation of [data flow diagrams](#data-flow-diagram) from HCL files. This leverages the [go-dfd](https://github.com/marqeta/go-dfd) package by Marqeta and [Blake Hitchcock](https://github.com/rbhitchcock). Definitely check out their blog post on [Threat models at the speed of DevOps](https://community.marqeta.com/t5/engineering-blogs/threat-models-at-the-speed-of-devops/ba-p/40).
@@ -79,6 +83,10 @@ Download the latest version from [releases](https://github.com/xntrik/hcltm/rele
 ```bash
 $ docker run --rm -it xntrik/hcltm
 ```
+
+## Run with GitHub Actions
+
+`hcltm` can be integrated directly into your GitHub repos with https://github.com/xntrik/hcltm-action. This is one of the ideal methods to manage your threat models, and helps meet the goal of integrating into your version control systems.
 
 ## Building from Source
 
