@@ -149,6 +149,30 @@ func TestListRun(t *testing.T) {
 			0,
 			"-fields=size -noheader",
 		},
+		{
+			"list_exclusion_count",
+			"./testdata/tm1.hcl",
+			"2",
+			false,
+			0,
+			"-fields=exclusioncount",
+		},
+		{
+			"valid_dfd_exists",
+			"./testdata/tm3.hcl",
+			"true",
+			false,
+			0,
+			"-fields=dfd",
+		},
+		{
+			"no_valid_dfd_exists",
+			"./testdata/tm1.hcl",
+			"false",
+			false,
+			0,
+			"-fields=dfd",
+		},
 	}
 
 	for _, tc := range cases {

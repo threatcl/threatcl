@@ -42,6 +42,14 @@ EOT
     description = "Admins can see stuff too"
   }
 
+  exclusion {
+    description = "An exclusion"
+  }
+
+  exclusion {
+    description = "A second exclusiion"
+  }
+
  }
  threatmodel "tm tm1 two" {
    description = "This is some arbitrary text"
