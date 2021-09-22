@@ -124,3 +124,44 @@ func TestPrettyBool(t *testing.T) {
 		})
 	}
 }
+
+func TestValidFilename(t *testing.T) {
+	cases := []struct {
+		name        string
+		in          string
+		expectError bool
+	}{
+		{
+			"valid",
+			"valid",
+			false,
+		},
+		{
+			"in.valid",
+			"in.valid",
+			true,
+		},
+		{
+			"with-slash",
+			"/no",
+			true,
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			err := validateFilename(tc.in)
+			if tc.expectError && err == nil {
+				t.Errorf("Expected error... from input '%s'", tc.in)
+			}
+
+			if !tc.expectError && err != nil {
+				t.Errorf("Did not expect error: %s", err)
+			}
+		})
+	}
+}

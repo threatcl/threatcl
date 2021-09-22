@@ -32,6 +32,7 @@ type DashboardCommand struct {
 	flagNoDfd               bool
 	flagDashboardTemplate   string
 	flagThreatmodelTemplate string
+	flagDashboardFilename   string
 }
 
 func (c *DashboardCommand) Help() string {
@@ -56,6 +57,8 @@ Options:
 
  -dashboard-template=<file>
 
+ -dashboard-filename=<filename>
+
  -threatmodel-template=<file>
 
 `
@@ -66,7 +69,8 @@ func (c *DashboardCommand) Run(args []string) int {
 
 	flagSet := c.GetFlagset("dashboard")
 	flagSet.StringVar(&c.flagOutDir, "outdir", "", "Directory to output MD files. Will create directory if it doesn't exist. Must be set")
-	flagSet.StringVar(&c.flagDashboardTemplate, "dashboard-template", "", "Template file to override the default dashboard.md file")
+	flagSet.StringVar(&c.flagDashboardTemplate, "dashboard-template", "", "Template file to override the default dashboard index file")
+	flagSet.StringVar(&c.flagDashboardFilename, "dashboard-filename", "dashboard", "Instead of writing dashboard.md, write to <filename>.md")
 	flagSet.StringVar(&c.flagThreatmodelTemplate, "threatmodel-template", "", "Template file to override the default threatmodel.md file(s)")
 	flagSet.BoolVar(&c.flagOverwrite, "overwrite", false, "Overwrite existing files in the outdir. Defaults to false")
 	flagSet.BoolVar(&c.flagNoDfd, "nodfd", false, "Do not include generated DFD images. Defaults to false")
@@ -86,13 +90,19 @@ func (c *DashboardCommand) Run(args []string) int {
 		return 1
 	}
 
+	err := validateFilename(c.flagDashboardFilename)
+	if err != nil {
+		fmt.Printf("Error with -dashboard-filename: %s\n", err)
+		return 1
+	}
+
 	if len(flagSet.Args()) == 0 {
 		fmt.Printf("Please provide file(s)\n\n")
 		fmt.Println(c.Help())
 		return 1
 	} else {
 
-		// Parse the dashboard.md template first before creating folders
+		// Parse the dashboard-index template first before creating folders
 
 		dashboardTemplate := ""
 
@@ -170,7 +180,7 @@ func (c *DashboardCommand) Run(args []string) int {
 		// We use outfiles to generate a list of output files to validate whether
 		// we're overwriting them or not.
 		outfiles := []string{
-			fmt.Sprintf("%s/dashboard.md", c.flagOutDir),
+			fmt.Sprintf("%s/%s.md", c.flagOutDir, c.flagDashboardFilename),
 		}
 
 		// Find all the .hcl files we're going to parse
@@ -268,7 +278,7 @@ func (c *DashboardCommand) Run(args []string) int {
 
 				fmt.Printf("Successfully wrote to '%s'\n", outfile)
 
-				// Now we add it to the dashboard.md tmList
+				// Now we add it to the dashboard-index tmList
 
 				tmListEntry := tmListEntryType{
 					Name:           tm.Name,
@@ -318,9 +328,9 @@ func (c *DashboardCommand) Run(args []string) int {
 			return tmList[i].Name < tmList[j].Name
 		})
 
-		// Now we create the dashboard.md file
+		// Now we create the dashboard-index file
 
-		f, err := os.Create(c.flagOutDir + "/dashboard.md")
+		f, err := os.Create(c.flagOutDir + fmt.Sprintf("/%s.md", c.flagDashboardFilename))
 		if err != nil {
 			fmt.Printf("Error creating dashboard file: %s\n", err)
 			return 1
@@ -333,7 +343,7 @@ func (c *DashboardCommand) Run(args []string) int {
 			return 1
 		}
 
-		fmt.Printf("Successfully wrote to '%s/dashboard.md'\n", c.flagOutDir)
+		fmt.Printf("Successfully wrote to '%s/%s.md'\n", c.flagOutDir, c.flagDashboardFilename)
 
 	}
 

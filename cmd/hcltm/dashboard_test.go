@@ -527,3 +527,74 @@ func TestDashboardTmBrokenTemplate(t *testing.T) {
 		t.Errorf("%s did not contains %s", out, "Error parsing template: template: TMTemplate:3")
 	}
 }
+
+func TestDashboardInvalidDashboardfile(t *testing.T) {
+	d, err := ioutil.TempDir("", "")
+	if err != nil {
+		t.Fatalf("Error creating tmp dir: %s", err)
+	}
+
+	defer os.RemoveAll(d)
+
+	cmd := testDashboardCommand(t)
+
+	var code int
+
+	out := capturer.CaptureStdout(func() {
+		code = cmd.Run([]string{
+			fmt.Sprintf("-outdir=%s", d),
+			"-overwrite",
+			"-dashboard-filename=./testdata",
+			"./testdata/tm1.hcl",
+		})
+	})
+
+	if code != 1 {
+		t.Errorf("Code did not equal 1: %d", code)
+	}
+
+	if !strings.Contains(out, "Error with -dashboard-filename") {
+		t.Errorf("%s did not contains %s", out, "Error with -dashboard-filename")
+	}
+
+}
+
+func TestDashboardValidDashboardfile(t *testing.T) {
+	d, err := ioutil.TempDir("", "")
+	if err != nil {
+		t.Fatalf("Error creating tmp dir: %s", err)
+	}
+
+	defer os.RemoveAll(d)
+
+	cmd := testDashboardCommand(t)
+
+	var code int
+
+	out := capturer.CaptureStdout(func() {
+		code = cmd.Run([]string{
+			fmt.Sprintf("-outdir=%s", d),
+			"-overwrite",
+			"-dashboard-filename=index",
+			"./testdata/tm1.hcl",
+		})
+	})
+
+	if code != 0 {
+		t.Errorf("Code did not equal 0: %d", code)
+	}
+
+	if !strings.Contains(out, fmt.Sprintf("Created the '%s'", d)) {
+		t.Errorf("%s did not contain %s", out, fmt.Sprintf("Created the '%s'", d))
+	}
+
+	dbfile, err := ioutil.ReadFile(fmt.Sprintf("%s/index.md", d))
+	if err != nil {
+		t.Fatalf("Error opening dashboard file: %s", err)
+	}
+
+	if !strings.Contains(string(dbfile), "# HCLTM Dashboard") {
+		t.Errorf("Expected %s to contain %s", dbfile, "# HCLTM Dashboard")
+	}
+
+}
