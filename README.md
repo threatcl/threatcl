@@ -181,6 +181,18 @@ Successfully wrote to 'dashboard-example/tm2-modellymodel.md'
 Successfully wrote to 'dashboard-example/dashboard.md'
 ```
 
+### Custom Markdown Templates
+
+The `hcltm dashboard` command can also take optional flags to specify custom templates (as per Golang's [text/template](https://pkg.go.dev/text/template)).
+
+To specify a dashboard template file, use the `-dashboard-template` flag. For an example, see [dashboard-template.tpl](examples/dashboard-template.tpl).
+
+To specify a threatmodel template file, use the `-threatmodel-template` flag. For an example, see [threatmodel-template.tpl](examples/threatmodel-template.tpl).
+
+### Custom Filename for the Dashboard Index file
+
+The `hcltm dashboard` command can also take an optional flag to specify a filename for the "index" generated dashboard file. By default this file is `dashboard.md`. Use the `-dashboard-filename` flag without an extension to change this filename.
+
 ## Data Flow Diagram
 
 As per the [spec](spec.hcl), a `threatmodel` may include a single `data_flow_diagram`. An example of a simple DFD is available [here](examples/tm2.hcl).
