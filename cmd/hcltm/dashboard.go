@@ -22,6 +22,7 @@ type tmListEntryType struct {
 	NewInitiative  string
 	InternetFacing string
 	Size           string
+	HasDfd         string
 }
 
 type DashboardCommand struct {
@@ -288,6 +289,7 @@ func (c *DashboardCommand) Run(args []string) int {
 					NewInitiative:  "-",
 					InternetFacing: "-",
 					Size:           "-",
+					HasDfd:         "-",
 				}
 
 				hover := ""
@@ -318,6 +320,10 @@ func (c *DashboardCommand) Run(args []string) int {
 					}
 
 					tmListEntry.Size = tm.Attributes.InitiativeSize
+				}
+
+				if tm.DataFlowDiagram != nil {
+					tmListEntry.HasDfd = "Yes"
 				}
 
 				tmList = append(tmList, tmListEntry)
