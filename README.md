@@ -52,6 +52,8 @@ threatmodel "Tower of London" {
 }
 ```
 
+To see an example of how to reference pre-defined control libraries for the [OWASP Proactive Controls](https://github.com/OWASP/www-project-proactive-controls/tree/7622bebed900a6a5d7b7b9b01fb3fe2b0e695545/v3/en) and [AWS Security Checklist](https://d1.awsstatic.com/whitepapers/Security/AWS_Security_Checklist.pdf) see [examples/tm3.hcl](examples/tm3.hcl)
+
 To see a full description of the spec, see [here](spec.hcl) or run:
 
 ```bash
