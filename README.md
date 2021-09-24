@@ -166,6 +166,18 @@ Validated 3 threatmodels in 3 files
 
 The `hcltm generate` command is used to either output a generic `boilerplate` `hcltm` spec HCL file, or, interactively ask the user questions to then output a `hcltm` spec HCL file.
 
+### Generate Interactive
+
+See the following example of:
+
+```bash
+$ hcltm generate interactive
+```
+
+<p align="center">
+  <img width="600" src="https://xntrik.wtf/hcltm.svg" />
+</p>
+
 ## Dashboard
 
 The `hcltm dashboard` command takes `hcltm` spec HCL files, and generates a number of markdown and png files, dropping them into a selected folder.
