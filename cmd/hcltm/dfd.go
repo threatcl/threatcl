@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/xntrik/hcltm/pkg/spec"
@@ -12,6 +13,7 @@ type DfdCommand struct {
 	*GlobalCmdOptions
 	specCfg       *spec.ThreatmodelSpecConfig
 	flagOutDir    string
+	flagOutFile   string
 	flagOverwrite bool
 }
 
@@ -24,7 +26,11 @@ Usage: hcltm dfd [options] -outdir=<directory> <files>
 
  -outdir=<directory>
    Directory to output PNG files. Will create directory if it doesn't exist.
-   Must be set
+   Either this, or -out, must be set
+
+ -out=<filename>.png
+   Name of output PNG file. Only the first discovered data_flow_diagram will be converted into a PNG.
+   Either this, or -outdir, must be set
 
 Options:
 
@@ -40,7 +46,8 @@ Options:
 func (c *DfdCommand) Run(args []string) int {
 
 	flagSet := c.GetFlagset("dfd")
-	flagSet.StringVar(&c.flagOutDir, "outdir", "", "Directory to output PNG files. Will create directory if it doesn't exist. Must be set")
+	flagSet.StringVar(&c.flagOutDir, "outdir", "", "Directory to output PNG files. Will create directory if it doesn't exist. Either this, or -out, must be set")
+	flagSet.StringVar(&c.flagOutFile, "out", "", "Name of output PNG file. Either this, or -outdir, must be set")
 	flagSet.BoolVar(&c.flagOverwrite, "overwrite", false, "Overwrite existing files in the outdir. Defaults to false")
 	flagSet.Parse(args)
 
@@ -53,8 +60,21 @@ func (c *DfdCommand) Run(args []string) int {
 		}
 	}
 
-	if c.flagOutDir == "" {
-		fmt.Println("You must set an -outdir")
+	if c.flagOutDir == "" && c.flagOutFile == "" {
+		fmt.Printf("You must set an -outdir or -out\n\n")
+		fmt.Println(c.Help())
+		return 1
+	}
+
+	if c.flagOutDir != "" && c.flagOutFile != "" {
+		fmt.Printf("You must sent an -outdir or -out, but not both\n\n")
+		fmt.Println(c.Help())
+		return 1
+	}
+
+	if c.flagOutFile != "" && filepath.Ext(c.flagOutFile) != ".png" {
+		fmt.Printf("-out flag must end in .png\n\n")
+		fmt.Println(c.Help())
 		return 1
 	}
 
@@ -91,6 +111,10 @@ func (c *DfdCommand) Run(args []string) int {
 			}
 		}
 
+		if c.flagOutFile != "" {
+			outfiles = []string{c.flagOutFile}
+		}
+
 		// Validating existing files - if we're not overwriting
 		if !c.flagOverwrite {
 			for _, outfile := range outfiles {
@@ -107,10 +131,12 @@ func (c *DfdCommand) Run(args []string) int {
 			return 1
 		}
 
-		err := createOrValidateFolder(c.flagOutDir, c.flagOverwrite)
-		if err != nil {
-			fmt.Printf("%s\n", err)
-			return 1
+		if c.flagOutDir != "" {
+			err := createOrValidateFolder(c.flagOutDir, c.flagOverwrite)
+			if err != nil {
+				fmt.Printf("%s\n", err)
+				return 1
+			}
 		}
 
 		for _, file := range HCLFiles {
@@ -123,13 +149,24 @@ func (c *DfdCommand) Run(args []string) int {
 
 			for _, tm := range tmParser.GetWrapped().Threatmodels {
 				if tm.DataFlowDiagram != nil {
-					err = tm.GenerateDfdPng(outfilePath(c.flagOutDir, tm.Name, file, ".png"))
-					if err != nil {
-						fmt.Printf("Error generating DFD: %s\n", err)
-						return 1
-					}
+					if c.flagOutFile != "" {
+						err = tm.GenerateDfdPng(c.flagOutFile)
+						if err != nil {
+							fmt.Printf("Error generating DFD: %s\n", err)
+							return 1
+						}
 
-					fmt.Printf("Successfully created '%s'\n", outfilePath(c.flagOutDir, tm.Name, file, ".png"))
+						fmt.Printf("Successfully created '%s'\n", c.flagOutFile)
+						break
+					} else {
+						err = tm.GenerateDfdPng(outfilePath(c.flagOutDir, tm.Name, file, ".png"))
+						if err != nil {
+							fmt.Printf("Error generating DFD: %s\n", err)
+							return 1
+						}
+
+						fmt.Printf("Successfully created '%s'\n", outfilePath(c.flagOutDir, tm.Name, file, ".png"))
+					}
 				}
 			}
 		}
