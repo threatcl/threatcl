@@ -18,7 +18,21 @@ import (
 
 func (tm *Threatmodel) RenderMarkdown(mdTemplate string) (io.Reader, error) { // not super sure about this function signature
 	mdBuffer := new(bytes.Buffer)
-	tmpl, err := template.New("TMTemplate").Funcs(template.FuncMap{
+
+	tmpl, err := ParseTMTemplate(mdTemplate)
+	if err != nil {
+		return mdBuffer, fmt.Errorf("Error parsing template: %w", err)
+	}
+
+	err = tmpl.Execute(mdBuffer, tm)
+	if err != nil {
+		return mdBuffer, fmt.Errorf("Error executing template: %w", err)
+	}
+	return mdBuffer, nil
+}
+
+func ParseTMTemplate(mdTemplate string) (*template.Template, error) {
+	return template.New("TMTemplate").Funcs(template.FuncMap{
 		"isImage": func(url string) bool {
 			imageExts := map[string]interface{}{
 				".jpg": nil,
@@ -44,15 +58,6 @@ func (tm *Threatmodel) RenderMarkdown(mdTemplate string) (io.Reader, error) { //
 			}
 		},
 	}).Parse(mdTemplate)
-	if err != nil {
-		return mdBuffer, fmt.Errorf("Error parsing template: %w", err)
-	}
-
-	err = tmpl.Execute(mdBuffer, tm)
-	if err != nil {
-		return mdBuffer, fmt.Errorf("Error executing template: %w", err)
-	}
-	return mdBuffer, nil
 }
 
 func unixToTime(unixtime int64) string {

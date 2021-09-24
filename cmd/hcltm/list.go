@@ -29,7 +29,7 @@ Options:
  -fields=<fields>
    Comma-separated list of fields to list. Fields include 'number', 'file',
    'threatmodel', 'assetcount', 'threatcount', 'usecasecount', 'tpdcount', 'exclusioncount', 'size', 'internetfacing',
-   'newinitiative' and 'author'.
+   'newinitiative', 'dfd' and 'author'.
    If not set, defaults to 'number,file,threatmodel,author'
 
  -noheader
@@ -42,7 +42,7 @@ Options:
 func (c *ListCommand) Run(args []string) int {
 
 	flagSet := c.GetFlagset("list")
-	flagSet.StringVar(&c.flagFields, "fields", "", "Comma-separated list of fields for list. Fields include 'number', 'file', 'threatmodel', 'assetcount', 'threatcount', 'usecasecount','tpdcount', 'exclusioncount', 'size', 'internetfacing', 'newinitiative' and 'author'.")
+	flagSet.StringVar(&c.flagFields, "fields", "", "Comma-separated list of fields for list. Fields include 'number', 'file', 'threatmodel', 'assetcount', 'threatcount', 'usecasecount','tpdcount', 'exclusioncount', 'size', 'internetfacing', 'newinitiative', 'dfd' and 'author'.")
 	flagSet.BoolVar(&c.flagNoHeader, "noheader", false, "If set, will not print the header")
 	flagSet.Parse(args)
 
@@ -75,6 +75,7 @@ func (c *ListCommand) Run(args []string) int {
 			"Newinitiative",
 			"Usecasecount",
 			"Exclusioncount",
+			"Dfd",
 		}
 
 		// flagFields := make(map[string]interface{})
@@ -122,6 +123,8 @@ func (c *ListCommand) Run(args []string) int {
 					headerString = headerString + "Internet Facing"
 				case "Newinitiative":
 					headerString = headerString + "New Initiative"
+				case "Dfd":
+					headerString = headerString + "DFD"
 				default:
 					headerString = headerString + flagField
 				}
@@ -187,6 +190,12 @@ func (c *ListCommand) Run(args []string) int {
 							bodyString = bodyString + fmt.Sprintf("%t", tm.Attributes.NewInitiative)
 						} else {
 							bodyString = bodyString + "-"
+						}
+					case "Dfd":
+						if tm.DataFlowDiagram != nil {
+							bodyString = bodyString + fmt.Sprintf("%t", true)
+						} else {
+							bodyString = bodyString + fmt.Sprintf("%t", false)
 						}
 					}
 				}

@@ -52,6 +52,8 @@ threatmodel "Tower of London" {
 }
 ```
 
+To see an example of how to reference pre-defined control libraries for the [OWASP Proactive Controls](https://github.com/OWASP/www-project-proactive-controls/tree/7622bebed900a6a5d7b7b9b01fb3fe2b0e695545/v3/en) and [AWS Security Checklist](https://d1.awsstatic.com/whitepapers/Security/AWS_Security_Checklist.pdf) see [examples/tm3.hcl](examples/tm3.hcl)
+
 To see a full description of the spec, see [here](spec.hcl) or run:
 
 ```bash
@@ -61,6 +63,10 @@ $ hcltm generate boilerplate
 ## Why HCL?
 
 HCL is the primary configuration language used in the products by HashiCorp, in-particularly, [Terraform](https://www.terraform.io/) - their open-source Infrastructure-as-Code software. I worked at HashiCorp for a while and the language really grew on me, plus, if DevOps and Software engineers are using the language, then simplifying how they document threat models aligns with `hcltm`'s goals.
+
+## Why not just document them in MD?
+
+I liked the idea of using a format that could be programmatically interacted with.
 
 ## Kudos and References
 
@@ -79,6 +85,10 @@ Download the latest version from [releases](https://github.com/xntrik/hcltm/rele
 ```bash
 $ docker run --rm -it xntrik/hcltm
 ```
+
+## Run with GitHub Actions
+
+`hcltm` can be integrated directly into your GitHub repos with https://github.com/xntrik/hcltm-action. This is one of the ideal methods to manage your threat models, and helps meet the goal of integrating into your version control systems.
 
 ## Building from Source
 
@@ -158,6 +168,18 @@ Validated 3 threatmodels in 3 files
 
 The `hcltm generate` command is used to either output a generic `boilerplate` `hcltm` spec HCL file, or, interactively ask the user questions to then output a `hcltm` spec HCL file.
 
+### Generate Interactive
+
+See the following example of:
+
+```bash
+$ hcltm generate interactive
+```
+
+<p align="center">
+  <img width="600" src="https://xntrik.wtf/hcltm.svg" />
+</p>
+
 ## Dashboard
 
 The `hcltm dashboard` command takes `hcltm` spec HCL files, and generates a number of markdown and png files, dropping them into a selected folder.
@@ -172,6 +194,18 @@ Successfully wrote to 'dashboard-example/tm2-modellymodel.png'
 Successfully wrote to 'dashboard-example/tm2-modellymodel.md'
 Successfully wrote to 'dashboard-example/dashboard.md'
 ```
+
+### Custom Markdown Templates
+
+The `hcltm dashboard` command can also take optional flags to specify custom templates (as per Golang's [text/template](https://pkg.go.dev/text/template)).
+
+To specify a dashboard template file, use the `-dashboard-template` flag. For an example, see [dashboard-template.tpl](examples/dashboard-template.tpl).
+
+To specify a threatmodel template file, use the `-threatmodel-template` flag. For an example, see [threatmodel-template.tpl](examples/threatmodel-template.tpl).
+
+### Custom Filename for the Dashboard Index file
+
+The `hcltm dashboard` command can also take an optional flag to specify a filename for the "index" generated dashboard file. By default this file is `dashboard.md`. Use the `-dashboard-filename` flag without an extension to change this filename.
 
 ## Data Flow Diagram
 

@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sort"
@@ -21,14 +22,18 @@ type tmListEntryType struct {
 	NewInitiative  string
 	InternetFacing string
 	Size           string
+	HasDfd         string
 }
 
 type DashboardCommand struct {
 	*GlobalCmdOptions
-	specCfg       *spec.ThreatmodelSpecConfig
-	flagOutDir    string
-	flagOverwrite bool
-	flagNoDfd     bool
+	specCfg                 *spec.ThreatmodelSpecConfig
+	flagOutDir              string
+	flagOverwrite           bool
+	flagNoDfd               bool
+	flagDashboardTemplate   string
+	flagThreatmodelTemplate string
+	flagDashboardFilename   string
 }
 
 func (c *DashboardCommand) Help() string {
@@ -51,6 +56,12 @@ Options:
 
  -nodfd
 
+ -dashboard-template=<file>
+
+ -dashboard-filename=<filename>
+
+ -threatmodel-template=<file>
+
 `
 	return strings.TrimSpace(helpText)
 }
@@ -59,6 +70,9 @@ func (c *DashboardCommand) Run(args []string) int {
 
 	flagSet := c.GetFlagset("dashboard")
 	flagSet.StringVar(&c.flagOutDir, "outdir", "", "Directory to output MD files. Will create directory if it doesn't exist. Must be set")
+	flagSet.StringVar(&c.flagDashboardTemplate, "dashboard-template", "", "Template file to override the default dashboard index file")
+	flagSet.StringVar(&c.flagDashboardFilename, "dashboard-filename", "dashboard", "Instead of writing dashboard.md, write to <filename>.md")
+	flagSet.StringVar(&c.flagThreatmodelTemplate, "threatmodel-template", "", "Template file to override the default threatmodel.md file(s)")
 	flagSet.BoolVar(&c.flagOverwrite, "overwrite", false, "Overwrite existing files in the outdir. Defaults to false")
 	flagSet.BoolVar(&c.flagNoDfd, "nodfd", false, "Do not include generated DFD images. Defaults to false")
 	flagSet.Parse(args)
@@ -77,13 +91,87 @@ func (c *DashboardCommand) Run(args []string) int {
 		return 1
 	}
 
+	err := validateFilename(c.flagDashboardFilename)
+	if err != nil {
+		fmt.Printf("Error with -dashboard-filename: %s\n", err)
+		return 1
+	}
+
 	if len(flagSet.Args()) == 0 {
 		fmt.Printf("Please provide file(s)\n\n")
 		fmt.Println(c.Help())
 		return 1
 	} else {
 
-		err := createOrValidateFolder(c.flagOutDir, c.flagOverwrite)
+		// Parse the dashboard-index template first before creating folders
+
+		dashboardTemplate := ""
+
+		if c.flagDashboardTemplate != "" {
+			// User has specified a replacement dashboard file
+			info, err := os.Stat(c.flagDashboardTemplate)
+			if os.IsNotExist(err) {
+				fmt.Printf("Could not find dashboard-template file. '%s'", c.flagDashboardTemplate)
+				return 1
+			}
+
+			if info.IsDir() {
+				fmt.Printf("dashboard-template can't be set to a directory. '%s'", c.flagDashboardTemplate)
+				return 1
+			}
+
+			readTemplate, err := ioutil.ReadFile(c.flagDashboardTemplate)
+			if err != nil {
+				fmt.Printf("Error opening dashboard template file: %s\n", err)
+				return 1
+			}
+
+			dashboardTemplate = string(readTemplate)
+		} else {
+			dashboardTemplate = spec.TmDashboardTemplate
+		}
+
+		dashboardTemplateParsed, err := template.New("DashboardTemplate").Parse(dashboardTemplate)
+		if err != nil {
+			fmt.Printf("Error parsing template: %s\n", err)
+			return 1
+		}
+
+		// Parse the threatmodel.md template second before creating folders
+
+		tmTemplate := ""
+
+		if c.flagThreatmodelTemplate != "" {
+			// User has specified a replacement threatmodel file
+			info, err := os.Stat(c.flagThreatmodelTemplate)
+			if os.IsNotExist(err) {
+				fmt.Printf("Could not find threatmodel-template file. '%s'", c.flagThreatmodelTemplate)
+				return 1
+			}
+
+			if info.IsDir() {
+				fmt.Printf("threatmodel-template can't be set to a directory. '%s'", c.flagThreatmodelTemplate)
+				return 1
+			}
+
+			readTemplate, err := ioutil.ReadFile(c.flagThreatmodelTemplate)
+			if err != nil {
+				fmt.Printf("Error opening threatmodel template file: %s\n", err)
+				return 1
+			}
+
+			tmTemplate = string(readTemplate)
+		} else {
+			tmTemplate = spec.TmMDTemplate
+		}
+
+		_, err = spec.ParseTMTemplate(tmTemplate)
+		if err != nil {
+			fmt.Printf("Error parsing template: %s\n", err)
+			return 1
+		}
+
+		err = createOrValidateFolder(c.flagOutDir, c.flagOverwrite)
 		if err != nil {
 			fmt.Printf("%s\n", err)
 			return 1
@@ -93,7 +181,7 @@ func (c *DashboardCommand) Run(args []string) int {
 		// We use outfiles to generate a list of output files to validate whether
 		// we're overwriting them or not.
 		outfiles := []string{
-			fmt.Sprintf("%s/dashboard.md", c.flagOutDir),
+			fmt.Sprintf("%s/%s.md", c.flagOutDir, c.flagDashboardFilename),
 		}
 
 		// Find all the .hcl files we're going to parse
@@ -167,7 +255,8 @@ func (c *DashboardCommand) Run(args []string) int {
 
 				}
 
-				tmBuffer, err := tm.RenderMarkdown(spec.TmMDTemplate)
+				// tmBuffer, err := tm.RenderMarkdown(spec.TmMDTemplate)
+				tmBuffer, err := tm.RenderMarkdown(tmTemplate)
 				if err != nil {
 					fmt.Println(err)
 					return 1
@@ -190,7 +279,7 @@ func (c *DashboardCommand) Run(args []string) int {
 
 				fmt.Printf("Successfully wrote to '%s'\n", outfile)
 
-				// Now we add it to the dashboard.md tmList
+				// Now we add it to the dashboard-index tmList
 
 				tmListEntry := tmListEntryType{
 					Name:           tm.Name,
@@ -200,6 +289,7 @@ func (c *DashboardCommand) Run(args []string) int {
 					NewInitiative:  "-",
 					InternetFacing: "-",
 					Size:           "-",
+					HasDfd:         "-",
 				}
 
 				hover := ""
@@ -232,6 +322,10 @@ func (c *DashboardCommand) Run(args []string) int {
 					tmListEntry.Size = tm.Attributes.InitiativeSize
 				}
 
+				if tm.DataFlowDiagram != nil {
+					tmListEntry.HasDfd = "Yes"
+				}
+
 				tmList = append(tmList, tmListEntry)
 			}
 		}
@@ -240,28 +334,22 @@ func (c *DashboardCommand) Run(args []string) int {
 			return tmList[i].Name < tmList[j].Name
 		})
 
-		// Now we create the dashboard.md file
+		// Now we create the dashboard-index file
 
-		tmpl, err := template.New("DashboardTemplate").Parse(spec.TmDashboardTemplate)
-		if err != nil {
-			fmt.Printf("Error parsing template: %s\n", err)
-			return 1
-		}
-
-		f, err := os.Create(c.flagOutDir + "/dashboard.md")
+		f, err := os.Create(c.flagOutDir + fmt.Sprintf("/%s.md", c.flagDashboardFilename))
 		if err != nil {
 			fmt.Printf("Error creating dashboard file: %s\n", err)
 			return 1
 		}
 		defer f.Close()
 
-		err = tmpl.Execute(f, tmList)
+		err = dashboardTemplateParsed.Execute(f, tmList)
 		if err != nil {
 			fmt.Printf("Error writing to dashboard file: %s\n", err)
 			return 1
 		}
 
-		fmt.Printf("Successfully wrote to '%s/dashboard.md'\n", c.flagOutDir)
+		fmt.Printf("Successfully wrote to '%s/%s.md'\n", c.flagOutDir, c.flagDashboardFilename)
 
 	}
 

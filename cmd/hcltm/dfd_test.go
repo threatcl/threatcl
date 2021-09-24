@@ -209,3 +209,132 @@ func TestDfdNoDfd(t *testing.T) {
 	}
 
 }
+
+func TestDfdMissingOut(t *testing.T) {
+	cmd := testDfdCommand(t)
+
+	var code int
+
+	out := capturer.CaptureStdout(func() {
+		code = cmd.Run([]string{
+			"./testdata/tm3.hcl",
+		})
+	})
+
+	if code != 1 {
+		t.Errorf("Code did not equal 1: %d", code)
+	}
+
+	if !strings.Contains(out, "You must set an -outdir or -out") {
+		t.Errorf("%s did not contain %s", out, "You must set an -outdir or -out")
+	}
+
+}
+
+func TestDfdBothOut(t *testing.T) {
+	cmd := testDfdCommand(t)
+
+	var code int
+
+	out := capturer.CaptureStdout(func() {
+		code = cmd.Run([]string{
+			"-outdir=boop",
+			"-out=blep",
+			"./testdata/tm3.hcl",
+		})
+	})
+
+	if code != 1 {
+		t.Errorf("Code did not equal 1: %d", code)
+	}
+
+	if !strings.Contains(out, "You must sent an -outdir or -out, but not both") {
+		t.Errorf("%s did not contain %s", out, "You must sent an -outdir or -out, but not both")
+	}
+
+}
+
+func TestDfdOutWrongExt(t *testing.T) {
+	cmd := testDfdCommand(t)
+
+	var code int
+
+	out := capturer.CaptureStdout(func() {
+		code = cmd.Run([]string{
+			"-out=blep.beep",
+			"./testdata/tm3.hcl",
+		})
+	})
+
+	if code != 1 {
+		t.Errorf("Code did not equal 1: %d", code)
+	}
+
+	if !strings.Contains(out, "-out flag must end in .png") {
+		t.Errorf("%s did not contain %s", out, "-out flag must end in .png")
+	}
+
+}
+
+func TestDfdFoundExisting(t *testing.T) {
+	d, err := ioutil.TempDir("", "")
+	if err != nil {
+		t.Fatalf("Error creatig tmp dir: %s", err)
+	}
+
+	_, err = os.Create(fmt.Sprintf("%s/out.png", d))
+	if err != nil {
+		t.Fatalf("Error creating existing file: %s", err)
+	}
+
+	defer os.RemoveAll(d)
+
+	cmd := testDfdCommand(t)
+
+	var code int
+
+	out := capturer.CaptureStdout(func() {
+		code = cmd.Run([]string{
+			fmt.Sprintf("-out=%s/out.png", d),
+			"./testdata/tm3.hcl",
+		})
+	})
+
+	if code != 1 {
+		t.Errorf("Code did not equal 1: %d", code)
+	}
+
+	if !strings.Contains(out, fmt.Sprintf("'%s/out.png' already exists", d)) {
+		t.Errorf("%s did not contain %s", out, fmt.Sprintf("'%s/out.png' already exists", d))
+	}
+
+}
+
+func TestDfdSuccessfulOut(t *testing.T) {
+	d, err := ioutil.TempDir("", "")
+	if err != nil {
+		t.Fatalf("Error creatig tmp dir: %s", err)
+	}
+
+	defer os.RemoveAll(d)
+
+	cmd := testDfdCommand(t)
+
+	var code int
+
+	out := capturer.CaptureStdout(func() {
+		code = cmd.Run([]string{
+			fmt.Sprintf("-out=%s/out.png", d),
+			"./testdata/tm3.hcl",
+		})
+	})
+
+	if code != 0 {
+		t.Errorf("Code did not equal 0: %d", code)
+	}
+
+	if !strings.Contains(out, fmt.Sprintf("Successfully created '%s/out.png'", d)) {
+		t.Errorf("%s did not contain %s", out, fmt.Sprintf("Successfully created '%s/out.png'", d))
+	}
+
+}

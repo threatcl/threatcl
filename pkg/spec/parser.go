@@ -367,10 +367,12 @@ func (p *ThreatmodelParser) validateTms() error {
 }
 
 func (p *ThreatmodelParser) validateSpec(filename string) {
+	// @TODO: This has been edited to not print to STDOUT - it should be wrapped in a DEBUG flag
+
 	// Check the version in the file against the current config
 	if p.wrapped.SpecVersion != "" {
 		if p.wrapped.SpecVersion != p.specCfg.Version {
-			fmt.Fprintf(os.Stdout, "%s: Provided version ('%s') doesn't match the hcltm version ('%s')\n", filename, p.wrapped.SpecVersion, p.specCfg.Version)
+			// fmt.Fprintf(os.Stdout, "%s: Provided version ('%s') doesn't match the hcltm version ('%s')\n", filename, p.wrapped.SpecVersion, p.specCfg.Version)
 		}
 	} else {
 		fmt.Fprintf(os.Stdout, "%s: No provided version. The current hcltm version is '%s'\n", filename, p.specCfg.Version)

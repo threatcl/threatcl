@@ -64,6 +64,17 @@ func configFileLocation() (string, error) {
 	return filepath.Join(homeDir, ".hcltmrc"), nil
 }
 
+func validateFilename(filename string) error {
+	reg := regexp.MustCompile("[^a-zA-Z0-9_-]+")
+	validFilename := reg.ReplaceAllString(filename, "")
+
+	if filename != validFilename {
+		return fmt.Errorf("Provided filename contains illegal characters")
+	}
+
+	return nil
+}
+
 // createOrValidateFolder is used for creating or validating
 // an output folder. This is used when a command needs to
 // output files into a folder
