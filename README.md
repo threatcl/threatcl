@@ -52,6 +52,8 @@ threatmodel "Tower of London" {
 }
 ```
 
+See [Data Flow Diagram](#data-flow-diagram) for more information on how to construct data flow diagrams that are converted to PNGs automatically.
+
 To see an example of how to reference pre-defined control libraries for the [OWASP Proactive Controls](https://github.com/OWASP/www-project-proactive-controls/tree/7622bebed900a6a5d7b7b9b01fb3fe2b0e695545/v3/en) and [AWS Security Checklist](https://d1.awsstatic.com/whitepapers/Security/AWS_Security_Checklist.pdf) see [examples/tm3.hcl](examples/tm3.hcl)
 
 To see a full description of the spec, see [here](spec.hcl) or run:
@@ -96,6 +98,8 @@ $ docker run --rm -it xntrik/hcltm
 2. Change into the directory, `hcltm`
 3. `$ make bootstrap`
 4. `$ make dev`
+
+For further help on contributing to `hcltm` please see the [CHANGELOG.md](CHANGELOG.md).
 
 ## Usage
 
