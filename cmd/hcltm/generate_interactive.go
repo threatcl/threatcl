@@ -70,7 +70,7 @@ func (c *GenerateInteractiveCommand) Run(args []string) int {
 
 		// Check if it exists already
 		_, err := os.Stat(c.flagOut)
-		if os.IsExist(err) {
+		if !os.IsNotExist(err) {
 			fmt.Printf("You're trying to write to '%s' file, which already exists..\n", c.flagOut)
 			return 1
 		}
