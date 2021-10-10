@@ -581,6 +581,18 @@ func (p *ThreatmodelParser) parseHCL(f *hcl.File, filename string, isChild bool)
 	return nil
 }
 
+// ParseFile parses a single Threatmodel file, and will account for either
+// JSON or HCL (this is a wrapper sort of for the two different methods)
+func (p *ThreatmodelParser) ParseFile(filename string, isChild bool) error {
+	if filepath.Ext(filename) == ".hcl" {
+		return p.ParseHCLFile(filename, isChild)
+	} else if filepath.Ext(filename) == ".json" {
+		return p.ParseJSONFile(filename, isChild)
+	} else {
+		return fmt.Errorf("File isn't HCL or JSON")
+	}
+}
+
 // ParseHCLFile parses a single HCL Threatmodel file
 func (p *ThreatmodelParser) ParseHCLFile(filename string, isChild bool) error {
 	parser := hclparse.NewParser()

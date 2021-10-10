@@ -111,15 +111,14 @@ func (c *ValidateCommand) Run(args []string) int {
 		return 1
 	} else {
 
-		JSONFiles := findJsonFiles(args)
-		HCLFiles := findHclFiles(args)
+		AllFiles := findAllFiles(args)
 
 		fileCount := 0
 		tmCount := 0
 
-		for _, file := range JSONFiles {
+		for _, file := range AllFiles {
 			tmParser := spec.NewThreatmodelParser(c.specCfg)
-			err := tmParser.ParseJSONFile(file, false)
+			err := tmParser.ParseFile(file, false)
 			if err != nil {
 				fmt.Printf("Error parsing %s: %s\n", file, err)
 				return 1
@@ -127,19 +126,6 @@ func (c *ValidateCommand) Run(args []string) int {
 
 			fileCount = fileCount + 1
 			tmCount = tmCount + len(tmParser.GetWrapped().Threatmodels)
-		}
-
-		for _, file := range HCLFiles {
-			tmParser := spec.NewThreatmodelParser(c.specCfg)
-			err := tmParser.ParseHCLFile(file, false)
-			if err != nil {
-				fmt.Printf("Error parsing %s: %s\n", file, err)
-				return 1
-			}
-
-			fileCount = fileCount + 1
-			tmCount = tmCount + len(tmParser.GetWrapped().Threatmodels)
-
 		}
 
 		fmt.Printf("Validated %d threatmodels in %d files\n", tmCount, fileCount)

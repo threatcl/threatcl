@@ -224,6 +224,13 @@ func prettyBoolFromString(in string) bool {
 	return false
 }
 
+// findAllFiles wraps Json and Hcl file finding
+func findAllFiles(files []string) []string {
+	out := findHclFiles(files)
+	out = append(out, findJsonFiles(files)...)
+	return out
+}
+
 // findJsonFiles iterates through a list of files or folders
 // looking for .json files
 // currently it does this recursively through folders too
