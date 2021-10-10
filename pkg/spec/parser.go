@@ -605,3 +605,28 @@ func (p *ThreatmodelParser) ParseHCLRaw(input []byte) error {
 
 	return p.parseHCL(f, "STDIN", false)
 }
+
+// ParseJSONFile parses a single JSON Threatmodel file
+func (p *ThreatmodelParser) ParseJSONFile(filename string, isChild bool) error {
+	parser := hclparse.NewParser()
+	f, diags := parser.ParseJSONFile(filename)
+
+	if diags.HasErrors() {
+		return diags
+	}
+
+	return p.parseHCL(f, filename, isChild)
+}
+
+// ParseJSONRaw parses a byte slice into HCL Threatmodels from JSON
+// This is used for piping in STDIN
+func (p *ThreatmodelParser) ParseJSONRaw(input []byte) error {
+	parser := hclparse.NewParser()
+	f, diags := parser.ParseJSON(input, "STDIN")
+
+	if diags.HasErrors() {
+		return diags
+	}
+
+	return p.parseHCL(f, "STDIN", false)
+}

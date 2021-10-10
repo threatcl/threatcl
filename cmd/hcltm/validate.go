@@ -12,8 +12,9 @@ import (
 
 type ValidateCommand struct {
 	*GlobalCmdOptions
-	specCfg   *spec.ThreatmodelSpecConfig
-	flagStdin bool
+	specCfg       *spec.ThreatmodelSpecConfig
+	flagStdin     bool
+	flagStdinJson bool
 }
 
 func (c *ValidateCommand) Help() string {
@@ -30,6 +31,9 @@ Options:
  -stdin
    If set, will expect a HCL file to be piped in
 
+ -stdinjson
+   If set, will expect a JSON file to be piped in
+
 `
 	return strings.TrimSpace(helpText)
 }
@@ -37,6 +41,7 @@ Options:
 func (c *ValidateCommand) Run(args []string) int {
 	flagSet := c.GetFlagset("validate")
 	flagSet.BoolVar(&c.flagStdin, "stdin", false, "If set, will expect a HCL file to be piped in")
+	flagSet.BoolVar(&c.flagStdinJson, "stdinjson", false, "If set, will expect a JSON file to be piped in")
 	flagSet.Parse(args)
 
 	if c.flagConfig != "" {
@@ -48,7 +53,12 @@ func (c *ValidateCommand) Run(args []string) int {
 		}
 	}
 
-	if c.flagStdin {
+	if c.flagStdin && c.flagStdinJson {
+		fmt.Printf("You can't -stdin and -stdinjson at the same time\n")
+		return 1
+	}
+
+	if c.flagStdin || c.flagStdinJson {
 		// Try and parse STDIN
 		info, err := os.Stdin.Stat()
 		if err != nil {
@@ -74,9 +84,18 @@ func (c *ValidateCommand) Run(args []string) int {
 		in := []byte(string(output))
 
 		tmParser := spec.NewThreatmodelParser(c.specCfg)
-		err = tmParser.ParseHCLRaw(in)
+		if c.flagStdin {
+			err = tmParser.ParseHCLRaw(in)
+		} else {
+			err = tmParser.ParseJSONRaw(in)
+		}
+
 		if err != nil {
-			fmt.Printf("Error parsing %s: %s\n", "STDIN", err)
+			if c.flagStdin {
+				fmt.Printf("Error parsing HCL stdin: %s\n", err)
+			} else {
+				fmt.Printf("Error parsing JSON stdin: %s\n", err)
+			}
 			return 1
 		}
 
@@ -88,17 +107,28 @@ func (c *ValidateCommand) Run(args []string) int {
 	}
 
 	if len(flagSet.Args()) == 0 {
-		fmt.Printf("Please provide <files> or -stdin\n")
+		fmt.Printf("Please provide <files> or -stdin or -stdinjson\n")
 		return 1
 	} else {
 
-		// Find all the .hcl files we're going to parse
+		JSONFiles := findJsonFiles(args)
 		HCLFiles := findHclFiles(args)
 
 		fileCount := 0
 		tmCount := 0
 
-		// Parse all the identified .hcl files
+		for _, file := range JSONFiles {
+			tmParser := spec.NewThreatmodelParser(c.specCfg)
+			err := tmParser.ParseJSONFile(file, false)
+			if err != nil {
+				fmt.Printf("Error parsing %s: %s\n", file, err)
+				return 1
+			}
+
+			fileCount = fileCount + 1
+			tmCount = tmCount + len(tmParser.GetWrapped().Threatmodels)
+		}
+
 		for _, file := range HCLFiles {
 			tmParser := spec.NewThreatmodelParser(c.specCfg)
 			err := tmParser.ParseHCLFile(file, false)

@@ -224,6 +224,37 @@ func prettyBoolFromString(in string) bool {
 	return false
 }
 
+// findJsonFiles iterates through a list of files or folders
+// looking for .json files
+// currently it does this recursively through folders too
+func findJsonFiles(files []string) []string {
+	out := []string{}
+	recurse := true // @TODO potentially in the future we may make this an argument / flag
+	for _, file := range files {
+		info, err := os.Stat(file)
+		if !os.IsNotExist(err) {
+			if !info.IsDir() {
+				if filepath.Ext(file) == ".json" {
+					out = append(out, file)
+				}
+			} else {
+				if recurse {
+					re_err := filepath.Walk(file, func(path string, re_info os.FileInfo, err error) error {
+						if !re_info.IsDir() && filepath.Ext(path) == ".json" {
+							out = append(out, path)
+						}
+						return nil
+					})
+					if re_err != nil {
+						panic(re_err) // @TODO - handle this error better
+					}
+				}
+			}
+		}
+	}
+	return out
+}
+
 // findHclFiles iterates through a list of files or folders
 // looking for .hcl files
 // currently it does this recursively through folders too
