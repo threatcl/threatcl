@@ -185,12 +185,12 @@ func (c *DashboardCommand) Run(args []string) int {
 		}
 
 		// Find all the .hcl files we're going to parse
-		HCLFiles := findHclFiles(flagSet.Args())
+		AllFiles := findAllFiles(flagSet.Args())
 
 		// Parse all the identified .hcl files - just to determine output files
-		for _, file := range HCLFiles {
+		for _, file := range AllFiles {
 			tmParser := spec.NewThreatmodelParser(c.specCfg)
-			err := tmParser.ParseHCLFile(file, false)
+			err := tmParser.ParseFile(file, false)
 			if err != nil {
 				fmt.Printf("Error parsing %s: %s\n", file, err)
 				return 1
@@ -226,9 +226,9 @@ func (c *DashboardCommand) Run(args []string) int {
 
 		tmList := []tmListEntryType{}
 
-		for _, file := range HCLFiles {
+		for _, file := range AllFiles {
 			tmParser := spec.NewThreatmodelParser(c.specCfg)
-			err := tmParser.ParseHCLFile(file, false)
+			err := tmParser.ParseFile(file, false)
 			if err != nil {
 				fmt.Printf("Error parsing %s: %s\n", file, err)
 				return 1

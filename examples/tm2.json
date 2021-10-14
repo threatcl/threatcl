@@ -1,0 +1,66 @@
+{
+  "spec_version": "0.0.3",
+
+ "threatmodel": {
+   "Modelly model": {
+     "imports": ["control-library/othercontrols.hcl"],
+     "author": "@xntrik",
+
+     "threat": {
+       "description": "threaty threat",
+       "control": "CAN'T IMPORT IN JSON",
+       "stride": ["Spoofing", "Elevation of privilege"]
+     },
+
+     "data_flow_diagram": {
+       "external_element": {
+         "Google Analytics": {
+         }
+       },
+
+       "process": {
+         "Client": {
+          "trust_zone": "Browser"
+         },
+         "Web Server": {
+          "trust_zone": "AWS"
+         }
+       },
+
+       "flow": {
+         "https": {
+          "from": "Client",
+          "to": "Google Analytics"
+         },
+         "TCP": {
+           "from": "Web Server",
+           "to": "Logs"
+         },
+         "https": {
+           "from": "Client",
+           "to": "Web Server"
+          },
+          "https": {
+            "from": "Web Server",
+            "to": "sqlite"
+          },
+          "https": {
+            "from": "sqlite",
+            "to": "Web Server"
+          }
+       },
+
+       "data_store": {
+         "Logs": {
+          "trust_zone": "AWS"
+         },
+         "sqlite": {
+           "trust_zone": "AWS"
+         }
+       }
+     
+     }
+
+   }
+ }
+}
