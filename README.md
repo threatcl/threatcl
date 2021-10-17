@@ -62,9 +62,13 @@ To see a full description of the spec, see [here](spec.hcl) or run:
 $ hcltm generate boilerplate
 ```
 
+`hcltm` will also process JSON files, but the only caveat is that import modules and variables won't work. You can see [examples/tm1.json](examples/tm1.json) as an example.
+
 ## Why HCL?
 
 HCL is the primary configuration language used in the products by HashiCorp, in-particularly, [Terraform](https://www.terraform.io/) - their open-source Infrastructure-as-Code software. I worked at HashiCorp for a while and the language really grew on me, plus, if DevOps and Software engineers are using the language, then simplifying how they document threat models aligns with `hcltm`'s goals.
+
+You can use `hcltm` with JSON, but you lose some of the features. For more, see the [examples/](examples/) folder.
 
 ## Why not just document them in MD?
 
