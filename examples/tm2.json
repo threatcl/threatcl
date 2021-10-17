@@ -6,11 +6,15 @@
      "imports": ["control-library/othercontrols.hcl"],
      "author": "@xntrik",
 
-     "threat": {
+     "threat": [{
        "description": "threaty threat",
        "control": "CAN'T IMPORT IN JSON",
        "stride": ["Spoofing", "Elevation of privilege"]
-     },
+     },{
+       "description": "threaty threat two",
+       "control": "CAN'T IMPORT IN JSON",
+       "stride": ["Spoofing", "Elevation of privilege"]
+     }],
 
      "data_flow_diagram": {
        "external_element": {
