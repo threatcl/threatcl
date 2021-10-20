@@ -136,6 +136,16 @@ threatmodel "threatmodel name" {
     // The information_asset_refs are an optional array of information_assets
     // the elements must much existing information_assets - as above
     information_asset_refs = ["cred store"]
+
+    // The proposed_control blocks are optional, and are used to track 
+    // proposed controls
+    proposed_control {
+      // The Description is required
+      description = "This is a proposed control"
+
+      // The implemented boolean is optional, and defaults to false
+      implemented = true
+    }
   }
 
   // You can import an external .hcl file that includes control descriptions
