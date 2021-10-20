@@ -16,6 +16,20 @@ EOT
    threat {
      description = "Something else" 
      control = import.control.owasp-errors-infoleak.description
+
+     proposed_control {
+       implemented = false
+       description = "Do the thing"
+     }
+
+     proposed_control {
+       implemented = true
+       description = "Do another thing"
+     }
+   }
+
+   threat {
+     description = "Something else that is also equally as bad"
    }
 
  }

@@ -61,8 +61,12 @@ Diagram: {{ .DiagramLink }}
 
 {{ .Description }}
 
+{{- if .ImpactType }}
+
 > Impact Type: {{ $impact := .ImpactType }}{{ range $index, $elem := .ImpactType }}{{ if $index}}, {{end}}{{.}}{{end}}
-{{ if .Stride}}
+{{- end }}
+{{- if .Stride}}
+
 > STRIDE: {{ $stride := .Stride }}{{ range $index, $elem := .Stride }}{{ if $index}}, {{end}}{{.}}{{end}}
 {{- end}}
 {{- if .InformationAssetRefs }}
@@ -76,6 +80,13 @@ Impacted Information Assets:
 #### Control
 
 {{ .Control }}
+{{- end }}
+{{- if .ProposedControls }}
+
+#### Proposed Controls
+
+{{ range .ProposedControls }}{{- if .Implemented }}- [x] {{- else }}- [ ] {{- end }} {{ .Description }}
+{{ end }}
 {{- end }}
 {{- end }}
 {{- end }}

@@ -13,11 +13,17 @@ type InformationAsset struct {
 }
 
 type Threat struct {
-	ImpactType           []string `hcl:"impacts,optional"`
-	Description          string   `hcl:"description,attr"`
-	Control              string   `hcl:"control,optional"`
-	Stride               []string `hcl:"stride,optional"`
-	InformationAssetRefs []string `hcl:"information_asset_refs,optional"`
+	ImpactType           []string           `hcl:"impacts,optional"`
+	Description          string             `hcl:"description,attr"`
+	Control              string             `hcl:"control,optional"`
+	Stride               []string           `hcl:"stride,optional"`
+	InformationAssetRefs []string           `hcl:"information_asset_refs,optional"`
+	ProposedControls     []*ProposedControl `hcl:"proposed_control,block"`
+}
+
+type ProposedControl struct {
+	Implemented bool   `hcl:"implemented,optional"`
+	Description string `hcl:"description"`
 }
 
 type UseCase struct {

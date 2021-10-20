@@ -9,7 +9,14 @@
      "threat": [{
        "description": "threaty threat",
        "control": "CAN'T IMPORT IN JSON",
-       "stride": ["Spoofing", "Elevation of privilege"]
+       "stride": ["Spoofing", "Elevation of privilege"],
+       "proposed_control": {
+         "description": "This is a proposed control"
+       },
+       "proposed_control": {
+         "implemented": true,
+         "description": "And this is a proposed control that has been implemented"
+       }
      },{
        "description": "threaty threat two",
        "control": "CAN'T IMPORT IN JSON",
