@@ -36,9 +36,41 @@ func (tm *Threatmodel) generateDfdDotFile(filepath string) (string, error) {
 	g := dfd.InitializeDFD(tm.Name)
 
 	zones := make(map[string]*dfd.TrustBoundary)
+	processes := make(map[string]*dfd.Process)
+	external_elements := make(map[string]*dfd.ExternalService)
+	data_stores := make(map[string]*dfd.DataStore)
+
+	// Add zones
+	for _, zone := range tm.DataFlowDiagram.TrustZones {
+		if _, existing := zones[zone.Name]; !existing {
+			newZone, err := g.AddTrustBoundary(zone.Name)
+			zones[zone.Name] = newZone
+			if err != nil {
+				return "", err
+			}
+		}
+
+		// Add Processes from inside zone
+		for _, process := range zone.Processes {
+			processes[process.Name] = dfd.NewProcess(process.Name)
+			zones[zone.Name].AddNodeElem(processes[process.Name])
+		}
+
+		// Add External Elements from inside zone
+		for _, external_element := range zone.ExternalElements {
+			external_elements[external_element.Name] = dfd.NewExternalService(external_element.Name)
+			zones[zone.Name].AddNodeElem(external_elements[external_element.Name])
+		}
+
+		// Add Data Stores from inside zone
+		for _, data_store := range zone.DataStores {
+			data_stores[data_store.Name] = dfd.NewDataStore(data_store.Name)
+			zones[zone.Name].AddNodeElem(data_stores[data_store.Name])
+		}
+
+	}
 
 	// Add Processes
-	processes := make(map[string]*dfd.Process)
 	for _, process := range tm.DataFlowDiagram.Processes {
 		processes[process.Name] = dfd.NewProcess(process.Name)
 
@@ -58,7 +90,6 @@ func (tm *Threatmodel) generateDfdDotFile(filepath string) (string, error) {
 	}
 
 	// Add External Elements
-	external_elements := make(map[string]*dfd.ExternalService)
 	for _, external_element := range tm.DataFlowDiagram.ExternalElements {
 		external_elements[external_element.Name] = dfd.NewExternalService(external_element.Name)
 
@@ -78,7 +109,6 @@ func (tm *Threatmodel) generateDfdDotFile(filepath string) (string, error) {
 	}
 
 	// Add Data Stores
-	data_stores := make(map[string]*dfd.DataStore)
 	for _, data_store := range tm.DataFlowDiagram.DataStores {
 		data_stores[data_store.Name] = dfd.NewDataStore(data_store.Name)
 

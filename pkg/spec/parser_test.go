@@ -14,6 +14,13 @@ const (
 			author = "@xntrik"
 		}
 	`
+	tmTestValidJson = `{"spec_version": "0.0.3",
+    "threatmodel": {
+		  "test": {
+			  "author": "@xntrik"
+			}
+		}
+	}`
 )
 
 func TestNewTMParser(t *testing.T) {
@@ -57,6 +64,18 @@ func TestNewTMParser(t *testing.T) {
 
 }
 
+func TestParseInvalidFileExt(t *testing.T) {
+	defaultCfg := &ThreatmodelSpecConfig{}
+	defaultCfg.setDefaults()
+	tmParser := NewThreatmodelParser(defaultCfg)
+
+	err := tmParser.ParseFile("./testdata/tm1.csv", false)
+
+	if err == nil {
+		t.Errorf("Error parsing illegitimate TM extension: %s", err)
+	}
+}
+
 func TestParseHCLFile(t *testing.T) {
 	defaultCfg := &ThreatmodelSpecConfig{}
 	defaultCfg.setDefaults()
@@ -68,7 +87,37 @@ func TestParseHCLFile(t *testing.T) {
 		t.Errorf("Error parsing legit TM file: %s", err)
 	}
 
+	err = tmParser.ParseFile("./testdata/tm1.hcl", false)
+
+	if err != nil {
+		t.Errorf("Error parsing legit TM file: %s", err)
+	}
+
 	err = tmParser.ParseHCLFile("./testdata/tm-invalid.hcl", false)
+
+	if err == nil {
+		t.Errorf("Error parsing broken TM file: %s", err)
+	}
+}
+
+func TestParseJsonFile(t *testing.T) {
+	defaultCfg := &ThreatmodelSpecConfig{}
+	defaultCfg.setDefaults()
+	tmParser := NewThreatmodelParser(defaultCfg)
+
+	err := tmParser.ParseJSONFile("./testdata/tm1.json", false)
+
+	if err != nil {
+		t.Errorf("Error parsing legit TM file: %s", err)
+	}
+
+	err = tmParser.ParseFile("./testdata/tm1.json", false)
+
+	if err != nil {
+		t.Errorf("Error parsing legit TM file: %s", err)
+	}
+
+	err = tmParser.ParseJSONFile("./testdata/tm-invalid.json", false)
 
 	if err == nil {
 		t.Errorf("Error parsing broken TM file: %s", err)
@@ -486,6 +535,122 @@ func TestParseHCLRaw(t *testing.T) {
 			"duplicate data_store found in dfd 'a'",
 			true,
 		},
+		{
+			"dfd_dupe_zone",
+			`threatmodel "dfdtest" {
+			  author = "j"
+				data_flow_diagram {
+				  trust_zone "tza" {}
+					trust_zone "tza" {}
+					external_element "a" {}
+					data_store "b" {}
+				}
+			}`,
+			"duplicate trust_zone block found 'tza'",
+			true,
+		},
+		{
+			"dfd_dupe_proc_in_zone",
+			`threatmodel "dfdtest" {
+			  author = "j"
+				data_flow_diagram {
+				  trust_zone "tza" {
+					  process "a" {}
+					}
+					trust_zone "tzb" {}
+					process "a" {}
+					data_store "b" {}
+				}
+			}`,
+			"duplicate process found in dfd 'a'",
+			true,
+		},
+		{
+			"dfd_dupe_element_in_zone",
+			`threatmodel "dfdtest" {
+			  author = "j"
+				data_flow_diagram {
+				  trust_zone "tza" {
+					  external_element "a" {}
+					}
+					trust_zone "tzb" {}
+					process "a" {}
+					data_store "b" {}
+				}
+			}`,
+			"duplicate external_element found in dfd 'a'",
+			true,
+		},
+		{
+			"dfd_dupe_data_in_zone",
+			`threatmodel "dfdtest" {
+			  author = "j"
+				data_flow_diagram {
+				  trust_zone "tza" {
+					  data_store "a" {}
+					}
+					trust_zone "tzb" {}
+					process "a" {}
+					data_store "b" {}
+				}
+			}`,
+			"duplicate data_store found in dfd 'a'",
+			true,
+		},
+		{
+			"dfd_mismatch_zone_process",
+			`threatmodel "dfdtest" {
+			  author = "j"
+				data_flow_diagram {
+				  trust_zone "tza" {
+					  process "a" {
+						  trust_zone = "nottza"
+						}
+					}
+					trust_zone "tzb" {}
+					process "c" {}
+					data_store "b" {}
+				}
+			}`,
+			"process trust_zone mis-match found in 'a'",
+			true,
+		},
+		{
+			"dfd_mismatch_zone_element",
+			`threatmodel "dfdtest" {
+			  author = "j"
+				data_flow_diagram {
+				  trust_zone "tza" {
+					  external_element "a" {
+						  trust_zone = "nottza"
+						}
+					}
+					trust_zone "tzb" {}
+					process "c" {}
+					data_store "b" {}
+				}
+			}`,
+			"external_element trust_zone mis-match found in 'a'",
+			true,
+		},
+		{
+			"dfd_mismatch_zone_data",
+			`threatmodel "dfdtest" {
+			  author = "j"
+				data_flow_diagram {
+				  trust_zone "tza" {
+					  data_store "a" {
+						  trust_zone = "nottza"
+						}
+					}
+					trust_zone "tzb" {}
+					process "c" {}
+					data_store "b" {}
+				}
+			}`,
+			"data_store trust_zone mis-match found in 'a'",
+			true,
+		},
 	}
 
 	for _, tc := range cases {
@@ -499,6 +664,52 @@ func TestParseHCLRaw(t *testing.T) {
 			tmParser := NewThreatmodelParser(defaultCfg)
 
 			err := tmParser.ParseHCLRaw([]byte(tc.in))
+
+			if err != nil {
+				if !strings.Contains(err.Error(), tc.exp) {
+					t.Errorf("%s: Error parsing hcl tm: %s", tc.name, err)
+				}
+			} else {
+				if tc.errorthrown {
+					t.Errorf("%s: An error was thrown when it shouldn't have", tc.name)
+				}
+			}
+		})
+	}
+}
+
+func TestParseJsonRaw(t *testing.T) {
+	cases := []struct {
+		name        string
+		in          string
+		exp         string
+		errorthrown bool
+	}{
+		{
+			"valid_hcltm",
+			tmTestValidJson,
+			"",
+			false,
+		},
+		{
+			"invalid_block",
+			"{spec_version: \"0.0.1\"}",
+			"Invalid JSON keyword",
+			true,
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			defaultCfg := &ThreatmodelSpecConfig{}
+			defaultCfg.setDefaults()
+			tmParser := NewThreatmodelParser(defaultCfg)
+
+			err := tmParser.ParseJSONRaw([]byte(tc.in))
 
 			if err != nil {
 				if !strings.Contains(err.Error(), tc.exp) {
