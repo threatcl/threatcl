@@ -598,3 +598,44 @@ func TestDashboardValidDashboardfile(t *testing.T) {
 	}
 
 }
+
+func TestDashboardValidHtmlfile(t *testing.T) {
+	d, err := ioutil.TempDir("", "")
+	if err != nil {
+		t.Fatalf("Error creating tmp dir: %s", err)
+	}
+
+	defer os.RemoveAll(d)
+
+	cmd := testDashboardCommand(t)
+
+	var code int
+
+	out := capturer.CaptureStdout(func() {
+		code = cmd.Run([]string{
+			fmt.Sprintf("-outdir=%s", d),
+			"-overwrite",
+			"-dashboard-filename=index",
+			"-dashboard-html",
+			"./testdata/tm1.hcl",
+		})
+	})
+
+	if code != 0 {
+		t.Errorf("Code did not equal 0: %d", code)
+	}
+
+	if !strings.Contains(out, fmt.Sprintf("Created the '%s'", d)) {
+		t.Errorf("%s did not contain %s", out, fmt.Sprintf("Created the '%s'", d))
+	}
+
+	dbfile, err := ioutil.ReadFile(fmt.Sprintf("%s/index.html", d))
+	if err != nil {
+		t.Fatalf("Error opening dashboard file: %s", err)
+	}
+
+	if !strings.Contains(string(dbfile), "HCLTM Dashboard") {
+		t.Errorf("Expected %s to contain %s", dbfile, "HCLTM Dashboard")
+	}
+
+}
