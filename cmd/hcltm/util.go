@@ -215,6 +215,22 @@ EOT
       from = "update password"
       to = "password db"
     }
+
+    // You can also define Trust Zones at the data_flow_diagram level
+
+    trust_zone "public zone" {
+
+      // Within a trust_zone you can then include processes, data_stores
+      // or external_elements
+
+      // Make sure that either you omit the element's trust_zone, or that it
+      // matches
+
+      process "visit external site" {}
+
+      external_element "OIDC Provider" {}
+
+    }
   }
 }
 `
