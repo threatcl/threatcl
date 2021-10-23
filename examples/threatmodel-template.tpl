@@ -58,7 +58,10 @@ Diagram: {{ .DiagramLink }}
 
 {{ .Description }}
 
+{{- if .ImpactType }}
+
 > Impact Type: {{ $impact := .ImpactType }}{{ range $index, $elem := .ImpactType }}{{ if $index}}, {{end}}{{.}}{{end}}
+{{- end }}
 {{ if .Stride}}
 > STRIDE: {{ $stride := .Stride }}{{ range $index, $elem := .Stride }}{{ if $index}}, {{end}}{{.}}{{end}}
 {{- end}}

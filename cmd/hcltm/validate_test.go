@@ -46,8 +46,29 @@ func TestValidateRunEmpty(t *testing.T) {
 		t.Errorf("Code did not equal 0: %d", code)
 	}
 
-	if !strings.Contains(out, "Please provide <files> or -stdin") {
-		t.Errorf("Expected %s to contain %s", out, "Please provide <files> or -stdin")
+	if !strings.Contains(out, "Please provide <files> or -stdin or -stdinjson") {
+		t.Errorf("Expected %s to contain %s", out, "Please provide <files> or -stdin or -stdinjson")
+	}
+}
+
+func TestValidateRunTooManyStdin(t *testing.T) {
+	cmd := testValidateCommand(t)
+
+	var code int
+
+	out := capturer.CaptureStdout(func() {
+		code = cmd.Run([]string{
+			"-stdin",
+			"-stdinjson",
+		})
+	})
+
+	if code != 1 {
+		t.Errorf("Code did not equal 0: %d", code)
+	}
+
+	if !strings.Contains(out, "You can't -stdin and -stdinjson at the same time") {
+		t.Errorf("Expected %s to contain %s", out, "You can't -stdin and -stdinjson at the same time")
 	}
 }
 
@@ -73,7 +94,7 @@ func TestValidateRun(t *testing.T) {
 		{
 			"validate_dir",
 			"./testdata/",
-			"Validated 5 threatmodels in 3 files",
+			"Validated 7 threatmodels in 4 files",
 			false,
 			0,
 			"",

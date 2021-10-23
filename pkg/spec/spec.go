@@ -13,11 +13,17 @@ type InformationAsset struct {
 }
 
 type Threat struct {
-	ImpactType           []string `hcl:"impacts,optional"`
-	Description          string   `hcl:"description,attr"`
-	Control              string   `hcl:"control,optional"`
-	Stride               []string `hcl:"stride,optional"`
-	InformationAssetRefs []string `hcl:"information_asset_refs,optional"`
+	ImpactType           []string           `hcl:"impacts,optional"`
+	Description          string             `hcl:"description,attr"`
+	Control              string             `hcl:"control,optional"`
+	Stride               []string           `hcl:"stride,optional"`
+	InformationAssetRefs []string           `hcl:"information_asset_refs,optional"`
+	ProposedControls     []*ProposedControl `hcl:"proposed_control,block"`
+}
+
+type ProposedControl struct {
+	Implemented bool   `hcl:"implemented,optional"`
+	Description string `hcl:"description"`
 }
 
 type UseCase struct {
@@ -69,12 +75,20 @@ type DfdFlow struct {
 	To   string `hcl:"to,attr"`
 }
 
-type DataFlowDiagram struct {
+type DfdTrustZone struct {
+	Name             string         `hcl:"name,label"`
 	Processes        []*DfdProcess  `hcl:"process,block"`
 	ExternalElements []*DfdExternal `hcl:"external_element,block"`
 	DataStores       []*DfdData     `hcl:"data_store,block"`
-	Flows            []*DfdFlow     `hcl:"flow,block"`
-	ImportFile       string         `hcl:"import,optional"`
+}
+
+type DataFlowDiagram struct {
+	Processes        []*DfdProcess   `hcl:"process,block"`
+	ExternalElements []*DfdExternal  `hcl:"external_element,block"`
+	DataStores       []*DfdData      `hcl:"data_store,block"`
+	Flows            []*DfdFlow      `hcl:"flow,block"`
+	TrustZones       []*DfdTrustZone `hcl:"trust_zone,block"`
+	ImportFile       string          `hcl:"import,optional"`
 }
 
 type Threatmodel struct {

@@ -15,22 +15,23 @@ func TestGlobalCmdOptions(t *testing.T) {
 	}
 }
 
-func TestFindHclFiles(t *testing.T) {
+func TestFindAllFiles(t *testing.T) {
 	in := []string{
 		"./testdata/tm1.hcl",
 		"./testdata/tm2.hcl",
+		"./testdata/tm1.json",
 	}
 
-	out := findHclFiles(in)
-
-	if len(out) != 2 {
-		t.Errorf("There should be two files")
-	}
-
-	out = findHclFiles([]string{"./testdata/"})
+	out := findAllFiles(in)
 
 	if len(out) != 3 {
 		t.Errorf("There should be three files")
+	}
+
+	out = findAllFiles([]string{"./testdata/"})
+
+	if len(out) != 4 {
+		t.Errorf("There should be four files")
 	}
 }
 

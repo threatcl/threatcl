@@ -184,6 +184,22 @@ func (p *ThreatmodelParser) ValidateTm(tm *Threatmodel) error {
 	// Validating any DFD data within a threat model
 	if tm.DataFlowDiagram != nil {
 
+		// Checking for unique TrustZones
+		zones := make(map[string]interface{})
+		if tm.DataFlowDiagram.TrustZones != nil {
+			for _, zone := range tm.DataFlowDiagram.TrustZones {
+				if _, ok := zones[zone.Name]; ok {
+					errMap = multierror.Append(errMap, fmt.Errorf(
+						"TM '%s': duplicate trust_zone block found '%s'",
+						tm.Name,
+						zone.Name,
+					))
+				}
+
+				zones[zone.Name] = nil
+			}
+		}
+
 		// Checking for unique processes/data_store/external_element in data_flow_diagram
 		elements := make(map[string]interface{})
 		if tm.DataFlowDiagram.Processes != nil {
@@ -197,6 +213,25 @@ func (p *ThreatmodelParser) ValidateTm(tm *Threatmodel) error {
 				}
 
 				elements[process.Name] = nil
+			}
+		}
+
+		// Now check for Processes in trust_zones
+		if tm.DataFlowDiagram.TrustZones != nil {
+			for _, zone := range tm.DataFlowDiagram.TrustZones {
+				if zone.Processes != nil {
+					for _, process := range zone.Processes {
+						if _, ok := elements[process.Name]; ok {
+							errMap = multierror.Append(errMap, fmt.Errorf(
+								"TM '%s': duplicate process found in dfd '%s'",
+								tm.Name,
+								process.Name,
+							))
+						}
+
+						elements[process.Name] = nil
+					}
+				}
 			}
 		}
 
@@ -214,6 +249,25 @@ func (p *ThreatmodelParser) ValidateTm(tm *Threatmodel) error {
 			}
 		}
 
+		// Now check for external_elements in trust_zones
+		if tm.DataFlowDiagram.TrustZones != nil {
+			for _, zone := range tm.DataFlowDiagram.TrustZones {
+				if zone.ExternalElements != nil {
+					for _, external_element := range zone.ExternalElements {
+						if _, ok := elements[external_element.Name]; ok {
+							errMap = multierror.Append(errMap, fmt.Errorf(
+								"TM '%s': duplicate external_element found in dfd '%s'",
+								tm.Name,
+								external_element.Name,
+							))
+						}
+
+						elements[external_element.Name] = nil
+					}
+				}
+			}
+		}
+
 		// Checking for unique data_stores in data_flow_diagram
 		if tm.DataFlowDiagram.DataStores != nil {
 			for _, data_store := range tm.DataFlowDiagram.DataStores {
@@ -226,6 +280,66 @@ func (p *ThreatmodelParser) ValidateTm(tm *Threatmodel) error {
 				}
 
 				elements[data_store.Name] = nil
+			}
+		}
+
+		// Now check for data_stores in trust_zones
+		if tm.DataFlowDiagram.TrustZones != nil {
+			for _, zone := range tm.DataFlowDiagram.TrustZones {
+				if zone.DataStores != nil {
+					for _, data_store := range zone.DataStores {
+						if _, ok := elements[data_store.Name]; ok {
+							errMap = multierror.Append(errMap, fmt.Errorf(
+								"TM '%s': duplicate data_store found in dfd '%s'",
+								tm.Name,
+								data_store.Name,
+							))
+						}
+
+						elements[data_store.Name] = nil
+					}
+				}
+			}
+		}
+
+		// Now check for mis-matched trust-zones
+		if tm.DataFlowDiagram.TrustZones != nil {
+			for _, zone := range tm.DataFlowDiagram.TrustZones {
+				if zone.Processes != nil {
+					for _, process := range zone.Processes {
+						if process.TrustZone != "" && process.TrustZone != zone.Name {
+							errMap = multierror.Append(errMap, fmt.Errorf(
+								"TM '%s': process trust_zone mis-match found in '%s'",
+								tm.Name,
+								process.Name,
+							))
+						}
+					}
+				}
+
+				if zone.ExternalElements != nil {
+					for _, external_element := range zone.ExternalElements {
+						if external_element.TrustZone != "" && external_element.TrustZone != zone.Name {
+							errMap = multierror.Append(errMap, fmt.Errorf(
+								"TM '%s': external_element trust_zone mis-match found in '%s'",
+								tm.Name,
+								external_element.Name,
+							))
+						}
+					}
+				}
+
+				if zone.DataStores != nil {
+					for _, data_store := range zone.DataStores {
+						if data_store.TrustZone != "" && data_store.TrustZone != zone.Name {
+							errMap = multierror.Append(errMap, fmt.Errorf(
+								"TM '%s': data_store trust_zone mis-match found in '%s'",
+								tm.Name,
+								data_store.Name,
+							))
+						}
+					}
+				}
 			}
 		}
 
@@ -581,6 +695,18 @@ func (p *ThreatmodelParser) parseHCL(f *hcl.File, filename string, isChild bool)
 	return nil
 }
 
+// ParseFile parses a single Threatmodel file, and will account for either
+// JSON or HCL (this is a wrapper sort of for the two different methods)
+func (p *ThreatmodelParser) ParseFile(filename string, isChild bool) error {
+	if filepath.Ext(filename) == ".hcl" {
+		return p.ParseHCLFile(filename, isChild)
+	} else if filepath.Ext(filename) == ".json" {
+		return p.ParseJSONFile(filename, isChild)
+	} else {
+		return fmt.Errorf("File isn't HCL or JSON")
+	}
+}
+
 // ParseHCLFile parses a single HCL Threatmodel file
 func (p *ThreatmodelParser) ParseHCLFile(filename string, isChild bool) error {
 	parser := hclparse.NewParser()
@@ -598,6 +724,31 @@ func (p *ThreatmodelParser) ParseHCLFile(filename string, isChild bool) error {
 func (p *ThreatmodelParser) ParseHCLRaw(input []byte) error {
 	parser := hclparse.NewParser()
 	f, diags := parser.ParseHCL(input, "STDIN")
+
+	if diags.HasErrors() {
+		return diags
+	}
+
+	return p.parseHCL(f, "STDIN", false)
+}
+
+// ParseJSONFile parses a single JSON Threatmodel file
+func (p *ThreatmodelParser) ParseJSONFile(filename string, isChild bool) error {
+	parser := hclparse.NewParser()
+	f, diags := parser.ParseJSONFile(filename)
+
+	if diags.HasErrors() {
+		return diags
+	}
+
+	return p.parseHCL(f, filename, isChild)
+}
+
+// ParseJSONRaw parses a byte slice into HCL Threatmodels from JSON
+// This is used for piping in STDIN
+func (p *ThreatmodelParser) ParseJSONRaw(input []byte) error {
+	parser := hclparse.NewParser()
+	f, diags := parser.ParseJSON(input, "STDIN")
 
 	if diags.HasErrors() {
 		return diags

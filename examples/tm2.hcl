@@ -1,4 +1,4 @@
- spec_version = "0.0.3"
+ spec_version = "0.1.0"
 
  threatmodel "Modelly model" {
    imports = ["control-library/othercontrols.hcl"]
@@ -13,8 +13,19 @@
    data_flow_diagram {
      external_element "Google Analytics" {}
 
-     process "Client" {
-       trust_zone = "Browser"
+     trust_zone "Browser" {
+
+       process "Client" {}
+     }
+
+     trust_zone "AWS" {
+       process "Web Server" {}
+
+       data_store "Logs" {}
+
+       data_store "sqlite" {}
+
+
      }
 
      flow "https" {
@@ -22,21 +33,9 @@
        to = "Google Analytics"
      }
 
-     process "Web Server" {
-       trust_zone = "AWS"
-     }
-
-     data_store "Logs" {
-       trust_zone = "AWS"
-     }
-
      flow "TCP" {
        from = "Web Server"
        to = "Logs"
-     }
-
-     data_store "sqlite" {
-       trust_zone = "AWS"
      }
 
      flow "https" {

@@ -61,6 +61,12 @@ func Run(args []string) int {
 				specCfg:          cfg,
 			}, nil
 		},
+		"generate interactive editor": func() (cli.Command, error) {
+			return &GenerateInteractiveEditorCommand{
+				GlobalCmdOptions: globalCmdOptions,
+				specCfg:          cfg,
+			}, nil
+		},
 		"generate boilerplate": func() (cli.Command, error) {
 			return &GenerateBoilerplateCommand{
 				GlobalCmdOptions: globalCmdOptions,

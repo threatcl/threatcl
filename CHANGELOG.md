@@ -1,3 +1,15 @@
+## 0.1.0
+### Oct 23, 2021
+
+CHANGES:
+
+* `hcltm generate interactive` now has an `editor` sub-command to open a HCL file into your editor for editing 
+* Can now handle JSON input (with some caveats)
+* Allow `proposed_control` blocks within a `threat` block in a `threatmodel`
+* Addressed a dependabot issue - I think?
+* Dashboard output can now generate HTML files
+* DFDs can now have `trust_zone` blocks with other elements embedded within
+
 ## 0.0.6
 ### Sep 25, 2021
 

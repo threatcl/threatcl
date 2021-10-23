@@ -82,6 +82,83 @@ func fullDfdTm() *Threatmodel {
 
 }
 
+func fullDfdTm2() *Threatmodel {
+
+	tm := &Threatmodel{
+		Name:   "test",
+		Author: "x",
+		DataFlowDiagram: &DataFlowDiagram{
+			TrustZones: []*DfdTrustZone{
+				&DfdTrustZone{
+					Name: "zone1",
+					Processes: []*DfdProcess{
+						&DfdProcess{
+							Name:      "proc2",
+							TrustZone: "zone1",
+						},
+						&DfdProcess{
+							Name: "proc9",
+						},
+					},
+					DataStores: []*DfdData{
+						&DfdData{
+							Name: "new_data",
+						},
+					},
+					ExternalElements: []*DfdExternal{
+						&DfdExternal{
+							Name: "ee5",
+						},
+					},
+				},
+			},
+			Processes: []*DfdProcess{
+				&DfdProcess{
+					Name: "proc1",
+				},
+			},
+			DataStores: []*DfdData{
+				&DfdData{
+					Name: "data1",
+				},
+				&DfdData{
+					Name:      "data2",
+					TrustZone: "zone2",
+				},
+			},
+			ExternalElements: []*DfdExternal{
+				&DfdExternal{
+					Name: "external1",
+				},
+				&DfdExternal{
+					Name:      "external2",
+					TrustZone: "zone3",
+				},
+			},
+			Flows: []*DfdFlow{
+				&DfdFlow{
+					Name: "flow",
+					From: "proc1",
+					To:   "data1",
+				},
+				&DfdFlow{
+					Name: "flow",
+					From: "external1",
+					To:   "proc1",
+				},
+				&DfdFlow{
+					Name: "flow",
+					From: "data1",
+					To:   "external1",
+				},
+			},
+		},
+	}
+
+	return tm
+
+}
+
 func TestDfdPngGenerate(t *testing.T) {
 	// tm := dfdTm()
 	//
@@ -102,6 +179,12 @@ func TestDfdPngGenerate(t *testing.T) {
 		{
 			"valid_full_dfd",
 			fullDfdTm(),
+			"",
+			false,
+		},
+		{
+			"valid_full_dfd2",
+			fullDfdTm2(),
 			"",
 			false,
 		},
