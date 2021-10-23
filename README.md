@@ -188,6 +188,16 @@ $ hcltm generate interactive
   <img width="600" src="https://xntrik.wtf/hcltm.svg" />
 </p>
 
+### Generate Interactive Editor
+
+If you prefer to work directly in your `$EDITOR` then run:
+
+```bash
+$ hcltm generate interactive editor
+```
+
+This will open your editor with a barebones HCL threat model. If you want to validate the model after creation, then use the `-validate` flag.
+
 ## Dashboard
 
 The `hcltm dashboard` command takes `hcltm` spec HCL files, and generates a number of markdown and png files, dropping them into a selected folder.
