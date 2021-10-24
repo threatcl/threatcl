@@ -40,7 +40,6 @@ pkg-osx: ## Build packages with gox
 		-osarch=${MACOS_PKG_TARGETS} \
 		-output="out/{{.OS}}_{{.Arch}}/${BINNAME}" \
 		-gocmd=${GO_CMD} \
-		-cgo \
 		./cmd/hcltm
 	cd out/darwin_amd64 && tar -zcvf ../hcltm-darwin-amd64.tar.gz hcltm
 	cd out/darwin_arm64 && tar -zcvf ../hcltm-darwin-arm64.tar.gz hcltm
