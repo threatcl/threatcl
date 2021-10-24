@@ -59,7 +59,7 @@ To see an example of how to reference pre-defined control libraries for the [OWA
 To see a full description of the spec, see [here](spec.hcl) or run:
 
 ```bash
-$ hcltm generate boilerplate
+hcltm generate boilerplate
 ```
 
 `hcltm` will also process JSON files, but the only caveat is that import modules and variables won't work. You can see [examples/tm1.json](examples/tm1.json) as an example.
@@ -86,10 +86,18 @@ Additionally I'd like to extend thanks to [Jamie Finnigan](https://twitter.com/c
 
 Download the latest version from [releases](https://github.com/xntrik/hcltm/releases) and move the `hcltm` binary into your PATH.
 
+## Install with Homebrew
+
+The following will add a local tap, and install `hcltm` with [Homebrew](https://brew.sh/)
+
+```bash
+brew install xntrik/repo/hcltm
+```
+
 ## Run with Docker
 
 ```bash
-$ docker run --rm -it xntrik/hcltm
+docker run --rm -it xntrik/hcltm
 ```
 
 ## Run with GitHub Actions
@@ -100,8 +108,8 @@ $ docker run --rm -it xntrik/hcltm
 
 1. Clone this repository.
 2. Change into the directory, `hcltm`
-3. `$ make bootstrap`
-4. `$ make dev`
+3. `make bootstrap`
+4. `make dev`
 
 For further help on contributing to `hcltm` please see the [CHANGELOG.md](CHANGELOG.md).
 
@@ -181,7 +189,7 @@ The `hcltm generate` command is used to either output a generic `boilerplate` `h
 See the following example of:
 
 ```bash
-$ hcltm generate interactive
+hcltm generate interactive
 ```
 
 <p align="center">
@@ -193,7 +201,7 @@ $ hcltm generate interactive
 If you prefer to work directly in your `$EDITOR` then run:
 
 ```bash
-$ hcltm generate interactive editor
+hcltm generate interactive editor
 ```
 
 This will open your editor with a barebones HCL threat model. If you want to validate the model after creation, then use the `-validate` flag.
