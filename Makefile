@@ -1,12 +1,15 @@
 GO_CMD?=go
 BINNAME=hcltm
 DOCKERNAME=xntrik/hcltm
+DOCKERPLATFORM="linux/amd64,linux/arm64"
+VERSION="0.1.0"
 GOPATH?=$$($(GO_CMD) env GOPATH)
 EXTERNAL_TOOLS=\
 	golang.org/x/tools/cmd/goimports \
 	github.com/mitchellh/gox
 GOFMT_FILES?=$$(find . -name '*.go')
-PKG_TARGET="linux/amd64 darwin/amd64"
+LINUX_PKG_TARGETS="linux/amd64 windows/amd64"
+MACOS_PKG_TARGETS="darwin/amd64 darwin/arm64"
 
 default: help
 
@@ -14,17 +17,18 @@ image: ## Create the docker image from the Dockerfile
 	@docker build -t $(BINNAME):latest .
 
 imagepush: ## Create a fresh docker image and push to the configured repo
-	@docker build --rm --force-rm -t $(DOCKERNAME):latest .
-	@docker push $(DOCKERNAME)
+	# @docker build --rm --force-rm -t $(DOCKERNAME):latest .
+	# @docker push $(DOCKERNAME)
+	@docker buildx build --rm --force-rm --platform $(DOCKERPLATFORM) --push -t $(DOCKERNAME):latest -t $(DOCKERNAME):$(VERSION) .
 
 dev: ## Build hcltm and copy to your GOPATH/bin
 	$(GO_CMD) build -o ${BINNAME} ./cmd/hcltm
 	@echo "Copying ${BINNAME} file to ${GOPATH}/bin/${BINNAME}"
 	@cp ${BINNAME} ${GOPATH}/bin/${BINNAME}
 
-pkg-linux: ## Build packages with gox
+pkg-linux: ## Build packages with gox on linux
 	gox \
-		-osarch="linux/amd64" \
+		-osarch=${LINUX_PKG_TARGETS} \
 		-output="out/{{.OS}}_{{.Arch}}/${BINNAME}" \
 		-gocmd=${GO_CMD} \
 		-cgo \
@@ -33,12 +37,13 @@ pkg-linux: ## Build packages with gox
 
 pkg-osx: ## Build packages with gox
 	gox \
-		-osarch="darwin/amd64" \
+		-osarch=${MACOS_PKG_TARGETS} \
 		-output="out/{{.OS}}_{{.Arch}}/${BINNAME}" \
 		-gocmd=${GO_CMD} \
 		-cgo \
 		./cmd/hcltm
 	cd out/darwin_amd64 && tar -zcvf ../hcltm-darwin-amd64.tar.gz hcltm
+	cd out/darwin_arm64 && tar -zcvf ../hcltm-darwin-arm64.tar.gz hcltm
 
 fmt: ## Checks go formatting
 	goimports -w $(GOFMT_FILES)

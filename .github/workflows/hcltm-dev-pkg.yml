@@ -1,0 +1,39 @@
+name: hcltm dev pkg test
+
+on:
+  push:
+    branches:
+      - dev
+    tags-ignore:
+      - "*"
+
+jobs:
+  pre-release-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Setup Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: '1.16'
+      - name: Bootstrap
+        run: make bootstrap
+      - name: Test
+        run: make test
+      - name: Package
+        run: make pkg-linux
+
+  pre-release-osx:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Setup Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: '1.16'
+      - name: Bootstrap
+        run: make bootstrap
+      - name: Package
+        run: make pkg-osx
