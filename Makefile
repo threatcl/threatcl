@@ -2,7 +2,6 @@ GO_CMD?=go
 BINNAME=hcltm
 DOCKERNAME=xntrik/hcltm
 DOCKERPLATFORM="linux/amd64,linux/arm64"
-VERSION="0.1.0"
 GOPATH?=$$($(GO_CMD) env GOPATH)
 EXTERNAL_TOOLS=\
 	golang.org/x/tools/cmd/goimports \
@@ -16,8 +15,18 @@ default: help
 image: ## Create the docker image from the Dockerfile
 	@docker build -t $(BINNAME):latest .
 
-imagepush: ## Create a fresh docker image and push to the configured repo
-	@docker buildx build --rm --force-rm --platform $(DOCKERPLATFORM) --push -t $(DOCKERNAME):latest -t $(DOCKERNAME):$(VERSION) .
+imagepush: check-ver-env check-tag-env ## Create a fresh docker image and push to the configured repo
+	@docker buildx build --rm --force-rm --platform $(DOCKERPLATFORM) --push -t $(DOCKERNAME):$(TAG) -t $(DOCKERNAME):$(VERSION) .
+
+check-ver-env:
+ifndef VERSION
+	$(error VERSION is undefined)
+endif
+
+check-tag-env:
+ifndef TAG
+	$(error TAG is undefined)
+endif
 
 dev: ## Build hcltm and copy to your GOPATH/bin
 	$(GO_CMD) build -o ${BINNAME} ./cmd/hcltm
@@ -67,4 +76,4 @@ testcover: ## Run go test and go tool cover
 help: ## Output make targets
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
 
-.PHONY: dev help
+.PHONY: dev help image imagepush pkg-linux pkg-osx fmg install bootstrap vet test testvet testcover check-tag-env check-ver-env
