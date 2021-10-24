@@ -8,8 +8,8 @@ EXTERNAL_TOOLS=\
 	golang.org/x/tools/cmd/goimports \
 	github.com/mitchellh/gox
 GOFMT_FILES?=$$(find . -name '*.go')
-LINUX_PKG_TARGETS="linux/amd64 windows/amd64"
-MACOS_PKG_TARGETS="darwin/amd64 darwin/arm64"
+LINUX_PKG_TARGETS="linux/amd64"
+MACOS_PKG_TARGETS="darwin/amd64"
 
 default: help
 
@@ -17,8 +17,6 @@ image: ## Create the docker image from the Dockerfile
 	@docker build -t $(BINNAME):latest .
 
 imagepush: ## Create a fresh docker image and push to the configured repo
-	# @docker build --rm --force-rm -t $(DOCKERNAME):latest .
-	# @docker push $(DOCKERNAME)
 	@docker buildx build --rm --force-rm --platform $(DOCKERPLATFORM) --push -t $(DOCKERNAME):latest -t $(DOCKERNAME):$(VERSION) .
 
 dev: ## Build hcltm and copy to your GOPATH/bin
@@ -42,7 +40,6 @@ pkg-osx: ## Build packages with gox
 		-gocmd=${GO_CMD} \
 		./cmd/hcltm
 	cd out/darwin_amd64 && tar -zcvf ../hcltm-darwin-amd64.tar.gz hcltm
-	cd out/darwin_arm64 && tar -zcvf ../hcltm-darwin-arm64.tar.gz hcltm
 
 fmt: ## Checks go formatting
 	goimports -w $(GOFMT_FILES)
