@@ -82,10 +82,11 @@ func Run(args []string) int {
 	}
 
 	cli := &cli.CLI{
-		Name:     "hcltm",
-		Version:  version.GetVersion(),
-		Args:     args,
-		Commands: Commands,
+		Name:         "hcltm",
+		Version:      version.GetVersion(),
+		Args:         args,
+		Commands:     Commands,
+		Autocomplete: true,
 	}
 
 	exitCode, err := cli.Run()
