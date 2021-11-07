@@ -79,6 +79,12 @@ func Run(args []string) int {
 				specCfg:          cfg,
 			}, nil
 		},
+		"terraform": func() (cli.Command, error) {
+			return &TerraformCommand{
+				GlobalCmdOptions: globalCmdOptions,
+				specCfg:          cfg,
+			}, nil
+		},
 	}
 
 	cli := &cli.CLI{
