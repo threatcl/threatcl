@@ -55,6 +55,8 @@ Diagram: <a href="{{ .DiagramLink }}">{{ .DiagramLink }}</a><br />
 <h3>{{ .Name }} [{{ .InformationClassification }}]</h3>
 
 {{ .Description }}
+{{ if .Source }}
+Source: {{ .Source }}{{- end }}
 {{ end }}
 {{- end }}
 {{- with .Threats }}

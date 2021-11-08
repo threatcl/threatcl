@@ -53,6 +53,10 @@ threatmodel "threatmodel name" {
 
     // information_classification must be one of 'Restricted, Confidential, Public'
     information_classification = "Confidential"
+
+    // source is optional, and can be used to specify if this asset was sourced
+    // from an external resource, such as terraform
+    source = "terraform"
   }
 
   information_asset "special sauce" {

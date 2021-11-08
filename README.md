@@ -249,3 +249,44 @@ Successfully created 'testout/tm2-modellymodel.png'
 ```
 
 If your `threatmodel` doesn't include a `diagram_link`, but does include a `data_flow_diagram`, then this will also be rendered when running `hcltm dashboard`.
+
+## Terraform
+
+The `hcltm terraform` command is able to extract data resources from the `terraform show -json` [docs here](https://www.terraform.io/docs/cli/commands/show.html) output of plan files, or active state files, and convert these into drafted `information_asset` blocks for inclusion in `hcltm` files.
+
+If you're in a folder with existing state, you can execute the following:
+
+```bash
+terraform show -json | hcltm terraform -stdin
+```
+
+This will output something similar to this:
+
+```bash
+information_asset "aws_rds_cluster default" {
+  description                = "cluster_identifier: aurora-cluster-demo, database_name: mydb"
+  information_classification = ""
+  source                     = "terraform state"
+}
+information_asset "aws_s3_bucket example" {
+  description                = "bucket: terraform-20211107232017071500000001"
+  information_classification = ""
+  source                     = "terraform state"
+}
+```
+
+You can also see similar output from a plan file that hasn't yet been applied with Terraform by running:
+
+```bash
+terraform show -json <plan-file> | hcltm terraform -stdin
+```
+
+If you want to update an existing `hcltm` threat model file ("threatmodel.hcl") you can with:
+
+```bash
+terraform show -json <plan> | hcltm terraform -stdin -add-to-existing=threatmodel.hcl > new-threatmodel.hcl
+```
+
+With the `-add-to-existing` flag, you can also specify `-tm-name=<string>` if you need to specify a particular threat model from the source file, if there are multiple. And you can also apply a default classification, with the `-default-classification=Confidential` flag.
+
+These commands can also take a file as input too, in which case, omit the `-stdin` flag.

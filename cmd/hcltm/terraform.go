@@ -223,8 +223,6 @@ func (c *TerraformCommand) Run(args []string) int {
 		}
 
 	case StateMode:
-		fmt.Printf("State Mode\n")
-		fmt.Printf("%d\n", len(s.Values.RootModule.Resources))
 		for _, r := range s.Values.RootModule.Resources {
 			provName := strings.Split(r.Type, "_")
 			if len(provName) > 1 {
@@ -249,12 +247,16 @@ func (c *TerraformCommand) Run(args []string) int {
 							}
 						}
 
-						err = c.out(&tmAsset, os.Stdout)
-						if err != nil {
-							fmt.Printf("Error writing out: %s\n", err)
-							return 1
-						}
+						if c.flagAddToExisting != "" {
+							tm.InformationAssets = append(tm.InformationAssets, &tmAsset)
 
+						} else {
+							err = c.out(&tmAsset, os.Stdout)
+							if err != nil {
+								fmt.Printf("Error writing out: %s\n", err)
+								return 1
+							}
+						}
 					}
 				}
 			}
@@ -262,8 +264,10 @@ func (c *TerraformCommand) Run(args []string) int {
 
 	case UnknownMode:
 		fmt.Printf("Unknown mode\n")
+		return 1
 	default:
 		fmt.Printf("Unknown mode\n")
+		return 1
 	}
 
 	if c.flagAddToExisting != "" {

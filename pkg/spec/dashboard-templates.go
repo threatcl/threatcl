@@ -51,6 +51,8 @@ Diagram: {{ .DiagramLink }}
 ### {{ .Name }} [{{ .InformationClassification }}]
 
 {{ .Description }}
+{{ if .Source }}
+> Source: {{ .Source }}{{- end }}
 {{ end }}
 {{- end }}
 {{- with .Threats }}
