@@ -115,10 +115,11 @@ threatmodel "threatmodel name" {
     // The available values are:
     // Spoofing
     // Tampering
+    // Repudiation
     // Info Disclosure
     // Denial Of Service
     // Elevation Of Privilege
-    stride = ["Spoofing", "Tampering", "Info Disclosure", "Denial Of Service", "Elevation Of Privilege"]
+    stride = ["Spoofing", "Tampering", "Repudiation", "Info Disclosure", "Denial Of Service", "Elevation Of Privilege"]
 
     // The information_asset_refs are an optional array of information_assets
     // the elements must much existing information_assets - as above

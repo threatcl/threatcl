@@ -104,6 +104,7 @@ func (t *ThreatmodelSpecConfig) setDefaults() {
 
 	t.STRIDE = append(t.STRIDE, "Spoofing")
 	t.STRIDE = append(t.STRIDE, "Tampering")
+	t.STRIDE = append(t.STRIDE, "Repudiation")
 	t.STRIDE = append(t.STRIDE, "Info Disclosure")
 	t.STRIDE = append(t.STRIDE, "Denial Of Service")
 	t.STRIDE = append(t.STRIDE, "Elevation Of Privilege")
