@@ -15,22 +15,29 @@ type DfdCommand struct {
 	flagOutDir    string
 	flagOutFile   string
 	flagOverwrite bool
+	flagDot       bool
 }
 
 func (c *DfdCommand) Help() string {
 	helpText := `
 Usage: hcltm dfd [options] -outdir=<directory> <files>
 
-  Generate Data Flow Diagram PNG files from existing Threat model HCL files
+  Generate Data Flow Diagram PNG or DOT files from existing Threat model HCL files
 	(as specified by <files>) 
 
  -outdir=<directory>
-   Directory to output PNG files. Will create directory if it doesn't exist.
+   Directory to output files. Will create directory if it doesn't exist.
    Either this, or -out, must be set
 
- -out=<filename>.png
-   Name of output PNG file. Only the first discovered data_flow_diagram will be converted into a PNG.
+ -out=<filename>.<png|dot>
+   Name of output file. Only the first discovered data_flow_diagram will be
+   converted. You must set the extension to png or dot depending on the mode.
    Either this, or -outdir, must be set
+
+ -dot
+   Outputs Graphviz DOT instead. If -out or -outdir is provided files will be
+   generated. If neither -out or -outdir is set, then the DOT file will be
+   echoed to STDOUT.
 
 Options:
 
@@ -46,9 +53,10 @@ Options:
 func (c *DfdCommand) Run(args []string) int {
 
 	flagSet := c.GetFlagset("dfd")
-	flagSet.StringVar(&c.flagOutDir, "outdir", "", "Directory to output PNG files. Will create directory if it doesn't exist. Either this, or -out, must be set")
-	flagSet.StringVar(&c.flagOutFile, "out", "", "Name of output PNG file. Either this, or -outdir, must be set")
+	flagSet.StringVar(&c.flagOutDir, "outdir", "", "Directory to output files. Will create directory if it doesn't exist. Either this, or -out, must be set")
+	flagSet.StringVar(&c.flagOutFile, "out", "", "Name of output file. Either this, or -outdir, must be set")
 	flagSet.BoolVar(&c.flagOverwrite, "overwrite", false, "Overwrite existing files in the outdir. Defaults to false")
+	flagSet.BoolVar(&c.flagDot, "dot", false, "Whether to output raw Graphviz DOT")
 	flagSet.Parse(args)
 
 	if c.flagConfig != "" {
@@ -60,8 +68,8 @@ func (c *DfdCommand) Run(args []string) int {
 		}
 	}
 
-	if c.flagOutDir == "" && c.flagOutFile == "" {
-		fmt.Printf("You must set an -outdir or -out\n\n")
+	if c.flagOutDir == "" && c.flagOutFile == "" && c.flagDot == false {
+		fmt.Printf("You must set an -outdir or -out or -dot\n\n")
 		fmt.Println(c.Help())
 		return 1
 	}
@@ -72,10 +80,19 @@ func (c *DfdCommand) Run(args []string) int {
 		return 1
 	}
 
-	if c.flagOutFile != "" && filepath.Ext(c.flagOutFile) != ".png" {
-		fmt.Printf("-out flag must end in .png\n\n")
-		fmt.Println(c.Help())
-		return 1
+	if c.flagDot {
+		if c.flagOutFile != "" && filepath.Ext(c.flagOutFile) != ".dot" {
+			fmt.Printf("-out flag must end in .dot\n\n")
+			fmt.Println(c.Help())
+			return 1
+		}
+	} else {
+
+		if c.flagOutFile != "" && filepath.Ext(c.flagOutFile) != ".png" {
+			fmt.Printf("-out flag must end in .png\n\n")
+			fmt.Println(c.Help())
+			return 1
+		}
 	}
 
 	if len(flagSet.Args()) == 0 {
@@ -103,7 +120,11 @@ func (c *DfdCommand) Run(args []string) int {
 			for _, tm := range tmParser.GetWrapped().Threatmodels {
 
 				if tm.DataFlowDiagram != nil {
-					outfile := outfilePath(c.flagOutDir, tm.Name, file, ".png")
+					fileExt := ".png"
+					if c.flagDot {
+						fileExt = ".dot"
+					}
+					outfile := outfilePath(c.flagOutDir, tm.Name, file, fileExt)
 
 					outfiles = append(outfiles, outfile)
 				}
@@ -149,7 +170,49 @@ func (c *DfdCommand) Run(args []string) int {
 
 			for _, tm := range tmParser.GetWrapped().Threatmodels {
 				if tm.DataFlowDiagram != nil {
-					if c.flagOutFile != "" {
+					if c.flagDot {
+						dot, err := tm.GenerateDot()
+						if err != nil {
+							fmt.Printf("Error generating DOT: %s\n", c.flagOutFile)
+							return 1
+						}
+						if c.flagOutFile != "" {
+							f, err := os.Create(c.flagOutFile)
+							if err != nil {
+								fmt.Printf("Error creating file %s: %s\n", c.flagOutFile, err)
+								return 1
+							}
+							defer f.Close()
+
+							_, err = f.WriteString(dot)
+							if err != nil {
+								fmt.Printf("Error writing DOT file to %s: %s\n", c.flagOutFile, err)
+								return 1
+							}
+
+							fmt.Printf("Successfully created '%s'\n", c.flagOutFile)
+							return 0
+
+						} else if c.flagOutDir != "" {
+							f, err := os.Create(outfilePath(c.flagOutDir, tm.Name, file, ".dot"))
+							if err != nil {
+								fmt.Printf("Error creating file %s: %s\n", outfilePath(c.flagOutDir, tm.Name, file, ".dot"), err)
+								return 1
+							}
+							defer f.Close()
+
+							_, err = f.WriteString(dot)
+							if err != nil {
+								fmt.Printf("Error writing DOT file to %s: %s\n", outfilePath(c.flagOutDir, tm.Name, file, ".dot"), err)
+								return 1
+							}
+
+							fmt.Printf("Successfully created '%s'\n", outfilePath(c.flagOutDir, tm.Name, file, ".dot"))
+						} else {
+							fmt.Printf("%s\n", dot)
+							break
+						}
+					} else if c.flagOutFile != "" {
 						err = tm.GenerateDfdPng(c.flagOutFile)
 						if err != nil {
 							fmt.Printf("Error generating DFD: %s\n", err)
@@ -157,7 +220,7 @@ func (c *DfdCommand) Run(args []string) int {
 						}
 
 						fmt.Printf("Successfully created '%s'\n", c.flagOutFile)
-						break
+						return 0
 					} else {
 						err = tm.GenerateDfdPng(outfilePath(c.flagOutDir, tm.Name, file, ".png"))
 						if err != nil {
@@ -177,5 +240,5 @@ func (c *DfdCommand) Run(args []string) int {
 }
 
 func (c *DfdCommand) Synopsis() string {
-	return "Generate Data Flow Diagram PNG files from existing HCL threatmodel file(s)"
+	return "Generate Data Flow Diagram PNG or DOT files from existing HCL threatmodel file(s)"
 }

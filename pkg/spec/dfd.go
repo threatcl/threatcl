@@ -7,7 +7,22 @@ import (
 	"github.com/goccy/go-graphviz"
 	dfd "github.com/marqeta/go-dfd/dfd"
 	"gonum.org/v1/gonum/graph"
+	"gonum.org/v1/gonum/graph/encoding"
 )
+
+func (tm *Threatmodel) GenerateDot() (string, error) {
+	tmpFile, err := ioutil.TempFile("", "dot")
+	if err != nil {
+		return "", err
+	}
+	defer os.RemoveAll(tmpFile.Name())
+
+	dot, err := tm.generateDfdDotFile(tmpFile.Name())
+	if err != nil {
+		return "", err
+	}
+	return dot, nil
+}
 
 func (tm *Threatmodel) GenerateDfdPng(filepath string) error {
 	tmpFile, err := ioutil.TempFile("", "dfd")
@@ -31,6 +46,61 @@ func (tm *Threatmodel) GenerateDfdPng(filepath string) error {
 	return nil
 }
 
+func newDfdProcess(name string) (error, *dfd.Process) {
+
+	// @BUG: The styling below doesn't work for go-graphviz generated images
+	//       but the styling will work if we output DOT and render in browser
+	//       Therefore we should handle this separately depending on context
+	//       I.e. if we're rendering DOT out, let's make it pretty. If not, keep
+	//       it real simple. *sigh*
+	newProcess := dfd.NewProcess(name)
+	err := newProcess.SetAttribute(encoding.Attribute{
+		Key:   "style",
+		Value: "dashed,filled",
+	})
+	if err != nil {
+		return err, nil
+	}
+
+	err = newProcess.SetAttribute(encoding.Attribute{
+		Key:   "color",
+		Value: "red",
+	})
+	if err != nil {
+		return err, nil
+	}
+
+	err = newProcess.SetAttribute(encoding.Attribute{
+		Key:   "fillcolor",
+		Value: "green",
+	})
+
+	return err, newProcess
+
+}
+
+func newDfdExternalEntity(name string) (error, *dfd.ExternalService) {
+	newEntity := dfd.NewExternalService(name)
+	err := newEntity.SetAttribute(encoding.Attribute{
+		Key:   "style",
+		Value: "filled",
+	})
+	return err, newEntity
+}
+
+func newDfdStore(name string) (error, *dfd.DataStore) {
+	newStore := dfd.NewDataStore(name)
+	err := newStore.SetAttribute(encoding.Attribute{
+		Key:   "style",
+		Value: "filled",
+	})
+	if err != nil {
+		return err, nil
+	}
+
+	return err, newStore
+}
+
 func (tm *Threatmodel) generateDfdDotFile(filepath string) (string, error) {
 	// Build the DFD
 	g := dfd.InitializeDFD(tm.Name)
@@ -52,19 +122,31 @@ func (tm *Threatmodel) generateDfdDotFile(filepath string) (string, error) {
 
 		// Add Processes from inside zone
 		for _, process := range zone.Processes {
-			processes[process.Name] = dfd.NewProcess(process.Name)
+			err, newProcess := newDfdProcess(process.Name)
+			if err != nil {
+				return "", err
+			}
+			processes[process.Name] = newProcess
 			zones[zone.Name].AddNodeElem(processes[process.Name])
 		}
 
 		// Add External Elements from inside zone
 		for _, external_element := range zone.ExternalElements {
-			external_elements[external_element.Name] = dfd.NewExternalService(external_element.Name)
+			err, newElement := newDfdExternalEntity(external_element.Name)
+			if err != nil {
+				return "", err
+			}
+			external_elements[external_element.Name] = newElement
 			zones[zone.Name].AddNodeElem(external_elements[external_element.Name])
 		}
 
 		// Add Data Stores from inside zone
 		for _, data_store := range zone.DataStores {
-			data_stores[data_store.Name] = dfd.NewDataStore(data_store.Name)
+			err, newStore := newDfdStore(data_store.Name)
+			if err != nil {
+				return "", err
+			}
+			data_stores[data_store.Name] = newStore
 			zones[zone.Name].AddNodeElem(data_stores[data_store.Name])
 		}
 
@@ -72,7 +154,11 @@ func (tm *Threatmodel) generateDfdDotFile(filepath string) (string, error) {
 
 	// Add Processes
 	for _, process := range tm.DataFlowDiagram.Processes {
-		processes[process.Name] = dfd.NewProcess(process.Name)
+		err, newProcess := newDfdProcess(process.Name)
+		if err != nil {
+			return "", err
+		}
+		processes[process.Name] = newProcess
 
 		if process.TrustZone != "" {
 			if _, ok := zones[process.TrustZone]; !ok {
@@ -91,7 +177,11 @@ func (tm *Threatmodel) generateDfdDotFile(filepath string) (string, error) {
 
 	// Add External Elements
 	for _, external_element := range tm.DataFlowDiagram.ExternalElements {
-		external_elements[external_element.Name] = dfd.NewExternalService(external_element.Name)
+		err, newElement := newDfdExternalEntity(external_element.Name)
+		if err != nil {
+			return "", err
+		}
+		external_elements[external_element.Name] = newElement
 
 		if external_element.TrustZone != "" {
 			if _, ok := zones[external_element.TrustZone]; !ok {
@@ -110,7 +200,11 @@ func (tm *Threatmodel) generateDfdDotFile(filepath string) (string, error) {
 
 	// Add Data Stores
 	for _, data_store := range tm.DataFlowDiagram.DataStores {
-		data_stores[data_store.Name] = dfd.NewDataStore(data_store.Name)
+		err, newStore := newDfdStore(data_store.Name)
+		if err != nil {
+			return "", err
+		}
+		data_stores[data_store.Name] = newStore
 
 		if data_store.TrustZone != "" {
 			if _, ok := zones[data_store.TrustZone]; !ok {
