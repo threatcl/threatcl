@@ -42,4 +42,4 @@ require (
 	gonum.org/v1/gonum v0.9.3
 )
 
-replace github.com/marqeta/go-dfd => github.com/xntrik/go-dfd v0.1.1
+replace github.com/marqeta/go-dfd => github.com/xntrik/go-dfd v0.1.2

@@ -188,8 +188,8 @@ github.com/stretchr/testify v1.7.0/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/
 github.com/vmihailenco/msgpack v3.3.3+incompatible/go.mod h1:fy3FlTQTDXWkZ7Bh6AcGMlsjHatGryHQYUTf1ShIgkk=
 github.com/vmihailenco/msgpack/v4 v4.3.12/go.mod h1:gborTTJjAo/GWTqqRjrLCn9pgNN+NXzzngzBKDPIqw4=
 github.com/vmihailenco/tagparser v0.1.1/go.mod h1:OeAg3pn3UbLjkWt+rN9oFYB6u/cQgqMEUPoW2WPyhdI=
-github.com/xntrik/go-dfd v0.1.1 h1:q/06xUT0moAdcPcDdb826q3myNIM88D4Z/0RPdXXQLo=
-github.com/xntrik/go-dfd v0.1.1/go.mod h1:d7FZR0zmRjpbSRQ5nXdyqH3z0O1ipiF69UFjt21NAGU=
+github.com/xntrik/go-dfd v0.1.2 h1:oaBrKnrvCob33n01Y3o39Du5tUyI8GzRA3RzRQsvyRI=
+github.com/xntrik/go-dfd v0.1.2/go.mod h1:d7FZR0zmRjpbSRQ5nXdyqH3z0O1ipiF69UFjt21NAGU=
 github.com/yuin/goldmark v1.2.1/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
 github.com/yuin/goldmark v1.3.3/go.mod h1:mwnBkeHKe2W/ZEtQ+71ViKU8L12m81fl3OWwC1Zlc8k=
 github.com/yuin/goldmark v1.4.2 h1:5qVKCqCRBaGz8EepBTi7pbIw8gGCFnB1Mi6kXU4dYv8=

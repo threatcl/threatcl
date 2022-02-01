@@ -48,39 +48,38 @@ func (tm *Threatmodel) GenerateDfdPng(filepath string) error {
 
 func newDfdProcess(name string) (error, *dfd.Process) {
 
+	newProcess := dfd.NewProcess(name)
+
 	// @BUG: The styling below doesn't work for go-graphviz generated images
 	//       but the styling will work if we output DOT and render in browser
 	//       Therefore we should handle this separately depending on context
 	//       I.e. if we're rendering DOT out, let's make it pretty. If not, keep
 	//       it real simple. *sigh*
-	newProcess := dfd.NewProcess(name)
+
+	// In this example, we can't set a "dashed" outline with a separate color
+	// boo
+
 	err := newProcess.SetAttribute(encoding.Attribute{
 		Key:   "style",
-		Value: "dashed,filled",
-	})
-	if err != nil {
-		return err, nil
-	}
-
-	err = newProcess.SetAttribute(encoding.Attribute{
-		Key:   "color",
-		Value: "red",
-	})
-	if err != nil {
-		return err, nil
-	}
-
-	err = newProcess.SetAttribute(encoding.Attribute{
-		Key:   "fillcolor",
-		Value: "green",
+		Value: "filled",
 	})
 
 	return err, newProcess
-
 }
 
 func newDfdExternalEntity(name string) (error, *dfd.ExternalService) {
 	newEntity := dfd.NewExternalService(name)
+
+	// @BUG: The styling below doesn't work for go-graphviz generated images
+	//       but the styling will work if we output DOT and render in browser
+	//       Therefore we should handle this separately depending on context
+	//       I.e. if we're rendering DOT out, let's make it pretty. If not, keep
+	//       it real simple. *sigh*
+
+	// In this example, we set it to filled, which works in raw DOT, but not
+	// in the auto generated PNG. I believe this is an issue in
+	// github.com/goccy/go-graphviz
+
 	err := newEntity.SetAttribute(encoding.Attribute{
 		Key:   "style",
 		Value: "filled",
@@ -113,7 +112,7 @@ func (tm *Threatmodel) generateDfdDotFile(filepath string) (string, error) {
 	// Add zones
 	for _, zone := range tm.DataFlowDiagram.TrustZones {
 		if _, existing := zones[zone.Name]; !existing {
-			newZone, err := g.AddTrustBoundary(zone.Name)
+			newZone, err := g.AddTrustBoundary(zone.Name, "red")
 			zones[zone.Name] = newZone
 			if err != nil {
 				return "", err
@@ -162,7 +161,7 @@ func (tm *Threatmodel) generateDfdDotFile(filepath string) (string, error) {
 
 		if process.TrustZone != "" {
 			if _, ok := zones[process.TrustZone]; !ok {
-				zone, err := g.AddTrustBoundary(process.TrustZone)
+				zone, err := g.AddTrustBoundary(process.TrustZone, "red")
 				zones[process.TrustZone] = zone
 				if err != nil {
 					return "", err
@@ -185,7 +184,7 @@ func (tm *Threatmodel) generateDfdDotFile(filepath string) (string, error) {
 
 		if external_element.TrustZone != "" {
 			if _, ok := zones[external_element.TrustZone]; !ok {
-				zone, err := g.AddTrustBoundary(external_element.TrustZone)
+				zone, err := g.AddTrustBoundary(external_element.TrustZone, "red")
 				zones[external_element.TrustZone] = zone
 				if err != nil {
 					return "", err
@@ -208,7 +207,7 @@ func (tm *Threatmodel) generateDfdDotFile(filepath string) (string, error) {
 
 		if data_store.TrustZone != "" {
 			if _, ok := zones[data_store.TrustZone]; !ok {
-				zone, err := g.AddTrustBoundary(data_store.TrustZone)
+				zone, err := g.AddTrustBoundary(data_store.TrustZone, "red")
 				zones[data_store.TrustZone] = zone
 				if err != nil {
 					return "", err
