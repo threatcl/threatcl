@@ -16,6 +16,7 @@ type DfdCommand struct {
 	flagOutFile   string
 	flagOverwrite bool
 	flagDot       bool
+	flagSVG		  bool
 }
 
 func (c *DfdCommand) Help() string {
@@ -29,15 +30,19 @@ Usage: hcltm dfd [options] -outdir=<directory> <files>
    Directory to output files. Will create directory if it doesn't exist.
    Either this, or -out, must be set
 
- -out=<filename>.<png|dot>
+ -out=<filename>.<png|dot|svg>
    Name of output file. Only the first discovered data_flow_diagram will be
-   converted. You must set the extension to png or dot depending on the mode.
+   converted. You must set the extension to png,dot or svg depending on the mode.
    Either this, or -outdir, must be set
 
  -dot
    Outputs Graphviz DOT instead. If -out or -outdir is provided files will be
    generated. If neither -out or -outdir is set, then the DOT file will be
    echoed to STDOUT.
+
+ -svg
+   Outputs SVG instead of PNG
+
 
 Options:
 
@@ -57,6 +62,7 @@ func (c *DfdCommand) Run(args []string) int {
 	flagSet.StringVar(&c.flagOutFile, "out", "", "Name of output file. Either this, or -outdir, must be set")
 	flagSet.BoolVar(&c.flagOverwrite, "overwrite", false, "Overwrite existing files in the outdir. Defaults to false")
 	flagSet.BoolVar(&c.flagDot, "dot", false, "Whether to output raw Graphviz DOT")
+	flagSet.BoolVar(&c.flagSVG, "svg", false, "Whether to output SVG")
 	flagSet.Parse(args)
 
 	if c.flagConfig != "" {
@@ -86,8 +92,13 @@ func (c *DfdCommand) Run(args []string) int {
 			fmt.Println(c.Help())
 			return 1
 		}
+	} else if c.flagSVG {
+		if c.flagOutFile != "" && filepath.Ext(c.flagOutFile) != ".svg" {
+			fmt.Printf("-out flag must end in .svg\n\n")
+			fmt.Println(c.Help())
+			return 1
+		}
 	} else {
-
 		if c.flagOutFile != "" && filepath.Ext(c.flagOutFile) != ".png" {
 			fmt.Printf("-out flag must end in .png\n\n")
 			fmt.Println(c.Help())
@@ -123,6 +134,8 @@ func (c *DfdCommand) Run(args []string) int {
 					fileExt := ".png"
 					if c.flagDot {
 						fileExt = ".dot"
+					} else if c.flagSVG {
+						fileExt = ".svg"
 					}
 					outfile := outfilePath(c.flagOutDir, tm.Name, file, fileExt)
 
@@ -213,7 +226,11 @@ func (c *DfdCommand) Run(args []string) int {
 							break
 						}
 					} else if c.flagOutFile != "" {
-						err = tm.GenerateDfdPng(c.flagOutFile)
+						if c.flagSVG {
+							err = tm.GenerateDfdSvg(c.flagOutFile)
+						} else {
+							err = tm.GenerateDfdPng(c.flagOutFile)
+						}						
 						if err != nil {
 							fmt.Printf("Error generating DFD: %s\n", err)
 							return 1
@@ -222,13 +239,20 @@ func (c *DfdCommand) Run(args []string) int {
 						fmt.Printf("Successfully created '%s'\n", c.flagOutFile)
 						return 0
 					} else {
-						err = tm.GenerateDfdPng(outfilePath(c.flagOutDir, tm.Name, file, ".png"))
+						if c.flagSVG {
+							err = tm.GenerateDfdSvg(outfilePath(c.flagOutDir, tm.Name, file, ".svg"))
+						} else {
+							err = tm.GenerateDfdPng(outfilePath(c.flagOutDir, tm.Name, file, ".png"))
+						}
 						if err != nil {
 							fmt.Printf("Error generating DFD: %s\n", err)
 							return 1
 						}
-
-						fmt.Printf("Successfully created '%s'\n", outfilePath(c.flagOutDir, tm.Name, file, ".png"))
+						if c.flagSVG {
+							fmt.Printf("Successfully created '%s'\n", outfilePath(c.flagOutDir, tm.Name, file, ".svg"))
+						} else {
+							fmt.Printf("Successfully created '%s'\n", outfilePath(c.flagOutDir, tm.Name, file, ".png"))
+						}
 					}
 				}
 			}
