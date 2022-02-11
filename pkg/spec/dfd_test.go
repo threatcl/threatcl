@@ -236,3 +236,81 @@ func TestDfdPngGenerate(t *testing.T) {
 		})
 	}
 }
+
+func TestDfdSvgGenerate(t *testing.T) {
+	// tm := dfdTm()
+	//
+	// fulltm := fullDfdTm()
+
+	cases := []struct {
+		name        string
+		tm          *Threatmodel
+		exp         string
+		errorthrown bool
+	}{
+		{
+			"valid_dfd",
+			dfdTm(),
+			"",
+			false,
+		},
+		{
+			"valid_full_dfd",
+			fullDfdTm(),
+			"",
+			false,
+		},
+		{
+			"valid_full_dfd2",
+			fullDfdTm2(),
+			"",
+			false,
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+
+		t.Run(tc.name, func(t *testing.T) {
+			// t.Parallel()
+
+			d, err := ioutil.TempDir("", "")
+			if err != nil {
+				t.Fatalf("Error creating tmp dir: %s", err)
+			}
+			defer os.RemoveAll(d)
+
+			err = tc.tm.GenerateDfdSvg(fmt.Sprintf("%s/out.svg", d))
+
+			if err != nil {
+				if !strings.Contains(err.Error(), tc.exp) {
+					t.Errorf("%s: Error rendering svg: %s", tc.name, err)
+				}
+			} else {
+				if tc.errorthrown {
+					t.Errorf("%s: an error was thrown when it shouldn't have", tc.name)
+				} else {
+
+					// at this point we should have a legitimate svg to
+					// test
+
+					f, err := os.Open(fmt.Sprintf("%s/out.svg", d))
+					if err != nil {
+						t.Fatalf("%s: Error opening svg: %s", tc.name, err)
+					}
+
+					buffer := make([]byte, 512)
+					_, err = f.Read(buffer)
+					if err != nil {
+						t.Fatalf("%s: Error reading svg: %s", tc.name, err)
+					}
+
+					if http.DetectContentType(buffer) != "text/xml; charset=utf-8" {
+						t.Errorf("%s: The output file isn't a svg, it's '%s'", tc.name, http.DetectContentType(buffer))
+					}
+				}
+			}
+
+		})
+	}
+}
