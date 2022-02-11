@@ -68,6 +68,7 @@ type DfdExternal struct {
 type DfdData struct {
 	Name      string `hcl:"name,label"`
 	TrustZone string `hcl:"trust_zone,optional"`
+	IaLink    string `hcl:"information_asset,optional"`
 }
 
 type DfdFlow struct {
