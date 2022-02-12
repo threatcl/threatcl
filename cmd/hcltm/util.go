@@ -197,6 +197,10 @@ EOT
 
     data_store "password db" {
       trust_zone = "secure zone"
+
+      // data_store blocks can refer to an information_asset from the
+      // threatmodel
+      information_asset = "cred store"
     }
 
     external_element "user" {}
