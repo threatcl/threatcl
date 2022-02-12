@@ -1,3 +1,15 @@
+## 0.1.1
+### Feb 12, 2022
+
+CHANGES:
+
+* Can now install with Homebrew
+* Can parse Terraform output to auto generate information assets (currently just for AWS resources)
+* Can output raw Graphviz DOT files of Data Flow Diagrams
+* Can output SVG Data Flow Diagrams
+* Changed some of the colouring of auto generated Data Flow Diagrams
+* Can link Data Flow Datagram Data Stores back into the Threat Model's Information Asssets
+
 ## 0.1.0
 ### Oct 23, 2021
 
