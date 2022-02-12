@@ -424,6 +424,20 @@ func TestParseHCLRaw(t *testing.T) {
 			true,
 		},
 		{
+			"dfd_missing_ia_from_datastore",
+			`threatmodel "dfdtest" {
+			  author = "j"
+		    information_asset "valid_asset" {information_classification = "Public"}
+				data_flow_diagram {
+					data_store "1" {
+					  information_asset = "nope"
+					}
+				}
+			}`,
+			"TM 'dfdtest' DFD Data Store '1' trying to refer to non-existant information_asset 'nope'",
+			true,
+		},
+		{
 			"dfd_dupe_process",
 			`threatmodel "dfdtest" {
 			  author = "j"

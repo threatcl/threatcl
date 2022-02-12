@@ -280,6 +280,20 @@ func (p *ThreatmodelParser) ValidateTm(tm *Threatmodel) error {
 				}
 
 				elements[data_store.Name] = nil
+
+				// While in DataStores, let's check if they have iaRefs, and that they
+				// are valid
+				if data_store.IaLink != "" {
+					err := validateInformationAssetRef(tm, data_store.IaLink)
+					if err != nil {
+						errMap = multierror.Append(errMap, fmt.Errorf(
+							"TM '%s' DFD Data Store '%s' %s",
+							tm.Name,
+							data_store.Name,
+							err,
+						))
+					}
+				}
 			}
 		}
 
@@ -297,6 +311,20 @@ func (p *ThreatmodelParser) ValidateTm(tm *Threatmodel) error {
 						}
 
 						elements[data_store.Name] = nil
+
+						// While in DataStores, let's check if they have iaRefs, and that they
+						// are valid
+						if data_store.IaLink != "" {
+							err := validateInformationAssetRef(tm, data_store.IaLink)
+							if err != nil {
+								errMap = multierror.Append(errMap, fmt.Errorf(
+									"TM '%s' DFD Data Store '%s' %s",
+									tm.Name,
+									data_store.Name,
+									err,
+								))
+							}
+						}
 					}
 				}
 			}
@@ -407,30 +435,11 @@ func (p *ThreatmodelParser) ValidateTm(tm *Threatmodel) error {
 
 			// Validating that InformationAssetRefs are valid
 			for _, iaRef := range tr.InformationAssetRefs {
-				if tm.InformationAssets != nil {
-					foundIa := false
-					for _, ia := range tm.InformationAssets {
-						if iaRef == ia.Name {
-							foundIa = true
-							break
-						}
-					}
-
-					if !foundIa {
-						errMap = multierror.Append(errMap, fmt.Errorf(
-							"TM '%s / Threat: %s': trying to refer to non-existant information_asset '%s'",
-							tm.Name,
-							tr.Description,
-							iaRef,
-						))
-					}
-				} else {
-					errMap = multierror.Append(errMap, fmt.Errorf(
-						"TM '%s / Threat: %s': trying to refer to non-existant information_asset '%s'",
-						tm.Name,
-						tr.Description,
-						iaRef,
-					))
+				err := validateInformationAssetRef(tm, iaRef)
+				if err != nil {
+					errMap = multierror.Append(errMap,
+						fmt.Errorf("TM '%s' / Threat '%s': %s", tm.Name, tr.Description, err),
+					)
 				}
 			}
 		}
@@ -449,6 +458,33 @@ func (p *ThreatmodelParser) ValidateTm(tm *Threatmodel) error {
 
 	return nil
 
+}
+
+// Validate that the supplied informatin_asset name is found in the tm
+func validateInformationAssetRef(tm *Threatmodel, asset string) error {
+	if tm.InformationAssets != nil {
+		foundIa := false
+		for _, ia := range tm.InformationAssets {
+			if asset == ia.Name {
+				foundIa = true
+				break
+			}
+		}
+
+		if !foundIa {
+			return fmt.Errorf(
+				"trying to refer to non-existant information_asset '%s'",
+				asset,
+			)
+		}
+	} else {
+		return fmt.Errorf(
+			"trying to refer to non-existant information_asset '%s'",
+			asset,
+		)
+	}
+
+	return nil
 }
 
 func (p *ThreatmodelParser) validateTms() error {
