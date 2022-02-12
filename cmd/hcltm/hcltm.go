@@ -79,13 +79,20 @@ func Run(args []string) int {
 				specCfg:          cfg,
 			}, nil
 		},
+		"terraform": func() (cli.Command, error) {
+			return &TerraformCommand{
+				GlobalCmdOptions: globalCmdOptions,
+				specCfg:          cfg,
+			}, nil
+		},
 	}
 
 	cli := &cli.CLI{
-		Name:     "hcltm",
-		Version:  version.GetVersion(),
-		Args:     args,
-		Commands: Commands,
+		Name:         "hcltm",
+		Version:      version.GetVersion(),
+		Args:         args,
+		Commands:     Commands,
+		Autocomplete: true,
 	}
 
 	exitCode, err := cli.Run()

@@ -82,4 +82,44 @@ EOT
      paying_customer = "true"
    }
 
+   data_flow_diagram {
+
+    process "update data" {}
+
+    process "update password" {
+      trust_zone = "secure zone"
+    }
+
+    data_store "password db" {
+      trust_zone = "secure zone"
+      information_asset = "cred store"
+    }
+
+    external_element "user" {}
+
+    flow "https" {
+      from = "user"
+      to = "update data"
+    }
+
+    flow "https" {
+      from = "user"
+      to = "update password"
+    }
+
+    flow "tcp" {
+      from = "update password"
+      to = "password db"
+    }
+
+    trust_zone "public zone" {
+
+      process "visit external site" {}
+
+      external_element "OIDC Provider" {}
+
+    }
+
+   }
+
  }

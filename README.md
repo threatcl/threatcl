@@ -54,12 +54,12 @@ threatmodel "Tower of London" {
 
 See [Data Flow Diagram](#data-flow-diagram) for more information on how to construct data flow diagrams that are converted to PNGs automatically.
 
-To see an example of how to reference pre-defined control libraries for the [OWASP Proactive Controls](https://github.com/OWASP/www-project-proactive-controls/tree/7622bebed900a6a5d7b7b9b01fb3fe2b0e695545/v3/en) and [AWS Security Checklist](https://d1.awsstatic.com/whitepapers/Security/AWS_Security_Checklist.pdf) see [examples/tm3.hcl](examples/tm3.hcl)
+To see an example of how to reference pre-defined control libraries for the [OWASP Proactive Controls](https://github.com/OWASP/www-project-proactive-controls/tree/7622bebed900a6a5d7b7b9b01fb3fe2b0e695545/v3/en) and [AWS Security Checklist](https://d1.awsstatic.com/whitepapers/Security/AWS_Security_Checklist.pdf) see [examples/tm3.hcl](examples/tm3.hcl). We also have the [MITRE ATT&CK Controls](https://attack.mitre.org/mitigations/enterprise/) [here](examples/MITRE_ATTACK_controls.hcl).
 
 To see a full description of the spec, see [here](spec.hcl) or run:
 
 ```bash
-$ hcltm generate boilerplate
+hcltm generate boilerplate
 ```
 
 `hcltm` will also process JSON files, but the only caveat is that import modules and variables won't work. You can see [examples/tm1.json](examples/tm1.json) as an example.
@@ -86,10 +86,18 @@ Additionally I'd like to extend thanks to [Jamie Finnigan](https://twitter.com/c
 
 Download the latest version from [releases](https://github.com/xntrik/hcltm/releases) and move the `hcltm` binary into your PATH.
 
+## Install with Homebrew
+
+The following will add a local tap, and install `hcltm` with [Homebrew](https://brew.sh/)
+
+```bash
+brew install xntrik/repo/hcltm
+```
+
 ## Run with Docker
 
 ```bash
-$ docker run --rm -it xntrik/hcltm
+docker run --rm -it xntrik/hcltm
 ```
 
 ## Run with GitHub Actions
@@ -100,8 +108,8 @@ $ docker run --rm -it xntrik/hcltm
 
 1. Clone this repository.
 2. Change into the directory, `hcltm`
-3. `$ make bootstrap`
-4. `$ make dev`
+3. `make bootstrap`
+4. `make dev`
 
 For further help on contributing to `hcltm` please see the [CHANGELOG.md](CHANGELOG.md).
 
@@ -181,12 +189,22 @@ The `hcltm generate` command is used to either output a generic `boilerplate` `h
 See the following example of:
 
 ```bash
-$ hcltm generate interactive
+hcltm generate interactive
 ```
 
 <p align="center">
   <img width="600" src="https://xntrik.wtf/hcltm.svg" />
 </p>
+
+### Generate Interactive Editor
+
+If you prefer to work directly in your `$EDITOR` then run:
+
+```bash
+hcltm generate interactive editor
+```
+
+This will open your editor with a barebones HCL threat model. If you want to validate the model after creation, then use the `-validate` flag.
 
 ## Dashboard
 
@@ -231,3 +249,44 @@ Successfully created 'testout/tm2-modellymodel.png'
 ```
 
 If your `threatmodel` doesn't include a `diagram_link`, but does include a `data_flow_diagram`, then this will also be rendered when running `hcltm dashboard`.
+
+## Terraform
+
+The `hcltm terraform` command is able to extract data resources from the `terraform show -json` [docs here](https://www.terraform.io/docs/cli/commands/show.html) output of plan files, or active state files, and convert these into drafted `information_asset` blocks for inclusion in `hcltm` files.
+
+If you're in a folder with existing state, you can execute the following:
+
+```bash
+terraform show -json | hcltm terraform -stdin
+```
+
+This will output something similar to this:
+
+```bash
+information_asset "aws_rds_cluster default" {
+  description                = "cluster_identifier: aurora-cluster-demo, database_name: mydb"
+  information_classification = ""
+  source                     = "terraform state"
+}
+information_asset "aws_s3_bucket example" {
+  description                = "bucket: terraform-20211107232017071500000001"
+  information_classification = ""
+  source                     = "terraform state"
+}
+```
+
+You can also see similar output from a plan file that hasn't yet been applied with Terraform by running:
+
+```bash
+terraform show -json <plan-file> | hcltm terraform -stdin
+```
+
+If you want to update an existing `hcltm` threat model file ("threatmodel.hcl") you can with:
+
+```bash
+terraform show -json <plan> | hcltm terraform -stdin -add-to-existing=threatmodel.hcl > new-threatmodel.hcl
+```
+
+With the `-add-to-existing` flag, you can also specify `-tm-name=<string>` if you need to specify a particular threat model from the source file, if there are multiple. And you can also apply a default classification, with the `-default-classification=Confidential` flag.
+
+These commands can also take a file as input too, in which case, omit the `-stdin` flag.

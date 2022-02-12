@@ -37,6 +37,7 @@ func ParseTMTemplate(mdTemplate string) (*template.Template, error) {
 			imageExts := map[string]interface{}{
 				".jpg": nil,
 				".png": nil,
+				"*.svg": nil,
 			}
 
 			ext := strings.ToLower(filepath.Ext(url))

@@ -70,6 +70,10 @@ threatmodel "threatmodel name" {
 
     // information_classification must be one of '{{.InfoClassificationOptions}}'
     information_classification = "{{.DefaultInfoClassification}}"
+
+    // source is optional, and can be used to specify if this asset was sourced
+    // from an external resource, such as terraform
+    source = "terraform"
   }
 
   information_asset "special sauce" {
@@ -193,6 +197,10 @@ EOT
 
     data_store "password db" {
       trust_zone = "secure zone"
+
+      // data_store blocks can refer to an information_asset from the
+      // threatmodel
+      information_asset = "cred store"
     }
 
     external_element "user" {}

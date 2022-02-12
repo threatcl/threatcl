@@ -10,6 +10,7 @@ type InformationAsset struct {
 	Name                      string `hcl:"name,label"`
 	Description               string `hcl:"description,optional"`
 	InformationClassification string `hcl:"information_classification,optional"`
+	Source                    string `hcl:"source,optional"`
 }
 
 type Threat struct {
@@ -67,6 +68,7 @@ type DfdExternal struct {
 type DfdData struct {
 	Name      string `hcl:"name,label"`
 	TrustZone string `hcl:"trust_zone,optional"`
+	IaLink    string `hcl:"information_asset,optional"`
 }
 
 type DfdFlow struct {

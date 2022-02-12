@@ -1,5 +1,5 @@
 // To cater for multiple spec versions we specify this in our HCL files
-spec_version = "0.1.0"
+spec_version = "0.1.1"
 
 // You can include variables outside your threatmodel blocks
 
@@ -53,6 +53,10 @@ threatmodel "threatmodel name" {
 
     // information_classification must be one of 'Restricted, Confidential, Public'
     information_classification = "Confidential"
+
+    // source is optional, and can be used to specify if this asset was sourced
+    // from an external resource, such as terraform
+    source = "terraform"
   }
 
   information_asset "special sauce" {
@@ -141,7 +145,7 @@ threatmodel "threatmodel name" {
 
   // An example of what may be in controls.hcl:
   //
-  // spec_version = "0.1.0"
+  // spec_version = "0.1.1"
   // component "control" "control_name" {
   //   description = "A control that can be used in multiple places"
   // }
@@ -181,6 +185,10 @@ EOT
 
     data_store "password db" {
       trust_zone = "secure zone"
+
+      // data_store blocks can refer to an information_asset from the
+      // threatmodel
+      information_asset = "cred store"
     }
 
     external_element "user" {}

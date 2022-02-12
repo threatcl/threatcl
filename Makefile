@@ -1,30 +1,41 @@
 GO_CMD?=go
 BINNAME=hcltm
 DOCKERNAME=xntrik/hcltm
+DOCKERPLATFORM="linux/amd64,linux/arm64"
 GOPATH?=$$($(GO_CMD) env GOPATH)
 EXTERNAL_TOOLS=\
 	golang.org/x/tools/cmd/goimports \
 	github.com/mitchellh/gox
 GOFMT_FILES?=$$(find . -name '*.go')
-PKG_TARGET="linux/amd64 darwin/amd64"
+LINUX_PKG_TARGETS="linux/amd64"
+MACOS_PKG_TARGETS="darwin/amd64"
 
 default: help
 
 image: ## Create the docker image from the Dockerfile
 	@docker build -t $(BINNAME):latest .
 
-imagepush: ## Create a fresh docker image and push to the configured repo
-	@docker build --rm --force-rm -t $(DOCKERNAME):latest .
-	@docker push $(DOCKERNAME)
+imagepush: check-ver-env check-tag-env ## Create a fresh docker image and push to the configured repo
+	@docker buildx build --rm --force-rm --platform $(DOCKERPLATFORM) --push -t $(DOCKERNAME):$(TAG) -t $(DOCKERNAME):$(VERSION) .
+
+check-ver-env:
+ifndef VERSION
+	$(error VERSION is undefined)
+endif
+
+check-tag-env:
+ifndef TAG
+	$(error TAG is undefined)
+endif
 
 dev: ## Build hcltm and copy to your GOPATH/bin
 	$(GO_CMD) build -o ${BINNAME} ./cmd/hcltm
 	@echo "Copying ${BINNAME} file to ${GOPATH}/bin/${BINNAME}"
 	@cp ${BINNAME} ${GOPATH}/bin/${BINNAME}
 
-pkg-linux: ## Build packages with gox
+pkg-linux: ## Build packages with gox on linux
 	gox \
-		-osarch="linux/amd64" \
+		-osarch=${LINUX_PKG_TARGETS} \
 		-output="out/{{.OS}}_{{.Arch}}/${BINNAME}" \
 		-gocmd=${GO_CMD} \
 		-cgo \
@@ -33,10 +44,9 @@ pkg-linux: ## Build packages with gox
 
 pkg-osx: ## Build packages with gox
 	gox \
-		-osarch="darwin/amd64" \
+		-osarch=${MACOS_PKG_TARGETS} \
 		-output="out/{{.OS}}_{{.Arch}}/${BINNAME}" \
 		-gocmd=${GO_CMD} \
-		-cgo \
 		./cmd/hcltm
 	cd out/darwin_amd64 && tar -zcvf ../hcltm-darwin-amd64.tar.gz hcltm
 
@@ -66,4 +76,4 @@ testcover: ## Run go test and go tool cover
 help: ## Output make targets
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
 
-.PHONY: dev help
+.PHONY: dev help image imagepush pkg-linux pkg-osx fmg install bootstrap vet test testvet testcover check-tag-env check-ver-env
