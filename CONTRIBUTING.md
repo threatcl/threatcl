@@ -2,6 +2,8 @@
 
 Hi! I'm really happy you want to help out with `hcltm`. At this early stage, the best way to get started is to [Submit an Issue](https://github.com/xntrik/hcltm/issues) or [Submit a PR](https://github.com/xntrik/hcltm/pulls).
 
+I've been doing most of the work in the [dev](https://github.com/xntrik/hcltm/tree/dev) branch, and this is probably the best place to start looking at making changes.
+
 ## Testing
 
 There are a bunch of `_test.go` files. To run the test suite:
@@ -61,6 +63,21 @@ If it complains about missing `goimports`, run:
 ```
 $ make bootstrap
 ```
+
+## Releasing
+
+All changes merged into the "main" branch will auto create a "Pre-release" https://github.com/xntrik/hcltm/releases
+
+To release a new version:
+* Update all the references to the version number to the new version, particularly the [version](version/version.go) file.
+* Update the [CHANGELOG](CHANGELOG.md)
+* Once the main branch has been merged and updated and all the [actions](https://github.com/xntrik/hcltm/actions) are complete
+* `git tag -a vN.N.N -m 'vN.N.N'`
+* `git tag -f latest`
+* `git push --tags`
+* This should then run a "hcltm release" action to release a new version
+* Then don't forget to update https://github.com/xntrik/homebrew-repo
+* And also https://github.com/xntrik/hcltm-action and https://github.com/xntrik/hcltm-action-example
 
 Thanks,
 Christian @xntrik Frichot
