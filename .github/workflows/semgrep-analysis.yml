@@ -22,6 +22,7 @@ on:
 jobs:
   semgrep:
     name: Scan
+    environment: semgrep-action
     runs-on: ubuntu-latest
     steps:
       # Checkout project source
