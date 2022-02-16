@@ -76,6 +76,7 @@ To release a new version:
 * `git tag -f latest`
 * `git push --tags`
 * This should then run a "hcltm release" action to release a new version
+* From this repo, you need to push the new docker container (`VERSION=N.N.N TAG=latest make imagepush`) - this may take a while :grimace:
 * Then don't forget to update https://github.com/xntrik/homebrew-repo
 * And also https://github.com/xntrik/hcltm-action and https://github.com/xntrik/hcltm-action-example
 
