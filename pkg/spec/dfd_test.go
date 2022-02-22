@@ -15,7 +15,7 @@ func dfdTm() *Threatmodel {
 		Author: "x",
 		DataFlowDiagram: &DataFlowDiagram{
 			Processes: []*DfdProcess{
-				&DfdProcess{
+				{
 					Name: "proc1",
 				},
 			},
@@ -32,44 +32,44 @@ func fullDfdTm() *Threatmodel {
 		Author: "x",
 		DataFlowDiagram: &DataFlowDiagram{
 			Processes: []*DfdProcess{
-				&DfdProcess{
+				{
 					Name: "proc1",
 				},
-				&DfdProcess{
+				{
 					Name:      "proc2",
 					TrustZone: "zone1",
 				},
 			},
 			DataStores: []*DfdData{
-				&DfdData{
+				{
 					Name: "data1",
 				},
-				&DfdData{
+				{
 					Name:      "data2",
 					TrustZone: "zone2",
 				},
 			},
 			ExternalElements: []*DfdExternal{
-				&DfdExternal{
+				{
 					Name: "external1",
 				},
-				&DfdExternal{
+				{
 					Name:      "external2",
 					TrustZone: "zone3",
 				},
 			},
 			Flows: []*DfdFlow{
-				&DfdFlow{
+				{
 					Name: "flow",
 					From: "proc1",
 					To:   "data1",
 				},
-				&DfdFlow{
+				{
 					Name: "flow",
 					From: "external1",
 					To:   "proc1",
 				},
-				&DfdFlow{
+				{
 					Name: "flow",
 					From: "data1",
 					To:   "external1",
@@ -89,64 +89,64 @@ func fullDfdTm2() *Threatmodel {
 		Author: "x",
 		DataFlowDiagram: &DataFlowDiagram{
 			TrustZones: []*DfdTrustZone{
-				&DfdTrustZone{
+				{
 					Name: "zone1",
 					Processes: []*DfdProcess{
-						&DfdProcess{
+						{
 							Name:      "proc2",
 							TrustZone: "zone1",
 						},
-						&DfdProcess{
+						{
 							Name: "proc9",
 						},
 					},
 					DataStores: []*DfdData{
-						&DfdData{
+						{
 							Name: "new_data",
 						},
 					},
 					ExternalElements: []*DfdExternal{
-						&DfdExternal{
+						{
 							Name: "ee5",
 						},
 					},
 				},
 			},
 			Processes: []*DfdProcess{
-				&DfdProcess{
+				{
 					Name: "proc1",
 				},
 			},
 			DataStores: []*DfdData{
-				&DfdData{
+				{
 					Name: "data1",
 				},
-				&DfdData{
+				{
 					Name:      "data2",
 					TrustZone: "zone2",
 				},
 			},
 			ExternalElements: []*DfdExternal{
-				&DfdExternal{
+				{
 					Name: "external1",
 				},
-				&DfdExternal{
+				{
 					Name:      "external2",
 					TrustZone: "zone3",
 				},
 			},
 			Flows: []*DfdFlow{
-				&DfdFlow{
+				{
 					Name: "flow",
 					From: "proc1",
 					To:   "data1",
 				},
-				&DfdFlow{
+				{
 					Name: "flow",
 					From: "external1",
 					To:   "proc1",
 				},
-				&DfdFlow{
+				{
 					Name: "flow",
 					From: "data1",
 					To:   "external1",
