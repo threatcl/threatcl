@@ -54,7 +54,7 @@ func TestNonExistingConfigFileLocation(t *testing.T) {
 	_, err := configFileLocation()
 
 	if err != nil && !strings.Contains(err.Error(), "Can't find home directory") {
-		t.Errorf("Unusal error handling a non-existant cfg location: %s", err)
+		t.Errorf("Unusal error handling a non-existent cfg location: %s", err)
 	}
 
 }

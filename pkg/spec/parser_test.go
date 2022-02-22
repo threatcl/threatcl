@@ -307,7 +307,7 @@ func TestParseHCLRaw(t *testing.T) {
 		}
 	}
 			`,
-			"trying to refer to non-existant information_asset 'nope'",
+			"trying to refer to non-existent information_asset 'nope'",
 			true,
 		},
 		{
@@ -321,7 +321,7 @@ func TestParseHCLRaw(t *testing.T) {
 		}
 	}
 			`,
-			"trying to refer to non-existant information_asset 'nope'",
+			"trying to refer to non-existent information_asset 'nope'",
 			true,
 		},
 		{
@@ -434,7 +434,7 @@ func TestParseHCLRaw(t *testing.T) {
 					}
 				}
 			}`,
-			"TM 'dfdtest' DFD Data Store '1' trying to refer to non-existant information_asset 'nope'",
+			"TM 'dfdtest' DFD Data Store '1' trying to refer to non-existent information_asset 'nope'",
 			true,
 		},
 		{

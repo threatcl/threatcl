@@ -473,13 +473,13 @@ func validateInformationAssetRef(tm *Threatmodel, asset string) error {
 
 		if !foundIa {
 			return fmt.Errorf(
-				"trying to refer to non-existant information_asset '%s'",
+				"trying to refer to non-existent information_asset '%s'",
 				asset,
 			)
 		}
 	} else {
 		return fmt.Errorf(
-			"trying to refer to non-existant information_asset '%s'",
+			"trying to refer to non-existent information_asset '%s'",
 			asset,
 		)
 	}
