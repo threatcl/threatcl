@@ -51,7 +51,14 @@ const tfJson = `
 			"name_prefix",
 			"kms_key_id"
 		]
-  }
+  },
+	"google": {
+		"google_storage_bucket": [
+			"name",
+			"location",
+			"project"
+		]
+	}
 }}
 `
 
