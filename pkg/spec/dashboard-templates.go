@@ -72,6 +72,7 @@ Diagram: {{ .DiagramLink }}
 > STRIDE: {{ $stride := .Stride }}{{ range $index, $elem := .Stride }}{{ if $index}}, {{end}}{{.}}{{end}}
 {{- end}}
 {{- if .InformationAssetRefs }}
+
 Impacted Information Assets:
 
 {{ range .InformationAssetRefs }}* {{.}}
