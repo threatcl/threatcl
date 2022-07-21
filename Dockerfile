@@ -9,7 +9,7 @@ COPY . .
 ENV CGO_ENABLED=1
 RUN go build -o hcltm ./cmd/hcltm
 
-FROM alpine:3.15.4 AS hcltm
+FROM alpine:3.15 AS hcltm
 WORKDIR /app
 COPY --from=builder /src/hcltm /bin/hcltm
 ENTRYPOINT ["/bin/hcltm"]
