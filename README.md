@@ -123,12 +123,12 @@ Usage: hcltm [--version] [--help] <command> [<args>]
 
 Available commands are:
     dashboard    Generate markdown files from existing HCL threatmodel file(s)
-    dfd          Generate Data Flow Diagram PNG files from existing HCL threatmodel file(s)
+    dfd          Generate Data Flow Diagram PNG or DOT files from existing HCL threatmodel file(s)
     generate     Generate an HCL Threat Model
     list         List Threatmodels found in HCL file(s)
+    terraform    Parse output from 'terraform show -json'
     validate     Validate existing HCL Threatmodel file(s)
     view         View existing HCL Threatmodel file(s)
-
 ```
 
 ## Config file
