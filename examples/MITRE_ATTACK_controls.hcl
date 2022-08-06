@@ -15,7 +15,7 @@ component "control" "Application_Developer_Guidance" {
   description = "[M1013](https://attack.mitre.org/mitigations/M1013/) This mitigation describes any guidance or training given to developers of applications to avoid introducing security weaknesses that an adversary may be able to take advantage of."
 }
 component "control" "Application_Isolation_and_Sandboxing" {
-  description = "[M1048](https://attack.mitre.org/mitigations/M1048/) Restrict execution of code to a virtual environment on or in transit to an endpoint system.\"
+  description = "[M1048](https://attack.mitre.org/mitigations/M1048/) Restrict execution of code to a virtual environment on or in transit to an endpoint system."
 }
 component "control" "Audit" {
   description = "[M1047](https://attack.mitre.org/mitigations/M1047/) Perform audits or scans of systems, permissions, insecure software, insecure configurations, etc. to identify potential weaknesses."
