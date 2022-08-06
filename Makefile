@@ -30,8 +30,6 @@ endif
 
 dev: ## Build hcltm and copy to your GOPATH/bin
 	$(GO_CMD) build -o ${BINNAME} ./cmd/hcltm
-	@echo "Copying ${BINNAME} file to ${GOPATH}/bin/${BINNAME}"
-	@cp ${BINNAME} ${GOPATH}/bin/${BINNAME}
 
 pkg-linux: ## Build packages with gox on linux
 	gox \
