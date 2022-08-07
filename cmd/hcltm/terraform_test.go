@@ -52,7 +52,7 @@ func TestTfRun(t *testing.T) {
 	cases := []struct {
 		name      string
 		in        string
-		exp       string
+		exp       []string
 		invertexp bool
 		code      int
 		flags     string
@@ -60,7 +60,10 @@ func TestTfRun(t *testing.T) {
 		{
 			"aws_s3_plan",
 			"./testdata/aws_s3/aws_s3.plan-json",
-			"information_asset \"aws_s3_bucket b\"",
+			[]string{
+				"information_asset \"aws_s3_bucket b\"",
+				"bucket: my-tf-test-bucket",
+				"terraform plan"},
 			false,
 			0,
 			"",
@@ -94,12 +97,16 @@ func TestTfRun(t *testing.T) {
 			}
 
 			if !tc.invertexp {
-				if !strings.Contains(out, tc.exp) {
-					t.Errorf("Expected %s to contain %s", out, tc.exp)
+				for _, exp := range tc.exp {
+					if !strings.Contains(out, exp) {
+						t.Errorf("Expected %s to contain %s", out, exp)
+					}
 				}
 			} else {
-				if strings.Contains(out, tc.exp) {
-					t.Errorf("Was not expecting %s to contain %s", out, tc.exp)
+				for _, exp := range tc.exp {
+					if strings.Contains(out, exp) {
+						t.Errorf("Was not expecting %s to contain %s", out, exp)
+					}
 				}
 			}
 		})
