@@ -47,6 +47,66 @@ func TestTfRunNoFile(t *testing.T) {
 	}
 }
 
+func TestTfRun(t *testing.T) {
+
+	cases := []struct {
+		name      string
+		in        string
+		exp       string
+		invertexp bool
+		code      int
+		flags     string
+	}{
+		{
+			"aws_s3_plan",
+			"./testdata/aws_s3/aws_s3.plan-json",
+			"information_asset \"aws_s3_bucket b\"",
+			false,
+			0,
+			"",
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+
+		t.Run(tc.name, func(t *testing.T) {
+			cmd := testTfCommand(t)
+
+			var code int
+
+			out := capturer.CaptureStdout(func() {
+				if tc.flags == "" {
+					code = cmd.Run([]string{
+						tc.in,
+					})
+				} else {
+
+					code = cmd.Run([]string{
+						tc.flags,
+						tc.in,
+					})
+				}
+			})
+
+			if code != tc.code {
+				t.Errorf("Code did not equal %d: %d", tc.code, code)
+			}
+
+			if !tc.invertexp {
+				if !strings.Contains(out, tc.exp) {
+					t.Errorf("Expected %s to contain %s", out, tc.exp)
+				}
+			} else {
+				if strings.Contains(out, tc.exp) {
+					t.Errorf("Was not expecting %s to contain %s", out, tc.exp)
+				}
+			}
+		})
+	}
+
+}
+
 func testTfCommand(tb testing.TB) *TerraformCommand {
 	tb.Helper()
 
