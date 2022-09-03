@@ -93,7 +93,7 @@ func TestValidateRun(t *testing.T) {
 		{
 			"validate_dir",
 			"./testdata/",
-			"Validated 7 threatmodels in 4 files",
+			"Validated 7 threatmodels in 5 files",
 			false,
 			0,
 			"",

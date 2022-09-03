@@ -30,8 +30,8 @@ func TestFindAllFiles(t *testing.T) {
 
 	out = findAllFiles([]string{"./testdata/"})
 
-	if len(out) != 4 {
-		t.Errorf("There should be four files")
+	if len(out) != 5 {
+		t.Errorf("There should be five files")
 	}
 }
 
