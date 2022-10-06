@@ -57,6 +57,28 @@ const tfJson = `
 			"name",
 			"location",
 			"project"
+		],
+		"google_sql_database": [
+			"name",
+			"project"
+		],
+		"google_artifact_registry_repository": [
+			"repository_id",
+			"description",
+			"format",
+			"kms_key_name",
+			"project"
+		],
+		"google_compute_disk": [
+			"name",
+			"project",
+			"description",
+			"disk_encryption_key"
+		],
+		"google_filestore_instance": [
+			"name",
+			"description",
+			"project"
 		]
 	}
 }}
