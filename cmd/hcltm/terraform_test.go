@@ -182,6 +182,22 @@ func TestTfRunStdin(t *testing.T) {
 			0,
 			"-stdin",
 		},
+		{
+			"gcp_plan",
+			"./testdata/gcp/gcp.plan-json",
+			[]string{
+				"information_asset \"google_artifact_registry_repository test\"",
+				"information_asset \"google_bigquery_dataset default\"",
+				"information_asset \"google_bigquery_table default\"",
+				"information_asset \"google_compute_disk test\"",
+				"information_asset \"google_filestore_instance test\"",
+				"information_asset \"google_sql_database test\"",
+				"information_asset \"google_storage_bucket test\"",
+				"terraform plan"},
+			false,
+			0,
+			"-stdin",
+		},
 	}
 
 	for _, tc := range cases {

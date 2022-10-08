@@ -79,6 +79,18 @@ const tfJson = `
 			"name",
 			"description",
 			"project"
+		],
+		"google_bigquery_dataset": [
+			"dataset_id",
+			"description",
+			"friendly_name",
+			"project"
+		],
+		"google_bigquery_table": [
+			"dataset_id",
+			"table_id",
+			"project",
+			"description"
 		]
 	}
 }}
