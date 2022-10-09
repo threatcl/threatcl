@@ -92,6 +92,52 @@ const tfJson = `
 			"project",
 			"description"
 		]
+	},
+	"azurerm": {
+		"azurerm_cosmosdb_cassandra_cluster": [
+			"name"
+		],
+		"azurerm_cosmosdb_mongo_database": [
+			"name"
+		],
+		"azurerm_cosmosdb_sql_database": [
+			"name",
+			"account_name"
+		],
+		"azurerm_data_share": [
+			"name",
+			"description"
+		],
+		"azurerm_key_vault": [
+			"name"
+		],
+		"azurerm_mariadb_database": [
+			"name",
+			"server_name"
+		],
+		"azurerm_mssql_database": [
+			"name"
+		],
+		"azurerm_mysql_server": [
+			"name",
+			"server_name"
+		],
+		"azurerm_postgresql_database": [
+			"name",
+			"server_name"
+		],
+		"azurerm_redis_cache": [
+			"name"
+		],
+		"azurerm_storage_blob": [
+			"name"
+		],
+		"azurerm_storage_container": [
+			"name"
+		],
+		"azurerm_storage_share": [
+			"name"
+		]
 	}
 }}
 `

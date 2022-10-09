@@ -198,6 +198,28 @@ func TestTfRunStdin(t *testing.T) {
 			0,
 			"-stdin",
 		},
+		{
+			"az_plan",
+			"./testdata/az/az.plan-json",
+			[]string{
+				"information_asset \"azurerm_cosmosdb_cassandra_cluster example\"",
+				"information_asset \"azurerm_cosmosdb_mongo_database example\"",
+				"information_asset \"azurerm_cosmosdb_sql_database example\"",
+				"information_asset \"azurerm_data_share example\"",
+				"information_asset \"azurerm_key_vault example\"",
+				"information_asset \"azurerm_mariadb_database example\"",
+				"information_asset \"azurerm_mssql_database test\"",
+				"information_asset \"azurerm_mysql_server example\"",
+				"information_asset \"azurerm_postgresql_database example\"",
+				"information_asset \"azurerm_redis_cache example\"",
+				"information_asset \"azurerm_storage_blob example\"",
+				"information_asset \"azurerm_storage_container example\"",
+				"information_asset \"azurerm_storage_share example\"",
+				"terraform plan"},
+			false,
+			0,
+			"-stdin",
+		},
 	}
 
 	for _, tc := range cases {
