@@ -153,9 +153,14 @@ type TfResource struct {
 	Attributes []string
 }
 
-func NewCollection() TfCollection {
+func NewCollection(tfJsonOverride *string) TfCollection {
 	var result map[string]interface{}
-	err := json.Unmarshal([]byte(tfJson), &result)
+	var err error
+	if *tfJsonOverride == "" {
+		err = json.Unmarshal([]byte(tfJson), &result)
+	} else {
+		err = json.Unmarshal([]byte(*tfJsonOverride), &result)
+	}
 	if err != nil {
 		panic(err)
 	}

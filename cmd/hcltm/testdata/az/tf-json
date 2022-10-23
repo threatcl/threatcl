@@ -1,0 +1,7 @@
+{"providers": {
+	"azurerm": {
+		"azurerm_redis_cache": [
+			"name"
+		]
+	}
+}}

@@ -6,7 +6,9 @@ import (
 
 func TestTfCollcetion(t *testing.T) {
 
-	collection := NewCollection()
+	tfCollectionJson := ""
+
+	collection := NewCollection(&tfCollectionJson)
 
 	if collection == nil {
 		t.Error("Empty collection")

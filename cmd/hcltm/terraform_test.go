@@ -161,6 +161,48 @@ func TestTfRunStdin(t *testing.T) {
 		flags     string
 	}{
 		{
+			"missing_tf_collection",
+			"./testdata/aws_s3/aws_s3.plan-json",
+			[]string{"Could not find tf-collection file. 'missing.json'"},
+			false,
+			1,
+			"-tf-collection=missing.json",
+		},
+		{
+			"tf_collection_dir",
+			"./testdata/aws_s3/aws_s3.plan-json",
+			[]string{"tf-collection can't be set to a directory"},
+			false,
+			1,
+			"-tf-collection=./testdata/",
+		},
+		{
+			"tf_collection_valid",
+			"./testdata/az/az.plan-json",
+			[]string{"azurerm_redis_cache example"},
+			false,
+			0,
+			"-tf-collection=./testdata/az/tf-json",
+		},
+		{
+			"tf_collection_valid_invert",
+			"./testdata/az/az.plan-json",
+			[]string{
+				"information_asset \"azurerm_cosmosdb_cassandra_cluster example\"",
+				"information_asset \"azurerm_cosmosdb_mongo_database example\"",
+				"information_asset \"azurerm_cosmosdb_sql_database example\"",
+				"information_asset \"azurerm_data_share example\"",
+				"information_asset \"azurerm_key_vault example\"",
+				"information_asset \"azurerm_mariadb_database example\"",
+				"information_asset \"azurerm_mssql_database test\"",
+				"information_asset \"azurerm_mysql_server example\"",
+				"information_asset \"azurerm_postgresql_database example\"",
+			},
+			true,
+			0,
+			"-tf-collection=./testdata/az/tf-json",
+		},
+		{
 			"aws_s3_plan",
 			"./testdata/aws_s3/aws_s3.plan-json",
 			[]string{

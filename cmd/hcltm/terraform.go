@@ -21,6 +21,7 @@ type TerraformCommand struct {
 	flagStdin                 bool
 	flagDefaultClassification string
 	flagAddToExisting         string
+	flagTfCollectionJson      string
 	flagTmName                string
 }
 
@@ -56,6 +57,9 @@ Options:
  -tm-name=<string>
    If -add-to-existing, this is used to specify a particular TM to target.
 
+ -tf-collection=<json file>
+   If set, use this to define the terraform json resources to parse
+
 `
 	return strings.TrimSpace(helpText)
 }
@@ -66,6 +70,7 @@ func (c *TerraformCommand) Run(args []string) int {
 	flagSet.StringVar(&c.flagDefaultClassification, "default-classification", "", "If set, will provide a default information_classification for all assets")
 	flagSet.StringVar(&c.flagAddToExisting, "add-to-existing", "", "If set, will add assets to this threat model")
 	flagSet.StringVar(&c.flagTmName, "tm-name", "", "If set, and using add-to-existing, targets a specific threat model")
+	flagSet.StringVar(&c.flagTfCollectionJson, "tf-collection", "", "If set, use this to define the terraform json resources to parse")
 	flagSet.Parse(args)
 
 	if c.flagConfig != "" {
@@ -75,6 +80,31 @@ func (c *TerraformCommand) Run(args []string) int {
 			fmt.Printf("Error: %s\n", err)
 			return 1
 		}
+	}
+
+	tfCollectionJson := ""
+
+	if c.flagTfCollectionJson != "" {
+		// User has specified a custom json file to use instead of the pre
+		// defined terraform resources to parse
+		info, err := os.Stat(c.flagTfCollectionJson)
+		if os.IsNotExist(err) {
+			fmt.Printf("Could not find tf-collection file. '%s'", c.flagTfCollectionJson)
+			return 1
+		}
+
+		if info.IsDir() {
+			fmt.Printf("tf-collection can't be set to a directory. '%s'", c.flagTfCollectionJson)
+			return 1
+		}
+
+		readJson, err := ioutil.ReadFile(c.flagTfCollectionJson)
+		if err != nil {
+			fmt.Printf("Error opening tf-collection json file: %s\n", err)
+			return 1
+		}
+
+		tfCollectionJson = string(readJson)
 	}
 
 	tmParser := spec.NewThreatmodelParser(c.specCfg)
@@ -179,7 +209,7 @@ func (c *TerraformCommand) Run(args []string) int {
 		}
 	}
 
-	tfc := terraform.NewCollection()
+	tfc := terraform.NewCollection(&tfCollectionJson)
 
 	switch mode {
 	case PlanMode:

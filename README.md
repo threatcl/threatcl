@@ -290,3 +290,5 @@ terraform show -json <plan> | hcltm terraform -stdin -add-to-existing=threatmode
 With the `-add-to-existing` flag, you can also specify `-tm-name=<string>` if you need to specify a particular threat model from the source file, if there are multiple. And you can also apply a default classification, with the `-default-classification=Confidential` flag.
 
 These commands can also take a file as input too, in which case, omit the `-stdin` flag.
+
+The terraform resources that `hcltm` is aware of are hard coded in [pkg/terraform/terraform.go](pkg/terraform/terraform.go). If you want the `hcltm terraform` command to output other `information_asset` resources that aren't in there, you can supply your own version of this json via the `-tf-collection=<json file>` flag. 
