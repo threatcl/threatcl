@@ -1,0 +1,8 @@
+
+tasks:
+  - init: make bootstrap && make dev
+
+
+vscode:
+  extensions:
+    - golang.go

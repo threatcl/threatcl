@@ -1,5 +1,5 @@
 // To cater for multiple spec versions we specify this in our HCL files
-spec_version = "0.1.1"
+spec_version = "0.1.2"
 
 // You can include variables outside your threatmodel blocks
 
@@ -145,7 +145,7 @@ threatmodel "threatmodel name" {
 
   // An example of what may be in controls.hcl:
   //
-  // spec_version = "0.1.1"
+  // spec_version = "0.1.2"
   // component "control" "control_name" {
   //   description = "A control that can be used in multiple places"
   // }

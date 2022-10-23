@@ -30,8 +30,8 @@ func TestFindAllFiles(t *testing.T) {
 
 	out = findAllFiles([]string{"./testdata/"})
 
-	if len(out) != 4 {
-		t.Errorf("There should be four files")
+	if len(out) != 5 {
+		t.Errorf("There should be five files")
 	}
 }
 
@@ -54,7 +54,7 @@ func TestNonExistingConfigFileLocation(t *testing.T) {
 	_, err := configFileLocation()
 
 	if err != nil && !strings.Contains(err.Error(), "Can't find home directory") {
-		t.Errorf("Unusal error handling a non-existant cfg location: %s", err)
+		t.Errorf("Unusal error handling a non-existent cfg location: %s", err)
 	}
 
 }

@@ -72,7 +72,6 @@ func TestValidateRunTooManyStdin(t *testing.T) {
 	}
 }
 
-// @TODO: @xntrik we should also test STDIN
 func TestValidateRun(t *testing.T) {
 
 	cases := []struct {
@@ -94,7 +93,7 @@ func TestValidateRun(t *testing.T) {
 		{
 			"validate_dir",
 			"./testdata/",
-			"Validated 7 threatmodels in 4 files",
+			"Validated 7 threatmodels in 5 files",
 			false,
 			0,
 			"",
@@ -113,6 +112,100 @@ func TestValidateRun(t *testing.T) {
 				code = cmd.Run([]string{
 					tc.flags,
 					tc.in,
+				})
+			})
+
+			if code != tc.code {
+				t.Errorf("Code did not equal %d: %d", tc.code, code)
+			}
+
+			if !tc.invertexp {
+				if !strings.Contains(out, tc.exp) {
+					t.Errorf("Expected %s to contain %s", out, tc.exp)
+				}
+			} else {
+				if strings.Contains(out, tc.exp) {
+					t.Errorf("Was not expecting %s to contain %s", out, tc.exp)
+				}
+			}
+		})
+	}
+}
+
+func TestValidateStdin(t *testing.T) {
+	cases := []struct {
+		name      string
+		in        string
+		exp       string
+		invertexp bool
+		code      int
+		flags     string
+	}{
+		{
+			"valid_stdin",
+			"./testdata/tm1.hcl",
+			"Validated 2 threatmodels",
+			false,
+			0,
+			"-stdin",
+		},
+		{
+			"valid_stdin_json",
+			"./testdata/tm1.json",
+			"Validated 2 threatmodels",
+			false,
+			0,
+			"-stdinjson",
+		},
+		{
+			"empty_stdin",
+			"",
+			"didn't receive any data",
+			false,
+			1,
+			"-stdin",
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+
+		t.Run(tc.name, func(t *testing.T) {
+			cmd := testValidateCommand(t)
+
+			var code int
+
+			out := capturer.CaptureStdout(func() {
+				var content []byte
+				var err error
+				if tc.in != "" {
+					content, err = ioutil.ReadFile(tc.in)
+					if err != nil {
+						t.Fatal(err)
+					}
+				}
+				tmpFile, err := ioutil.TempFile("", "example")
+				if err != nil {
+					t.Fatal(err)
+				}
+
+				defer os.Remove(tmpFile.Name())
+
+				if _, err := tmpFile.Write(content); err != nil {
+					t.Fatal(err)
+				}
+
+				if _, err := tmpFile.Seek(0, 0); err != nil {
+					t.Fatal(err)
+				}
+
+				oldStdin := os.Stdin
+				defer func() { os.Stdin = oldStdin }()
+
+				os.Stdin = tmpFile
+
+				code = cmd.Run([]string{
+					tc.flags,
 				})
 			})
 

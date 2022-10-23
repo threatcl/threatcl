@@ -16,7 +16,7 @@ type DfdCommand struct {
 	flagOutFile   string
 	flagOverwrite bool
 	flagDot       bool
-	flagSVG		  bool
+	flagSVG       bool
 }
 
 func (c *DfdCommand) Help() string {
@@ -230,7 +230,7 @@ func (c *DfdCommand) Run(args []string) int {
 							err = tm.GenerateDfdSvg(c.flagOutFile)
 						} else {
 							err = tm.GenerateDfdPng(c.flagOutFile)
-						}						
+						}
 						if err != nil {
 							fmt.Printf("Error generating DFD: %s\n", err)
 							return 1

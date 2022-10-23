@@ -35,8 +35,8 @@ func ParseTMTemplate(mdTemplate string) (*template.Template, error) {
 	return template.New("TMTemplate").Funcs(template.FuncMap{
 		"isImage": func(url string) bool {
 			imageExts := map[string]interface{}{
-				".jpg": nil,
-				".png": nil,
+				".jpg":  nil,
+				".png":  nil,
 				"*.svg": nil,
 			}
 

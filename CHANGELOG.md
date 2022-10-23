@@ -1,3 +1,12 @@
+## 0.1.2
+### Oct 23, 2022
+
+CHANGES:
+
+* `hcltm terraform` now supports a number of data storing resources from Azure, GCP and AWS
+* `hcltm terraform` now supports the `-tf-collection` flag for specifying other terraform resources for parsing
+* Other minor changes and bug fixes
+
 ## 0.1.1
 ### Feb 12, 2022
 

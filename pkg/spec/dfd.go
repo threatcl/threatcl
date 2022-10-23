@@ -68,7 +68,6 @@ func (tm *Threatmodel) GenerateDfdSvg(filepath string) error {
 	return nil
 }
 
-
 func newDfdProcess(name string) (error, *dfd.Process) {
 
 	newProcess := dfd.NewProcess(name)
@@ -309,7 +308,7 @@ func dotToPng(raw []byte, file string) error {
 
 func dotToSvg(raw []byte, file string) error {
 	g, err := graphviz.ParseBytes(raw)
-	if(err != nil) {
+	if err != nil {
 		return err
 	}
 	out := graphviz.New()

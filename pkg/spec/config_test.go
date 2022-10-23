@@ -37,7 +37,7 @@ func TestLoadNonExistantSpecConfigFile(t *testing.T) {
 	err = cfg.LoadSpecConfigFile(hcltmrcfile)
 
 	if err != nil && !strings.Contains(err.Error(), "config error: No file found") {
-		t.Fatalf("Error loading a non-existant config file: %s", err)
+		t.Fatalf("Error loading a non-existent config file: %s", err)
 	}
 
 	// defaultCfg := &ThreatmodelSpecConfig{}
@@ -64,7 +64,7 @@ func TestLoadDirConfig(t *testing.T) {
 	err = cfg.LoadSpecConfigFile(hcltmrcfile)
 
 	if err != nil && !strings.Contains(err.Error(), "We can't process directories") {
-		t.Fatalf("Error loading a non-existant config file: %s", err)
+		t.Fatalf("Error loading a non-existent config file: %s", err)
 	}
 
 }

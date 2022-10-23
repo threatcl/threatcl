@@ -102,7 +102,7 @@ threatmodel "threatmodel name" {
 
   third_party_dependency "dependency name" {
     // The description is required, and may use multiline entries
-    description = "What the depencency is used for"
+    description = "What the dependency is used for"
 
     // The following boolean attributes are optional and will default to false if unset
     saas = "true"
@@ -111,11 +111,11 @@ threatmodel "threatmodel name" {
     infrastructure = "false"
 
     // The uptime dependency is required, and must be one of {{.UptimeDeps}}
-    // This specifies the impact to our system if the depencency is unavailable
+    // This specifies the impact to our system if the dependency is unavailable
     uptime_dependency = "{{.DefaultUptimeDep}}"
 
     // Uptime notes are optional
-    uptime_notes = "If this depencency goes down users can't login"
+    uptime_notes = "If this dependency goes down users can't login"
   }
 
   // Each threatmodel may contain a number of threats
