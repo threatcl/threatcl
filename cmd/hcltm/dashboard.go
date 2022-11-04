@@ -30,6 +30,7 @@ type DashboardCommand struct {
 	*GlobalCmdOptions
 	specCfg                 *spec.ThreatmodelSpecConfig
 	flagOutDir              string
+	flagOutExt              string
 	flagOverwrite           bool
 	flagNoDfd               bool
 	flagDashboardTemplate   string
@@ -47,8 +48,8 @@ Usage: hcltm dashboard [options] -outdir=<directory> <files>
   by <files>) 
 
  -outdir=<directory>
-   Directory to output MD files. Will create directory if it doesn't exist.
-   Must be set
+   Directory to output rendered files. Will create directory if it doesn't
+   exist. Must be set
 
 Options:
 
@@ -56,6 +57,9 @@ Options:
    Optional config file
 
  -overwrite
+
+ -out-ext=<ext>
+   Extension to use for files produced by the text templates.
 
  -nodfd
 
@@ -76,12 +80,13 @@ func (c *DashboardCommand) Run(args []string) int {
 
 	flagSet := c.GetFlagset("dashboard")
 	flagSet.StringVar(&c.flagOutDir, "outdir", "", "Directory to output MD files. Will create directory if it doesn't exist. Must be set")
+	flagSet.StringVar(&c.flagOutExt, "out-ext", "md", "Extension to use in filenames produced by the text templates.")
 	flagSet.StringVar(&c.flagDashboardTemplate, "dashboard-template", "", "Template file to override the default dashboard index file")
 	flagSet.StringVar(&c.flagDashboardFilename, "dashboard-filename", "dashboard", "Instead of writing dashboard.md, write to <filename>.md")
 	flagSet.StringVar(&c.flagThreatmodelTemplate, "threatmodel-template", "", "Template file to override the default threatmodel.md file(s)")
 	flagSet.BoolVar(&c.flagOverwrite, "overwrite", false, "Overwrite existing files in the outdir. Defaults to false")
 	flagSet.BoolVar(&c.flagNoDfd, "nodfd", false, "Do not include generated DFD images. Defaults to false")
-	flagSet.BoolVar(&c.flagDashboardHTML, "dashboard-html", false, "Instead of writing .md files, write .html files instead")
+	flagSet.BoolVar(&c.flagDashboardHTML, "dashboard-html", false, "Render as HTML instead of text. Implies --out-ext=html.")
 	flagSet.Parse(args)
 
 	if c.flagConfig != "" {
@@ -110,7 +115,7 @@ func (c *DashboardCommand) Run(args []string) int {
 		return 1
 	}
 
-	outExt := "md"
+	outExt := c.flagOutExt
 	if c.flagDashboardHTML {
 		outExt = "html"
 	}
