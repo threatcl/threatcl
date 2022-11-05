@@ -1,3 +1,10 @@
+## 0.1.3
+### Nov 5, 2022
+
+CHANGES:
+
+* `hcltm dashboard` now supports custom file extensions. Thanks @dvogel
+
 ## 0.1.2
 ### Oct 23, 2022
 

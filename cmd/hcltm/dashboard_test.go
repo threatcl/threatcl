@@ -210,6 +210,44 @@ func TestDashboardOverwrite(t *testing.T) {
 
 }
 
+func TestDashboardCustomExtension(t *testing.T) {
+	d, err := ioutil.TempDir("", "")
+	if err != nil {
+		t.Fatalf("Error creating tmp dir: %s", err)
+	}
+
+	defer os.RemoveAll(d)
+
+	cmd := testDashboardCommand(t)
+
+	var code int
+
+	out := capturer.CaptureStdout(func() {
+		code = cmd.Run([]string{
+			fmt.Sprintf("-outdir=%s/out", d),
+			"-out-ext=rst",
+			"./testdata/tm1.hcl",
+		})
+	})
+
+	if code != 0 {
+		t.Errorf("Code did not equal 0: %d", code)
+	}
+
+	if !strings.Contains(out, fmt.Sprintf("Created the '%s/out' directory", d)) {
+		t.Errorf("%s did not contain %s", out, fmt.Sprintf("Created the '%s/out' directory", d))
+	}
+
+	dbfile, err := ioutil.ReadFile(fmt.Sprintf("%s/out/dashboard.rst", d))
+	if err != nil {
+		t.Fatalf("Error opening dashboard file: %s", err)
+	}
+
+	if !strings.Contains(string(dbfile), "tm1-tm1one.rst") {
+		t.Errorf("Expected %s to contain %s", dbfile, "tm1-tm1one.rst")
+	}
+}
+
 func TestDashboardExistingDir(t *testing.T) {
 	d, err := ioutil.TempDir("", "")
 	if err != nil {
