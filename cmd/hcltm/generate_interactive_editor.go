@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	InteractiveEditorDraft = `spec_version = "0.1.2"
+	InteractiveEditorDraft = `spec_version = "0.1.3"
 
 threatmodel "threatmodel_name" {
   description = "Describe your threat model. Refer to https://github.com/xntrik/hcltm/blob/main/spec.hcl for the full spec"
