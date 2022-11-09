@@ -48,6 +48,142 @@ func NewThreatmodelParser(cfg *ThreatmodelSpecConfig) *ThreatmodelParser {
 	return tmParser
 }
 
+func (tm *Threatmodel) addInfoIfNotExist(newIa InformationAsset) {
+
+	assetFound := false
+	for _, ia := range tm.InformationAssets {
+		if ia.Name == newIa.Name {
+			assetFound = true
+		}
+	}
+
+	if assetFound == false {
+		tm.InformationAssets = append(tm.InformationAssets, &newIa)
+	}
+
+}
+
+func (tm *Threatmodel) addTpdIfNotExist(newTpd ThirdPartyDependency) {
+
+	tpdFound := false
+	for _, tpd := range tm.ThirdPartyDependencies {
+		if tpd.Name == newTpd.Name {
+			tpdFound = true
+		}
+	}
+
+	if tpdFound == false {
+		tm.ThirdPartyDependencies = append(tm.ThirdPartyDependencies, &newTpd)
+	}
+
+}
+
+func (tm *Threatmodel) addUcIfNotExist(newUc UseCase) {
+
+	ucFound := false
+	for _, uc := range tm.UseCases {
+		if newUc.Description == uc.Description {
+			ucFound = true
+		}
+	}
+
+	if ucFound == false {
+		tm.UseCases = append(tm.UseCases, &newUc)
+	}
+}
+
+func (tm *Threatmodel) addExclIfNotExist(newExcl Exclusion) {
+
+	exFound := false
+	for _, ex := range tm.Exclusions {
+		if newExcl.Description == ex.Description {
+			exFound = true
+		}
+	}
+
+	if exFound == false {
+		tm.Exclusions = append(tm.Exclusions, &newExcl)
+	}
+}
+
+func (tm *Threatmodel) addTIfNotExist(newT Threat) {
+
+	tFound := false
+	for _, t := range tm.Threats {
+		if newT.Description == t.Description {
+			tFound = true
+		}
+	}
+
+	if tFound == false {
+		tm.Threats = append(tm.Threats, &newT)
+	}
+}
+
+func (tm *Threatmodel) Include(cfg *ThreatmodelSpecConfig, myfilename string) error {
+	fmt.Printf("the current path is '%s'\n", myfilename)
+
+	if tm.Including == "" {
+		return fmt.Errorf("Empty Including")
+	}
+
+	subParser := NewThreatmodelParser(cfg)
+	includePath := fmt.Sprintf("%s/%s", filepath.Dir(myfilename), tm.Including)
+	includeDiag := subParser.ParseFile(includePath, false)
+
+	if includeDiag != nil {
+		return includeDiag
+	}
+
+	if len(subParser.wrapped.Threatmodels) != 1 {
+		return fmt.Errorf("The included threat model file includes an incorrect number of threat models. Expected 1 but got %d", len(subParser.wrapped.Threatmodels))
+	}
+
+	subTm := &subParser.wrapped.Threatmodels[0]
+
+	if tm.Description == "" {
+		tm.Description = subTm.Description
+	}
+
+	if tm.Link == "" {
+		tm.Link = subTm.Link
+	}
+
+	if tm.DiagramLink == "" {
+		tm.DiagramLink = subTm.DiagramLink
+	}
+
+	if tm.Attributes == nil {
+		tm.Attributes = subTm.Attributes
+	}
+
+	for _, ia := range subTm.InformationAssets {
+		tm.addInfoIfNotExist(*ia)
+	}
+
+	for _, uc := range subTm.UseCases {
+		tm.addUcIfNotExist(*uc)
+	}
+
+	for _, ex := range subTm.Exclusions {
+		tm.addExclIfNotExist(*ex)
+	}
+
+	for _, tpd := range subTm.ThirdPartyDependencies {
+		tm.addTpdIfNotExist(*tpd)
+	}
+
+	if tm.DataFlowDiagram == nil {
+		tm.DataFlowDiagram = subTm.DataFlowDiagram
+	}
+
+	for _, t := range subTm.Threats {
+		tm.addTIfNotExist(*t)
+	}
+
+	return nil
+}
+
 func (p *ThreatmodelParser) populateInitiativeSizeOptions() {
 
 	for _, cfgInitiativeSizeOption := range p.specCfg.InitiativeSizes {
@@ -734,13 +870,33 @@ func (p *ThreatmodelParser) parseHCL(f *hcl.File, filename string, isChild bool)
 // ParseFile parses a single Threatmodel file, and will account for either
 // JSON or HCL (this is a wrapper sort of for the two different methods)
 func (p *ThreatmodelParser) ParseFile(filename string, isChild bool) error {
+	var err error
 	if filepath.Ext(filename) == ".hcl" {
-		return p.ParseHCLFile(filename, isChild)
+		err = p.ParseHCLFile(filename, isChild)
+		if err != nil {
+			return err
+		}
 	} else if filepath.Ext(filename) == ".json" {
-		return p.ParseJSONFile(filename, isChild)
+		err = p.ParseJSONFile(filename, isChild)
+		if err != nil {
+			return err
+		}
 	} else {
 		return fmt.Errorf("File isn't HCL or JSON")
 	}
+
+	for i := 0; i < len(p.wrapped.Threatmodels); i++ {
+		w := &p.wrapped.Threatmodels[i]
+		if w.Including != "" {
+			err = w.Include(p.specCfg, filename)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return err
+
 }
 
 // ParseHCLFile parses a single HCL Threatmodel file
