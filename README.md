@@ -56,6 +56,8 @@ See [Data Flow Diagram](#data-flow-diagram) for more information on how to const
 
 To see an example of how to reference pre-defined control libraries for the [OWASP Proactive Controls](https://owasp.org/www-project-proactive-controls/) and [AWS Security Checklist](https://d1.awsstatic.com/whitepapers/Security/AWS_Security_Checklist.pdf) see [examples/tm3.hcl](examples/tm3.hcl). We also have the [MITRE ATT&CK Controls](https://attack.mitre.org/mitigations/enterprise/) [here](examples/MITRE_ATTACK_controls.hcl).
 
+You can also include an external threatmodel into your own, to reference and use all its information. You can see [examples/including-example/corp-app.hcl](examples/including-example/corp-app.hcl) as an example.
+
 To see a full description of the spec, see [here](spec.hcl) or run:
 
 ```bash
