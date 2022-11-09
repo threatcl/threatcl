@@ -12,6 +12,20 @@ variable "variable_name" {
 // There may be multiple threatmodel blocks in a single file, but their names must be unique
 
 threatmodel "threatmodel name" {
+  // the author attribute is required
+  author = "@xntrik"
+
+  // the including attribute is optional
+  // you can inherit all the information from another threat model
+  //
+  // the included file must include only a single threatmodel block
+  //
+  // any duplicates will be overwritten by this threatmodel
+  //
+  // see https://github.com/xntrik/hcltm/issues/61
+
+  including = "shared/city-threatmodel.hcl"
+
   // The description is optional
   description = "A description of the system being assessed"
 
@@ -26,9 +40,6 @@ threatmodel "threatmodel name" {
   // when running hcltm dashboard
 
   diagram_link = "https://link/to/diagram"
-
-  // the author attribute is required
-  author = "@xntrik"
 
   // created_at and updated_at are optional integer, UNIX time stamps
   created_at = 1594033151
@@ -85,7 +96,7 @@ threatmodel "threatmodel name" {
 
   third_party_dependency "dependency name" {
     // The description is required, and may use multiline entries
-    description = "What the depencency is used for"
+    description = "What the dependency is used for"
 
     // The following boolean attributes are optional and will default to false if unset
     saas = "true"
@@ -94,11 +105,11 @@ threatmodel "threatmodel name" {
     infrastructure = "false"
 
     // The uptime dependency is required, and must be one of "none", "degraded", "hard", "operational"
-    // This specifies the impact to our system if the depencency is unavailable
+    // This specifies the impact to our system if the dependency is unavailable
     uptime_dependency = "none"
 
     // Uptime notes are optional
-    uptime_notes = "If this depencency goes down users can't login"
+    uptime_notes = "If this dependency goes down users can't login"
   }
 
   // Each threatmodel may contain a number of threats
@@ -229,3 +240,4 @@ EOT
     }
   }
 }
+
