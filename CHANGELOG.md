@@ -1,3 +1,10 @@
+## 0.1.4
+### Nov 9, 2022
+
+CHANGES:
+
+* hcltm spec now allows a `threatmodel` to include another `threatmodel`. See https://github.com/xntrik/hcltm/issues/61
+
 ## 0.1.3
 ### Nov 5, 2022
 

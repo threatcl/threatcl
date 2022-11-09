@@ -97,6 +97,7 @@ type Threatmodel struct {
 	Name                   string                  `hcl:"name,label"`
 	Description            string                  `hcl:"description,optional"`
 	Imports                []string                `hcl:"imports,optional"`
+	Including              string                  `hcl:"including,optional"`
 	Link                   string                  `hcl:"link,optional"`
 	DiagramLink            string                  `hcl:"diagram_link,optional"`
 	Author                 string                  `hcl:"author,attr"`

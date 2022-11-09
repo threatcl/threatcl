@@ -29,6 +29,20 @@ variable "variable_name" {
 // There may be multiple threatmodel blocks in a single file, but their names must be unique
 
 threatmodel "threatmodel name" {
+  // the author attribute is required
+  author = "@xntrik"
+
+  // the including attribute is optional
+  // you can inherit all the information from another threat model
+  //
+  // the included file must include only a single threatmodel block
+  //
+  // any duplicates will be overwritten by this threatmodel
+  //
+  // see https://github.com/xntrik/hcltm/issues/61
+
+  including = "shared/city-threatmodel.hcl"
+
   // The description is optional
   description = "A description of the system being assessed"
 
@@ -43,9 +57,6 @@ threatmodel "threatmodel name" {
   // when running hcltm dashboard
 
   diagram_link = "https://link/to/diagram"
-
-  // the author attribute is required
-  author = "@xntrik"
 
   // created_at and updated_at are optional integer, UNIX time stamps
   created_at = 1594033151

@@ -19,6 +19,10 @@ threatmodel "Tower of London" {
     description = "The Queen can fetch the crown"
   }
 
+  exclusion {
+    description = "This is an upstream exclusion"
+  }
+
   third_party_dependency "community watch" {
     description = "The community watch helps guard the premise"
     uptime_dependency = "degraded"
@@ -30,31 +34,18 @@ threatmodel "Tower of London" {
     control = "Lots of guards"
   }
 
-}
-
-threatmodel "Fort Knox" {
-  description = "A .. fort?"
-  author = "@xntrik"
-
-  attributes {
-    new_initiative = "false"
-    internet_facing = "true"
-    initiative_size = "Small"
-  }
-
-  information_asset "Gold" {
-    description = "Lots of gold"
-    information_classification = "Confidential"
-  }
-
-  usecase {
-    description = "Only the correct people can access the gold"
-  }
-
   threat {
-    description = "Someone steals the gold"
-    impacts = ["Confidentiality"]
-    control = "Big walls"
+    description = "Something else that is risky"
+
+    proposed_control {
+      implemented = false
+      description = "Do the thing"
+    }
+
+    proposed_control {
+      implemented = true
+      description = "Do another thing"
+    }
   }
 
 }
