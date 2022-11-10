@@ -5,7 +5,7 @@ threatmodel "Tower of London" {
   author = "@xntrik"
   link = "har"
 
-  including = "shared/tower.hcl"
+  including = "./shared/tower.hcl"
 
   information_asset "something else" {
     description = "this is another asset - a new asset"

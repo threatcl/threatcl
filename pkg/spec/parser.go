@@ -4,11 +4,13 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/davecgh/go-spew/spew"
+	gg "github.com/hashicorp/go-getter"
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
@@ -121,14 +123,40 @@ func (tm *Threatmodel) addTIfNotExist(newT Threat) {
 }
 
 func (tm *Threatmodel) Include(cfg *ThreatmodelSpecConfig, myfilename string) error {
-	fmt.Printf("the current path is '%s'\n", myfilename)
+	// fmt.Printf("the current path is '%s'\n", myfilename)
 
 	if tm.Including == "" {
 		return fmt.Errorf("Empty Including")
 	}
 
 	subParser := NewThreatmodelParser(cfg)
-	includePath := fmt.Sprintf("%s/%s", filepath.Dir(myfilename), tm.Including)
+
+	tmpDir, err := ioutil.TempDir("", "hcltm")
+	if err != nil {
+		return err
+	}
+
+	absPath, err := filepath.Abs(myfilename)
+	if err != nil {
+		return err
+	}
+
+	absPath = filepath.Dir(absPath)
+
+	client := gg.Client{
+		Src:  tm.Including,
+		Dst:  tmpDir,
+		Pwd:  absPath,
+		Mode: gg.ClientModeAny,
+	}
+
+	err = client.Get()
+	if err != nil {
+		return fmt.Errorf("go-getter error: %s", err)
+	}
+
+	// includePath := fmt.Sprintf("%s/%s", filepath.Dir(myfilename), tm.Including)
+	includePath := fmt.Sprintf("%s/%s", tmpDir, filepath.Base(tm.Including))
 	includeDiag := subParser.ParseFile(includePath, false)
 
 	if includeDiag != nil {
