@@ -297,7 +297,7 @@ func TestParseHCLFileWithMissingImport(t *testing.T) {
 
 	err := tmParser.ParseHCLFile("./testdata/tm-withimport-missingfile.hcl", false)
 
-	if err != nil && !strings.Contains(err.Error(), "The configuration file \"testdata/nope/othercontrols.hcl\" could not be read") {
+	if err != nil && !strings.Contains(err.Error(), "othercontrols.hcl: no such file or directory") {
 		t.Errorf("Different error parsing legit TM file: %s", err)
 	}
 
@@ -448,7 +448,7 @@ func TestParseHCLRaw(t *testing.T) {
 		}
 	}
 			`,
-			"The configuration file \"./errorhere.hcl\" could not be read.",
+			"errorhere.hcl: no such file or directory",
 			true,
 		},
 		{
