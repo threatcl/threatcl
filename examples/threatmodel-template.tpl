@@ -50,7 +50,7 @@ Diagram: {{ .DiagramLink }}
 {{ .Description }}
 {{ if .Source }}
 > Source: {{ .Source }}{{- end }}
-{{ end }}
+{{- end }}
 {{- end }}
 {{- with .Threats }}
 
@@ -64,10 +64,12 @@ Diagram: {{ .DiagramLink }}
 
 > Impact Type: {{ $impact := .ImpactType }}{{ range $index, $elem := .ImpactType }}{{ if $index}}, {{end}}{{.}}{{end}}
 {{- end }}
-{{ if .Stride}}
+{{- if .Stride}}
+
 > STRIDE: {{ $stride := .Stride }}{{ range $index, $elem := .Stride }}{{ if $index}}, {{end}}{{.}}{{end}}
 {{- end}}
 {{- if .InformationAssetRefs }}
+
 Impacted Information Assets:
 
 {{ range .InformationAssetRefs }}* {{.}}
@@ -75,14 +77,46 @@ Impacted Information Assets:
 {{- end}}
 {{- if .Control }}
 
-#### Control
+#### Legacy Control Description
 
 {{ .Control }}
+{{- end }}
+{{- if .Controls }}
+
+#### Controls
+
+{{ range .Controls }}##### {{ .Name }}
+
+{{ if .Implemented }}
+> Implemented: ✅ {{- else }}> Implemented: ❌ {{- end }}
+
+{{ .Description }}{{- if .ImplementationNotes }}
+
+_Implementation Notes_
+
+{{ .ImplementationNotes}}{{- end }}
+
+|    |    |
+| -- | -- |
+{{- if .RiskReduction }}
+| Risk Reduction | {{ .RiskReduction }} |{{- end }}
+{{- range .Attributes }}
+| {{ .Name }} | {{ .Value }} |{{- end }}
+
+{{- end }}
+{{- end }}
+{{- if .ProposedControls }}
+
+#### Proposed Controls
+
+{{ range .ProposedControls }}{{- if .Implemented }}- [x] {{- else }}- [ ] {{- end }} {{ .Description }}
+{{ end }}
 {{- end }}
 {{- end }}
 {{- end }}
 
 {{- with .ThirdPartyDependencies }}
+
 ## Third Party Dependencies
 {{ range . }}
 ### {{ .Name }}
@@ -117,4 +151,5 @@ Impacted Information Assets:
 Created: {{ (unixToTime .CreatedAt) }} - Updated: {{ (unixToTime .UpdatedAt) }}
 {{- end }}
 {{- end }}
+
 

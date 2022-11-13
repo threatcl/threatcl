@@ -42,7 +42,11 @@ threatmodel "Tower of London" {
   threat {
     description = "Someone who isn't the Queen steals the crown"
     impacts = ["Confidentiality"]
-    control = "Lots of guards"
+
+    expanded_control "Guards" {
+      description = "Trained guards patrol tower"
+      risk_reduction = 75
+    }
   }
 
   data_flow_diagram {

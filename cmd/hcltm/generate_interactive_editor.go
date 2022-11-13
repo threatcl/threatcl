@@ -10,10 +10,11 @@ import (
 
 	shellquote "github.com/kballard/go-shellquote"
 	"github.com/xntrik/hcltm/pkg/spec"
+	"github.com/xntrik/hcltm/version"
 )
 
-const (
-	InteractiveEditorDraft = `spec_version = "0.1.4"
+var (
+	InteractiveEditorDraft = fmt.Sprintf(`spec_version = "%s"
 
 threatmodel "threatmodel_name" {
   description = "Describe your threat model. Refer to https://github.com/xntrik/hcltm/blob/main/spec.hcl for the full spec"
@@ -30,7 +31,7 @@ threatmodel "threatmodel_name" {
     control = "Something to help"
   }
 }
-`
+`, version.Version)
 )
 
 type GenerateInteractiveEditorCommand struct {

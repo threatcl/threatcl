@@ -10,11 +10,9 @@ Author: @xntrik
 
 threaty threat
 
-> Impact Type: 
-
 > STRIDE: Spoofing, Elevation Of Privilege
 
-#### Control
+#### Legacy Control Description
 
 SOMETHING HUGELY IMPORTANT HERE IN ANOTHER FOLDER
 

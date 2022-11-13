@@ -1,5 +1,5 @@
 // To cater for multiple spec versions we specify this in our HCL files
-spec_version = "0.1.4"
+spec_version = "0.1.5"
 
 // You can include variables outside your threatmodel blocks
 
@@ -122,9 +122,40 @@ threatmodel "threatmodel name" {
     // The available values are 'Confidentiality, Integrity, Availability'
     impacts = ["Confidentiality", "Integrity", "Availability"]
 
+    // A threat may contain multiple expanded_control blocks
+    // These blocks will be replacing the older "control" string or
+    // "proposed_control" blocks
+
+    expanded_control "control name" {
+      description = "The control must have a description"
+
+      // implemented is optional, but defaults to false
+      implemented = true
+
+      // implementation_notes are optional
+      implementation_notes = "This string is optional"
+
+      // risk_reduction, while optional, is recommended
+      // this value takes an integer
+      risk_reduction = 50
+
+      // a control may contain optional attribute blocks
+      attribute "Attribute Name" {
+        value = "This value string must be set though for each attribute"
+      }
+
+      // a good use for these may be to refer to OWASP URLs
+      attribute "OWASP Proactive Control" {
+        value = "<link to control>"
+      }
+    }
+
+    // WARNING: The "control" string value is going to be deprecated in
+    // favor of expanded_control block!
+
     // The control is optional, and allows the author to capture controls
     // or circumstances that may reduce the likelihood of impact of the threat
-    control = "We require 2FA for access"
+    // control = "We require 2FA for access"
 
     // The stride is an optional array of STRIDE elements that apply to this threat
     // The available values are:
@@ -140,23 +171,26 @@ threatmodel "threatmodel name" {
     // the elements must much existing information_assets - as above
     information_asset_refs = ["cred store"]
 
+    // WARNING: The "proposed_control" blocks are going to be deprecated in
+    // favor of expanded_control blocks!
+
     // The proposed_control blocks are optional, and are used to track 
     // proposed controls
-    proposed_control {
+    // proposed_control {
       // The Description is required
-      description = "This is a proposed control"
+      // description = "This is a proposed control"
 
       // The implemented boolean is optional, and defaults to false
-      implemented = true
-    }
-  }
+      // implemented = true
+    // }
+  // }
 
   // You can import an external .hcl file that includes control descriptions
   // Remember to do this at the threatmodel block level
 
   // An example of what may be in controls.hcl:
   //
-  // spec_version = "0.1.4"
+  // spec_version = "0.1.5"
   // component "control" "control_name" {
   //   description = "A control that can be used in multiple places"
   // }
@@ -166,7 +200,10 @@ threatmodel "threatmodel name" {
   threat {
 
     // To reference the above component
-    control = import.control.control_name.description
+    expanded_control "Control Name" {
+      description = import.control.control_name.description
+      risk_reduction = 50
+    }
 
     description = <<EOT
 Descriptions may be a multi-line entry as well.

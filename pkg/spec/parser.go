@@ -6,7 +6,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/hashicorp/go-multierror"
@@ -46,213 +45,6 @@ func NewThreatmodelParser(cfg *ThreatmodelSpecConfig) *ThreatmodelParser {
 	tmParser.populateStrideElements()
 	tmParser.populateUptimeDepClassifications()
 	return tmParser
-}
-
-func (tm *Threatmodel) addInfoIfNotExist(newIa InformationAsset) {
-
-	assetFound := false
-	for _, ia := range tm.InformationAssets {
-		if ia.Name == newIa.Name {
-			assetFound = true
-		}
-	}
-
-	if assetFound == false {
-		tm.InformationAssets = append(tm.InformationAssets, &newIa)
-	}
-
-}
-
-func (tm *Threatmodel) addTpdIfNotExist(newTpd ThirdPartyDependency) {
-
-	tpdFound := false
-	for _, tpd := range tm.ThirdPartyDependencies {
-		if tpd.Name == newTpd.Name {
-			tpdFound = true
-		}
-	}
-
-	if tpdFound == false {
-		tm.ThirdPartyDependencies = append(tm.ThirdPartyDependencies, &newTpd)
-	}
-
-}
-
-func (tm *Threatmodel) addUcIfNotExist(newUc UseCase) {
-
-	ucFound := false
-	for _, uc := range tm.UseCases {
-		if newUc.Description == uc.Description {
-			ucFound = true
-		}
-	}
-
-	if ucFound == false {
-		tm.UseCases = append(tm.UseCases, &newUc)
-	}
-}
-
-func (tm *Threatmodel) addExclIfNotExist(newExcl Exclusion) {
-
-	exFound := false
-	for _, ex := range tm.Exclusions {
-		if newExcl.Description == ex.Description {
-			exFound = true
-		}
-	}
-
-	if exFound == false {
-		tm.Exclusions = append(tm.Exclusions, &newExcl)
-	}
-}
-
-func (tm *Threatmodel) addTIfNotExist(newT Threat) {
-
-	tFound := false
-	for _, t := range tm.Threats {
-		if newT.Description == t.Description {
-			tFound = true
-		}
-	}
-
-	if tFound == false {
-		tm.Threats = append(tm.Threats, &newT)
-	}
-}
-
-func (tm *Threatmodel) Include(cfg *ThreatmodelSpecConfig, myfilename string) error {
-	fmt.Printf("the current path is '%s'\n", myfilename)
-
-	if tm.Including == "" {
-		return fmt.Errorf("Empty Including")
-	}
-
-	subParser := NewThreatmodelParser(cfg)
-	includePath := fmt.Sprintf("%s/%s", filepath.Dir(myfilename), tm.Including)
-	includeDiag := subParser.ParseFile(includePath, false)
-
-	if includeDiag != nil {
-		return includeDiag
-	}
-
-	if len(subParser.wrapped.Threatmodels) != 1 {
-		return fmt.Errorf("The included threat model file includes an incorrect number of threat models. Expected 1 but got %d", len(subParser.wrapped.Threatmodels))
-	}
-
-	subTm := &subParser.wrapped.Threatmodels[0]
-
-	if tm.Description == "" {
-		tm.Description = subTm.Description
-	}
-
-	if tm.Link == "" {
-		tm.Link = subTm.Link
-	}
-
-	if tm.DiagramLink == "" {
-		tm.DiagramLink = subTm.DiagramLink
-	}
-
-	if tm.Attributes == nil {
-		tm.Attributes = subTm.Attributes
-	}
-
-	for _, ia := range subTm.InformationAssets {
-		tm.addInfoIfNotExist(*ia)
-	}
-
-	for _, uc := range subTm.UseCases {
-		tm.addUcIfNotExist(*uc)
-	}
-
-	for _, ex := range subTm.Exclusions {
-		tm.addExclIfNotExist(*ex)
-	}
-
-	for _, tpd := range subTm.ThirdPartyDependencies {
-		tm.addTpdIfNotExist(*tpd)
-	}
-
-	if tm.DataFlowDiagram == nil {
-		tm.DataFlowDiagram = subTm.DataFlowDiagram
-	}
-
-	for _, t := range subTm.Threats {
-		tm.addTIfNotExist(*t)
-	}
-
-	return nil
-}
-
-func (p *ThreatmodelParser) populateInitiativeSizeOptions() {
-
-	for _, cfgInitiativeSizeOption := range p.specCfg.InitiativeSizes {
-		p.initiativeSizeOptions[cfgInitiativeSizeOption] = true
-	}
-	p.defaultInitiativeSize = p.specCfg.DefaultInitiativeSize
-}
-
-func (p *ThreatmodelParser) populateInfoClassifications() {
-
-	for _, cfgInfoClassification := range p.specCfg.InfoClassifications {
-		p.infoClassifications[cfgInfoClassification] = true
-	}
-	p.defaultInfoClassification = p.specCfg.DefaultInfoClassification
-}
-
-func (p *ThreatmodelParser) populateImpactTypes() {
-	for _, cfgImpactType := range p.specCfg.ImpactTypes {
-		p.impactTypes[cfgImpactType] = true
-	}
-}
-
-func (p *ThreatmodelParser) populateStrideElements() {
-	for _, cfgStride := range p.specCfg.STRIDE {
-		p.strideElements[cfgStride] = true
-	}
-}
-
-func (p *ThreatmodelParser) populateUptimeDepClassifications() {
-	for _, cfgUptimeDep := range p.specCfg.UptimeDepClassifications {
-		p.uptimeDepClassification[cfgUptimeDep] = true
-	}
-	p.defaultUptimeDepClassification = UptimeDependencyClassification(p.specCfg.DefaultUptimeDepClassification)
-}
-
-func (p *ThreatmodelParser) normalizeInitiativeSize(in string) string {
-	if p.initiativeSizeOptions[strings.Title(strings.ToLower(in))] {
-		return strings.Title(strings.ToLower(in))
-	}
-
-	return p.defaultInitiativeSize
-}
-
-func (p *ThreatmodelParser) normalizeInfoClassification(in string) string {
-	if p.infoClassifications[strings.Title(strings.ToLower(in))] {
-		return strings.Title(strings.ToLower(in))
-	}
-	return p.defaultInfoClassification
-}
-
-func (p *ThreatmodelParser) normalizeImpactType(in string) string {
-	if p.impactTypes[strings.Title(strings.ToLower(in))] {
-		return strings.Title(strings.ToLower(in))
-	}
-	return ""
-}
-
-func (p *ThreatmodelParser) normalizeStride(in string) string {
-	if p.strideElements[strings.Title(strings.ToLower(in))] {
-		return strings.Title(strings.ToLower(in))
-	}
-	return ""
-}
-
-func (p *ThreatmodelParser) normalizeUptimeDepClassification(in string) UptimeDependencyClassification {
-	if p.uptimeDepClassification[strings.ToLower(in)] {
-		return UptimeDependencyClassification(strings.ToLower(in))
-	}
-	return p.defaultUptimeDepClassification
 }
 
 func (p *ThreatmodelParser) GetWrapped() *ThreatmodelWrapped {
@@ -420,7 +212,7 @@ func (p *ThreatmodelParser) ValidateTm(tm *Threatmodel) error {
 				// While in DataStores, let's check if they have iaRefs, and that they
 				// are valid
 				if data_store.IaLink != "" {
-					err := validateInformationAssetRef(tm, data_store.IaLink)
+					err := tm.validateInformationAssetRef(data_store.IaLink)
 					if err != nil {
 						errMap = multierror.Append(errMap, fmt.Errorf(
 							"TM '%s' DFD Data Store '%s' %s",
@@ -451,7 +243,7 @@ func (p *ThreatmodelParser) ValidateTm(tm *Threatmodel) error {
 						// While in DataStores, let's check if they have iaRefs, and that they
 						// are valid
 						if data_store.IaLink != "" {
-							err := validateInformationAssetRef(tm, data_store.IaLink)
+							err := tm.validateInformationAssetRef(data_store.IaLink)
 							if err != nil {
 								errMap = multierror.Append(errMap, fmt.Errorf(
 									"TM '%s' DFD Data Store '%s' %s",
@@ -571,7 +363,7 @@ func (p *ThreatmodelParser) ValidateTm(tm *Threatmodel) error {
 
 			// Validating that InformationAssetRefs are valid
 			for _, iaRef := range tr.InformationAssetRefs {
-				err := validateInformationAssetRef(tm, iaRef)
+				err := tm.validateInformationAssetRef(iaRef)
 				if err != nil {
 					errMap = multierror.Append(errMap,
 						fmt.Errorf("TM '%s' / Threat '%s': %s", tm.Name, tr.Description, err),
@@ -594,33 +386,6 @@ func (p *ThreatmodelParser) ValidateTm(tm *Threatmodel) error {
 
 	return nil
 
-}
-
-// Validate that the supplied informatin_asset name is found in the tm
-func validateInformationAssetRef(tm *Threatmodel, asset string) error {
-	if tm.InformationAssets != nil {
-		foundIa := false
-		for _, ia := range tm.InformationAssets {
-			if asset == ia.Name {
-				foundIa = true
-				break
-			}
-		}
-
-		if !foundIa {
-			return fmt.Errorf(
-				"trying to refer to non-existent information_asset '%s'",
-				asset,
-			)
-		}
-	} else {
-		return fmt.Errorf(
-			"trying to refer to non-existent information_asset '%s'",
-			asset,
-		)
-	}
-
-	return nil
 }
 
 func (p *ThreatmodelParser) validateTms() error {
@@ -784,12 +549,9 @@ func (p *ThreatmodelParser) buildCtx(ctx *hcl.EvalContext, imports []string, par
 	controls = make(map[string]cty.Value)
 
 	for _, i := range imports {
-		importPath := fmt.Sprintf("%s/%s", filepath.Dir(parentfilename), i)
-		importTmp := NewThreatmodelParser(p.specCfg)
-		importDiag := importTmp.ParseHCLFile(importPath, true)
-
-		if importDiag != nil {
-			return importDiag
+		importTmp, err := fetchRemoteTm(p.specCfg, i, parentfilename)
+		if err != nil {
+			return err
 		}
 
 		for _, c := range importTmp.GetWrapped().Components {

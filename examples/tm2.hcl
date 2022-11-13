@@ -1,4 +1,4 @@
- spec_version = "0.1.4"
+ spec_version = "0.1.5"
 
  threatmodel "Modelly model" {
    imports = ["control-library/othercontrols.hcl"]
@@ -6,8 +6,13 @@
 
    threat {
      description = "threaty threat"
-     control = import.control.control_name.description
      stride = ["Spoofing", "Elevation of privilege"]
+
+     expanded_control "Important Control" {
+       description = import.control.control_name.description
+       implemented = false
+       risk_reduction = 50
+     }
    }
 
    data_flow_diagram {

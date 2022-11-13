@@ -1,11 +1,11 @@
-spec_version = "0.1.4"
+spec_version = "0.1.5"
 
 threatmodel "Tower of London" {
 
   author = "@xntrik"
   link = "har"
 
-  including = "shared/tower.hcl"
+  including = "./shared/tower.hcl"
 
   information_asset "something else" {
     description = "this is another asset - a new asset"
@@ -18,7 +18,6 @@ threatmodel "Tower of London" {
   threat {
     description = "Someone who isn't the Queen defaces the crown"
     impacts = ["Confidentiality"]
-    control = "Lots of guards"
   }
 
 }
@@ -31,7 +30,6 @@ threatmodel "Tower of France" {
   threat {
     description = "Someone who isn't the Queen defaces the crown"
     impacts = ["Confidentiality"]
-    control = "Lots of guards"
   }
 
 }

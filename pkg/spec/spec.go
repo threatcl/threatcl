@@ -20,11 +20,26 @@ type Threat struct {
 	Stride               []string           `hcl:"stride,optional"`
 	InformationAssetRefs []string           `hcl:"information_asset_refs,optional"`
 	ProposedControls     []*ProposedControl `hcl:"proposed_control,block"`
+	Controls             []*Control         `hcl:"expanded_control,block"`
 }
 
 type ProposedControl struct {
 	Implemented bool   `hcl:"implemented,optional"`
 	Description string `hcl:"description"`
+}
+
+type Control struct {
+	Name                string              `hcl:"name,label"`
+	Implemented         bool                `hcl:"implemented,optional"`
+	Description         string              `hcl:"description"`
+	ImplementationNotes string              `hcl:"implementation_notes,optional"`
+	RiskReduction       int                 `hcl:"risk_reduction,optional"`
+	Attributes          []*ControlAttribute `hcl:"attribute,block"`
+}
+
+type ControlAttribute struct {
+	Name  string `hcl:"name,label"`
+	Value string `hcl:"value"`
 }
 
 type UseCase struct {
