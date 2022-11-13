@@ -1,4 +1,4 @@
-spec_version = "0.1.4"
+spec_version = "0.1.5"
 
 threatmodel "Tower of London" {
   description = "A historic castle"
@@ -31,20 +31,31 @@ threatmodel "Tower of London" {
   threat {
     description = "Someone who isn't the Queen steals the crown"
     impacts = ["Confidentiality"]
-    control = "Lots of guards"
   }
 
   threat {
     description = "Something else that is risky"
 
-    proposed_control {
-      implemented = false
-      description = "Do the thing"
+    # proposed_control {
+    #   implemented = false
+    #   description = "Do the thing"
+    # }
+
+    expanded_control "Do the thing" {
+      description = "And do it well"
+      implemented = true
+      risk_reduction = 10
     }
 
-    proposed_control {
+    # proposed_control {
+    #   implemented = true
+    #   description = "Do another thing"
+    # }
+
+    expanded_control "Do another thing" {
+      description = "more words about the control"
       implemented = true
-      description = "Do another thing"
+      risk_reduction = 10
     }
   }
 

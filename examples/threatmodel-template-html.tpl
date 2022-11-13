@@ -83,9 +83,29 @@ Source: {{ .Source }}{{- end }}
 {{- end}}
 {{- if .Control }}
 
-<h4>Control</h4>
+<h4>Legacy Control Description</h4>
 
 {{ .Control }}<br />
+{{- end }}
+{{- if .Controls }}
+
+<h4>Controls</h4>
+
+{{ range .Controls }}<h5>{{ .Name }}</h5>
+
+{{ if .Implemented }}
+<p><em>Implemented: ✅ </em></p>{{- else }}<p><em>Implemented: ❌ </em></p>{{- end }}
+
+<p>{{ .Description }}</p>
+
+<table>
+{{- if .RiskReduction }}
+<tr><td>Risk Reduction</td><td>{{ .RiskReduction }}</td></tr>{{- end }}
+{{- range .Attributes }}
+<tr><td>{{ .Name }}</td><td>{{ .Value }}</td></tr>{{- end }}
+</table><br />
+
+{{- end }}
 {{- end }}
 {{- end }}
 {{- end }}

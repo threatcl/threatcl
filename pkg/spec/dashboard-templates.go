@@ -53,7 +53,7 @@ Diagram: {{ .DiagramLink }}
 {{ .Description }}
 {{ if .Source }}
 > Source: {{ .Source }}{{- end }}
-{{ end }}
+{{- end }}
 {{- end }}
 {{- with .Threats }}
 
@@ -80,9 +80,33 @@ Impacted Information Assets:
 {{- end}}
 {{- if .Control }}
 
-#### Control
+#### Legacy Control Description
 
 {{ .Control }}
+{{- end }}
+{{- if .Controls }}
+
+#### Controls
+
+{{ range .Controls }}##### {{ .Name }}
+
+{{ if .Implemented }}
+> Implemented: ✅ {{- else }}> Implemented: ❌ {{- end }}
+
+{{ .Description }}{{- if .ImplementationNotes }}
+
+_Implementation Notes_
+
+{{ .ImplementationNotes}}{{- end }}
+
+|    |    |
+| -- | -- |
+{{- if .RiskReduction }}
+| Risk Reduction | {{ .RiskReduction }} |{{- end }}
+{{- range .Attributes }}
+| {{ .Name }} | {{ .Value }} |{{- end }}
+
+{{- end }}
 {{- end }}
 {{- if .ProposedControls }}
 
@@ -95,6 +119,7 @@ Impacted Information Assets:
 {{- end }}
 
 {{- with .ThirdPartyDependencies }}
+
 ## Third Party Dependencies
 {{ range . }}
 ### {{ .Name }}

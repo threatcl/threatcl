@@ -1,4 +1,4 @@
-spec_version = "0.1.4"
+spec_version = "0.1.5"
 
 threatmodel "Tower of London" {
   description = "A historic castle"
@@ -27,7 +27,13 @@ threatmodel "Tower of London" {
   threat {
     description = "Someone who isn't the Queen steals the crown"
     impacts = ["Confidentiality"]
-    control = "Lots of guards"
+
+    expanded_control "Lots of Guards" {
+      implemented = true
+      description = "Lots of guards patrol the area"
+      implementation_notes = "They are trained to be guards as well"
+      risk_reduction = 80
+    }
   }
 
 }
@@ -54,7 +60,11 @@ threatmodel "Fort Knox" {
   threat {
     description = "Someone steals the gold"
     impacts = ["Confidentiality"]
-    control = "Big walls"
-  }
 
+    expanded_control "Big Wall" {
+      implemented = true
+      description = "A large wall surrounds the fort"
+      risk_reduction = 80
+    }
+  }
 }
