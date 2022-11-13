@@ -1,3 +1,13 @@
+## 0.1.5
+### Nov 13, 2022
+
+CHANGES:
+
+* Imports and Includes now use go-getter for accessing individual files. See https://github.com/xntrik/hcltm/issues/67
+* We now have a preliminary constraints system that can be used to emit warnings (during `hcltm validate` if there are deprecated features being used
+* Added `expanded_control` blocks to `threatmodel` blocks
+* Added deprecation warnings for `control` strings and `proposed_control` blocks. These will be phased out eventually in favor of `expanded_control` blocks
+
 ## 0.1.4
 ### Nov 9, 2022
 
