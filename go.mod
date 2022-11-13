@@ -17,6 +17,7 @@ require (
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-getter v1.6.2 // indirect
 	github.com/hashicorp/go-multierror v1.1.1
+	github.com/hashicorp/go-version v1.6.0 // indirect
 	github.com/hashicorp/hcl/v2 v2.10.1
 	github.com/hashicorp/terraform-json v0.13.0
 	github.com/imdario/mergo v0.3.12 // indirect

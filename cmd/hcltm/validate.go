@@ -99,6 +99,13 @@ func (c *ValidateCommand) Run(args []string) int {
 			return 1
 		}
 
+		// Constraint check
+		_, err = spec.VersionConstraints(tmParser.GetWrapped(), true)
+		if err != nil {
+			fmt.Printf("Error checking constraints: %s\n", err)
+			return 1
+		}
+
 		tmCount := len(tmParser.GetWrapped().Threatmodels)
 
 		fmt.Printf("Validated %d threatmodels\n", tmCount)
@@ -122,6 +129,17 @@ func (c *ValidateCommand) Run(args []string) int {
 			if err != nil {
 				fmt.Printf("Error parsing %s: %s\n", file, err)
 				return 1
+			}
+
+			// Constraint check
+			constraintMsg, err := spec.VersionConstraints(tmParser.GetWrapped(), false)
+			if err != nil {
+				fmt.Printf("Error checking constraints: %s\n", err)
+				return 1
+			}
+
+			if constraintMsg != "" {
+				fmt.Printf("%s Found in %s\n", constraintMsg, file)
 			}
 
 			fileCount = fileCount + 1
