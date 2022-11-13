@@ -19,10 +19,10 @@ func (c *controlStringToBlock) asOf() string {
 	return "0.1.5"
 }
 func (c *controlStringToBlock) verConstraint() string {
-	return "<= 0.1.4"
+	return ">= 0.0.1"
 }
 func (c *controlStringToBlock) msg() string {
-	return "Deprecation warning: This threat model has defined `control` strings inside of `threat` blocks. It's recommended that you update these to `expanded_control` blocks, as they may be cause errors in future versions of hcltm."
+	return "Deprecation warning: This threat model has defined `control` strings inside of `threat` blocks. As of v0.1.5 It's recommended that you update these to `expanded_control` blocks, as they may be cause errors in future versions of hcltm."
 }
 func (c *controlStringToBlock) tmCheck(tm *Threatmodel) bool {
 
@@ -40,10 +40,10 @@ func (c *proposedControlToBlock) asOf() string {
 	return "0.1.5"
 }
 func (c *proposedControlToBlock) verConstraint() string {
-	return "<= 0.1.4"
+	return ">= 0.0.1"
 }
 func (c *proposedControlToBlock) msg() string {
-	return "Deprecation warning: This threat model has defined `proposed_control` block(s) inside of `threat` blocks. It's recommended that you update these to `expanded_control` blocks, as they may be cause errors in future versions of hcltm."
+	return "Deprecation warning: This threat model has defined `proposed_control` block(s) inside of `threat` blocks. As of v0.1.5 It's recommended that you update these to `expanded_control` blocks, as they may be cause errors in future versions of hcltm."
 }
 func (c *proposedControlToBlock) tmCheck(tm *Threatmodel) bool {
 
