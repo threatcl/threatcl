@@ -167,7 +167,7 @@ func fetchRemoteTm(cfg *ThreatmodelSpecConfig, source, currentFilename string) (
 	}
 
 	includePath := fmt.Sprintf("%s/%s", tmpDir, filepath.Base(source))
-	importDiag := returnParser.ParseHCLFile(includePath, true)
+	importDiag := returnParser.ParseHCLFile(includePath, false)
 
 	if importDiag != nil {
 		return nil, importDiag

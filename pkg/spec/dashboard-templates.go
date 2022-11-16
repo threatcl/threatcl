@@ -88,7 +88,8 @@ Impacted Information Assets:
 
 #### Controls
 
-{{ range .Controls }}##### {{ .Name }}
+{{ range .Controls }}
+##### {{ .Name }}
 
 {{ if .Implemented }}
 > Implemented: ✅ {{- else }}> Implemented: ❌ {{- end }}
