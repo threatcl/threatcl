@@ -13,10 +13,12 @@ func dfdTm() *Threatmodel {
 	tm := &Threatmodel{
 		Name:   "test",
 		Author: "x",
-		DataFlowDiagram: &DataFlowDiagram{
-			Processes: []*DfdProcess{
-				{
-					Name: "proc1",
+		DataFlowDiagrams: []*DataFlowDiagram{
+			{
+				Processes: []*DfdProcess{
+					{
+						Name: "proc1",
+					},
 				},
 			},
 		},
@@ -30,49 +32,51 @@ func fullDfdTm() *Threatmodel {
 	tm := &Threatmodel{
 		Name:   "test",
 		Author: "x",
-		DataFlowDiagram: &DataFlowDiagram{
-			Processes: []*DfdProcess{
-				{
-					Name: "proc1",
+		DataFlowDiagrams: []*DataFlowDiagram{
+			{
+				Processes: []*DfdProcess{
+					{
+						Name: "proc1",
+					},
+					{
+						Name:      "proc2",
+						TrustZone: "zone1",
+					},
 				},
-				{
-					Name:      "proc2",
-					TrustZone: "zone1",
+				DataStores: []*DfdData{
+					{
+						Name: "data1",
+					},
+					{
+						Name:      "data2",
+						TrustZone: "zone2",
+					},
 				},
-			},
-			DataStores: []*DfdData{
-				{
-					Name: "data1",
+				ExternalElements: []*DfdExternal{
+					{
+						Name: "external1",
+					},
+					{
+						Name:      "external2",
+						TrustZone: "zone3",
+					},
 				},
-				{
-					Name:      "data2",
-					TrustZone: "zone2",
-				},
-			},
-			ExternalElements: []*DfdExternal{
-				{
-					Name: "external1",
-				},
-				{
-					Name:      "external2",
-					TrustZone: "zone3",
-				},
-			},
-			Flows: []*DfdFlow{
-				{
-					Name: "flow",
-					From: "proc1",
-					To:   "data1",
-				},
-				{
-					Name: "flow",
-					From: "external1",
-					To:   "proc1",
-				},
-				{
-					Name: "flow",
-					From: "data1",
-					To:   "external1",
+				Flows: []*DfdFlow{
+					{
+						Name: "flow",
+						From: "proc1",
+						To:   "data1",
+					},
+					{
+						Name: "flow",
+						From: "external1",
+						To:   "proc1",
+					},
+					{
+						Name: "flow",
+						From: "data1",
+						To:   "external1",
+					},
 				},
 			},
 		},
@@ -87,69 +91,71 @@ func fullDfdTm2() *Threatmodel {
 	tm := &Threatmodel{
 		Name:   "test",
 		Author: "x",
-		DataFlowDiagram: &DataFlowDiagram{
-			TrustZones: []*DfdTrustZone{
-				{
-					Name: "zone1",
-					Processes: []*DfdProcess{
-						{
-							Name:      "proc2",
-							TrustZone: "zone1",
+		DataFlowDiagrams: []*DataFlowDiagram{
+			{
+				TrustZones: []*DfdTrustZone{
+					{
+						Name: "zone1",
+						Processes: []*DfdProcess{
+							{
+								Name:      "proc2",
+								TrustZone: "zone1",
+							},
+							{
+								Name: "proc9",
+							},
 						},
-						{
-							Name: "proc9",
+						DataStores: []*DfdData{
+							{
+								Name: "new_data",
+							},
+						},
+						ExternalElements: []*DfdExternal{
+							{
+								Name: "ee5",
+							},
 						},
 					},
-					DataStores: []*DfdData{
-						{
-							Name: "new_data",
-						},
-					},
-					ExternalElements: []*DfdExternal{
-						{
-							Name: "ee5",
-						},
+				},
+				Processes: []*DfdProcess{
+					{
+						Name: "proc1",
 					},
 				},
-			},
-			Processes: []*DfdProcess{
-				{
-					Name: "proc1",
+				DataStores: []*DfdData{
+					{
+						Name: "data1",
+					},
+					{
+						Name:      "data2",
+						TrustZone: "zone2",
+					},
 				},
-			},
-			DataStores: []*DfdData{
-				{
-					Name: "data1",
+				ExternalElements: []*DfdExternal{
+					{
+						Name: "external1",
+					},
+					{
+						Name:      "external2",
+						TrustZone: "zone3",
+					},
 				},
-				{
-					Name:      "data2",
-					TrustZone: "zone2",
-				},
-			},
-			ExternalElements: []*DfdExternal{
-				{
-					Name: "external1",
-				},
-				{
-					Name:      "external2",
-					TrustZone: "zone3",
-				},
-			},
-			Flows: []*DfdFlow{
-				{
-					Name: "flow",
-					From: "proc1",
-					To:   "data1",
-				},
-				{
-					Name: "flow",
-					From: "external1",
-					To:   "proc1",
-				},
-				{
-					Name: "flow",
-					From: "data1",
-					To:   "external1",
+				Flows: []*DfdFlow{
+					{
+						Name: "flow",
+						From: "proc1",
+						To:   "data1",
+					},
+					{
+						Name: "flow",
+						From: "external1",
+						To:   "proc1",
+					},
+					{
+						Name: "flow",
+						From: "data1",
+						To:   "external1",
+					},
 				},
 			},
 		},

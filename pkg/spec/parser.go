@@ -110,12 +110,13 @@ func (p *ThreatmodelParser) ValidateTm(tm *Threatmodel) error {
 	}
 
 	// Validating any DFD data within a threat model
-	if tm.DataFlowDiagram != nil {
+	// if tm.DataFlowDiagram != nil {
+	for _, adfd := range tm.DataFlowDiagrams {
 
 		// Checking for unique TrustZones
 		zones := make(map[string]interface{})
-		if tm.DataFlowDiagram.TrustZones != nil {
-			for _, zone := range tm.DataFlowDiagram.TrustZones {
+		if adfd.TrustZones != nil {
+			for _, zone := range adfd.TrustZones {
 				if _, ok := zones[zone.Name]; ok {
 					errMap = multierror.Append(errMap, fmt.Errorf(
 						"TM '%s': duplicate trust_zone block found '%s'",
@@ -130,8 +131,8 @@ func (p *ThreatmodelParser) ValidateTm(tm *Threatmodel) error {
 
 		// Checking for unique processes/data_store/external_element in data_flow_diagram
 		elements := make(map[string]interface{})
-		if tm.DataFlowDiagram.Processes != nil {
-			for _, process := range tm.DataFlowDiagram.Processes {
+		if adfd.Processes != nil {
+			for _, process := range adfd.Processes {
 				if _, ok := elements[process.Name]; ok {
 					errMap = multierror.Append(errMap, fmt.Errorf(
 						"TM '%s': duplicate process found in dfd '%s'",
@@ -145,8 +146,8 @@ func (p *ThreatmodelParser) ValidateTm(tm *Threatmodel) error {
 		}
 
 		// Now check for Processes in trust_zones
-		if tm.DataFlowDiagram.TrustZones != nil {
-			for _, zone := range tm.DataFlowDiagram.TrustZones {
+		if adfd.TrustZones != nil {
+			for _, zone := range adfd.TrustZones {
 				if zone.Processes != nil {
 					for _, process := range zone.Processes {
 						if _, ok := elements[process.Name]; ok {
@@ -163,8 +164,8 @@ func (p *ThreatmodelParser) ValidateTm(tm *Threatmodel) error {
 			}
 		}
 
-		if tm.DataFlowDiagram.ExternalElements != nil {
-			for _, external_element := range tm.DataFlowDiagram.ExternalElements {
+		if adfd.ExternalElements != nil {
+			for _, external_element := range adfd.ExternalElements {
 				if _, ok := elements[external_element.Name]; ok {
 					errMap = multierror.Append(errMap, fmt.Errorf(
 						"TM '%s': duplicate external_element found in dfd '%s'",
@@ -178,8 +179,8 @@ func (p *ThreatmodelParser) ValidateTm(tm *Threatmodel) error {
 		}
 
 		// Now check for external_elements in trust_zones
-		if tm.DataFlowDiagram.TrustZones != nil {
-			for _, zone := range tm.DataFlowDiagram.TrustZones {
+		if adfd.TrustZones != nil {
+			for _, zone := range adfd.TrustZones {
 				if zone.ExternalElements != nil {
 					for _, external_element := range zone.ExternalElements {
 						if _, ok := elements[external_element.Name]; ok {
@@ -197,8 +198,8 @@ func (p *ThreatmodelParser) ValidateTm(tm *Threatmodel) error {
 		}
 
 		// Checking for unique data_stores in data_flow_diagram
-		if tm.DataFlowDiagram.DataStores != nil {
-			for _, data_store := range tm.DataFlowDiagram.DataStores {
+		if adfd.DataStores != nil {
+			for _, data_store := range adfd.DataStores {
 				if _, ok := elements[data_store.Name]; ok {
 					errMap = multierror.Append(errMap, fmt.Errorf(
 						"TM '%s': duplicate data_store found in dfd '%s'",
@@ -226,8 +227,8 @@ func (p *ThreatmodelParser) ValidateTm(tm *Threatmodel) error {
 		}
 
 		// Now check for data_stores in trust_zones
-		if tm.DataFlowDiagram.TrustZones != nil {
-			for _, zone := range tm.DataFlowDiagram.TrustZones {
+		if adfd.TrustZones != nil {
+			for _, zone := range adfd.TrustZones {
 				if zone.DataStores != nil {
 					for _, data_store := range zone.DataStores {
 						if _, ok := elements[data_store.Name]; ok {
@@ -259,8 +260,8 @@ func (p *ThreatmodelParser) ValidateTm(tm *Threatmodel) error {
 		}
 
 		// Now check for mis-matched trust-zones
-		if tm.DataFlowDiagram.TrustZones != nil {
-			for _, zone := range tm.DataFlowDiagram.TrustZones {
+		if adfd.TrustZones != nil {
+			for _, zone := range adfd.TrustZones {
 				if zone.Processes != nil {
 					for _, process := range zone.Processes {
 						if process.TrustZone != "" && process.TrustZone != zone.Name {
@@ -301,8 +302,8 @@ func (p *ThreatmodelParser) ValidateTm(tm *Threatmodel) error {
 
 		// Validate data flows
 		flows := make(map[string]interface{})
-		if tm.DataFlowDiagram.Flows != nil {
-			for _, rawflow := range tm.DataFlowDiagram.Flows {
+		if adfd.Flows != nil {
+			for _, rawflow := range adfd.Flows {
 				flow := fmt.Sprintf("%s:%s", rawflow.From, rawflow.To)
 
 				// check for unique flows
@@ -344,7 +345,7 @@ func (p *ThreatmodelParser) ValidateTm(tm *Threatmodel) error {
 
 			}
 		}
-	}
+	} // end of ranging over dataflowdiagrams
 
 	// Normalize threat impacts and stride
 	if tm.Threats != nil {

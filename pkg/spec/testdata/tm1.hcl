@@ -82,7 +82,7 @@ EOT
      paying_customer = "true"
    }
 
-   data_flow_diagram {
+   data_flow_diagram "dfd" {
 
     process "update data" {}
 

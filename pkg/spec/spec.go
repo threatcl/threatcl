@@ -99,7 +99,17 @@ type DfdTrustZone struct {
 	DataStores       []*DfdData     `hcl:"data_store,block"`
 }
 
+type LegacyDataFlowDiagram struct {
+	Processes        []*DfdProcess   `hcl:"process,block"`
+	ExternalElements []*DfdExternal  `hcl:"external_element,block"`
+	DataStores       []*DfdData      `hcl:"data_store,block"`
+	Flows            []*DfdFlow      `hcl:"flow,block"`
+	TrustZones       []*DfdTrustZone `hcl:"trust_zone,block"`
+	ImportFile       string          `hcl:"import,optional"`
+}
+
 type DataFlowDiagram struct {
+	Name             string          `hcl:"name,label"`
 	Processes        []*DfdProcess   `hcl:"process,block"`
 	ExternalElements []*DfdExternal  `hcl:"external_element,block"`
 	DataStores       []*DfdData      `hcl:"data_store,block"`
@@ -124,7 +134,8 @@ type Threatmodel struct {
 	UseCases               []*UseCase              `hcl:"usecase,block"`
 	Exclusions             []*Exclusion            `hcl:"exclusion,block"`
 	ThirdPartyDependencies []*ThirdPartyDependency `hcl:"third_party_dependency,block"`
-	DataFlowDiagram        *DataFlowDiagram        `hcl:"data_flow_diagram,block"`
+	DataFlowDiagrams       []*DataFlowDiagram      `hcl:"data_flow_diagram_v2,block"`
+	LegacyDfd              *LegacyDataFlowDiagram  `hcl:"data_flow_diagram,block"`
 }
 
 type Component struct {

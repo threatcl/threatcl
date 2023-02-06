@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/xntrik/hcltm/pkg/spec"
 )
 
@@ -130,20 +131,23 @@ func (c *DfdCommand) Run(args []string) int {
 
 			for _, tm := range tmParser.GetWrapped().Threatmodels {
 
-				if tm.DataFlowDiagram != nil {
+				if len(tm.DataFlowDiagrams) > 0 {
 					fileExt := ".png"
 					if c.flagDot {
 						fileExt = ".dot"
 					} else if c.flagSVG {
 						fileExt = ".svg"
 					}
-					outfile := outfilePath(c.flagOutDir, tm.Name, file, fileExt)
+					for _, adfd := range tm.DataFlowDiagrams {
+						outfile := outfilePath(c.flagOutDir, fmt.Sprintf("%s_%s", tm.Name, adfd.Name), file, fileExt)
 
-					outfiles = append(outfiles, outfile)
+						outfiles = append(outfiles, outfile)
+					}
 				}
-
 			}
 		}
+
+		spew.Dump(outfiles)
 
 		if c.flagOutFile != "" {
 			outfiles = []string{c.flagOutFile}
@@ -182,9 +186,10 @@ func (c *DfdCommand) Run(args []string) int {
 			}
 
 			for _, tm := range tmParser.GetWrapped().Threatmodels {
-				if tm.DataFlowDiagram != nil {
+				// if tm.DataFlowDiagram != nil {
+				for _, adfd := range tm.DataFlowDiagrams {
 					if c.flagDot {
-						dot, err := tm.GenerateDot()
+						dot, err := adfd.GenerateDot(tm.Name)
 						if err != nil {
 							fmt.Printf("Error generating DOT: %s\n", c.flagOutFile)
 							return 1
@@ -207,9 +212,9 @@ func (c *DfdCommand) Run(args []string) int {
 							return 0
 
 						} else if c.flagOutDir != "" {
-							f, err := os.Create(outfilePath(c.flagOutDir, tm.Name, file, ".dot"))
+							f, err := os.Create(outfilePath(c.flagOutDir, fmt.Sprintf("%s_%s", tm.Name, adfd.Name), file, ".dot"))
 							if err != nil {
-								fmt.Printf("Error creating file %s: %s\n", outfilePath(c.flagOutDir, tm.Name, file, ".dot"), err)
+								fmt.Printf("Error creating file %s: %s\n", outfilePath(c.flagOutDir, fmt.Sprintf("%s_%s", tm.Name, adfd.Name), file, ".dot"), err)
 								return 1
 							}
 							defer f.Close()
@@ -220,7 +225,7 @@ func (c *DfdCommand) Run(args []string) int {
 								return 1
 							}
 
-							fmt.Printf("Successfully created '%s'\n", outfilePath(c.flagOutDir, tm.Name, file, ".dot"))
+							fmt.Printf("Successfully created '%s'\n", outfilePath(c.flagOutDir, fmt.Sprintf("%s_%s", tm.Name, adfd.Name), file, ".dot"))
 						} else {
 							fmt.Printf("%s\n", dot)
 							break

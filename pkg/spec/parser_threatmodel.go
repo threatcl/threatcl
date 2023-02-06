@@ -56,8 +56,12 @@ func (tm *Threatmodel) Include(cfg *ThreatmodelSpecConfig, myfilename string) er
 		tm.addTpdIfNotExist(*tpd)
 	}
 
-	if tm.DataFlowDiagram == nil {
-		tm.DataFlowDiagram = subTm.DataFlowDiagram
+	// if tm.DataFlowDiagram == nil {
+	// 	tm.DataFlowDiagram = subTm.DataFlowDiagram
+	// }
+
+	for _, dfd := range subTm.DataFlowDiagrams {
+		tm.addDfdIfNotExist(*dfd)
 	}
 
 	for _, t := range subTm.Threats {
@@ -136,6 +140,20 @@ func (tm *Threatmodel) addTIfNotExist(newT Threat) {
 
 	if tFound == false {
 		tm.Threats = append(tm.Threats, &newT)
+	}
+}
+
+func (tm *Threatmodel) addDfdIfNotExist(newDfd DataFlowDiagram) {
+
+	dfdFound := false
+	for _, dfd := range tm.DataFlowDiagrams {
+		if newDfd.Name == dfd.Name {
+			dfdFound = true
+		}
+	}
+
+	if dfdFound == false {
+		tm.DataFlowDiagrams = append(tm.DataFlowDiagrams, &newDfd)
 	}
 }
 

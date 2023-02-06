@@ -428,7 +428,7 @@ func TestParseHCLRaw(t *testing.T) {
 			`threatmodel "dfdtest" {
 			  author = "j"
 		    information_asset "valid_asset" {information_classification = "Public"}
-				data_flow_diagram {
+				data_flow_diagram "dfd" {
 					data_store "1" {
 					  information_asset = "nope"
 					}
@@ -441,7 +441,7 @@ func TestParseHCLRaw(t *testing.T) {
 			"dfd_dupe_process",
 			`threatmodel "dfdtest" {
 			  author = "j"
-				data_flow_diagram {
+				data_flow_diagram "dfd" {
 				  process "1" {}
 					process "1" {}
 				}
@@ -453,7 +453,7 @@ func TestParseHCLRaw(t *testing.T) {
 			"dfd_dupe_flow",
 			`threatmodel "dfdtest" {
 			  author = "j"
-				data_flow_diagram {
+				data_flow_diagram "dfd" {
 				  process "1" {}
 					process "2" {}
 					flow "http" {
@@ -473,7 +473,7 @@ func TestParseHCLRaw(t *testing.T) {
 			"dfd_invalid_flow_from",
 			`threatmodel "dfdtest" {
 			  author = "j"
-				data_flow_diagram {
+				data_flow_diagram "dfd" {
 				  process "1" {}
 					process "2" {}
 					flow "http" {
@@ -493,7 +493,7 @@ func TestParseHCLRaw(t *testing.T) {
 			"dfd_invalid_flow_to",
 			`threatmodel "dfdtest" {
 			  author = "j"
-				data_flow_diagram {
+				data_flow_diagram "dfd" {
 				  process "1" {}
 					process "2" {}
 					flow "http" {
@@ -513,7 +513,7 @@ func TestParseHCLRaw(t *testing.T) {
 			"dfd_invalid_self_flow",
 			`threatmodel "dfdtest" {
 			  author = "j"
-				data_flow_diagram {
+				data_flow_diagram "dfd" {
 				  process "1" {}
 					process "2" {}
 					flow "http" {
@@ -529,7 +529,7 @@ func TestParseHCLRaw(t *testing.T) {
 			"dfd_dupe_external",
 			`threatmodel "dfdtest" {
 			  author = "j"
-				data_flow_diagram {
+				data_flow_diagram "dfd" {
 				  process "1" {}
 					external_element "1" {}
 				}
@@ -541,7 +541,7 @@ func TestParseHCLRaw(t *testing.T) {
 			"dfd_dupe_data",
 			`threatmodel "dfdtest" {
 			  author = "j"
-				data_flow_diagram {
+				data_flow_diagram "dfd" {
 					external_element "a" {}
 					data_store "a" {}
 				}
@@ -553,7 +553,7 @@ func TestParseHCLRaw(t *testing.T) {
 			"dfd_dupe_zone",
 			`threatmodel "dfdtest" {
 			  author = "j"
-				data_flow_diagram {
+				data_flow_diagram "dfd" {
 				  trust_zone "tza" {}
 					trust_zone "tza" {}
 					external_element "a" {}
@@ -567,7 +567,7 @@ func TestParseHCLRaw(t *testing.T) {
 			"dfd_dupe_proc_in_zone",
 			`threatmodel "dfdtest" {
 			  author = "j"
-				data_flow_diagram {
+				data_flow_diagram "dfd" {
 				  trust_zone "tza" {
 					  process "a" {}
 					}
@@ -583,7 +583,7 @@ func TestParseHCLRaw(t *testing.T) {
 			"dfd_dupe_element_in_zone",
 			`threatmodel "dfdtest" {
 			  author = "j"
-				data_flow_diagram {
+				data_flow_diagram "dfd" {
 				  trust_zone "tza" {
 					  external_element "a" {}
 					}
@@ -599,7 +599,7 @@ func TestParseHCLRaw(t *testing.T) {
 			"dfd_dupe_data_in_zone",
 			`threatmodel "dfdtest" {
 			  author = "j"
-				data_flow_diagram {
+				data_flow_diagram "dfd" {
 				  trust_zone "tza" {
 					  data_store "a" {}
 					}
@@ -615,7 +615,7 @@ func TestParseHCLRaw(t *testing.T) {
 			"dfd_data_in_zone_invalid_ialink",
 			`threatmodel "dfdtest" {
 			  author = "j"
-				data_flow_diagram {
+				data_flow_diagram "dfd" {
 				  trust_zone "tza" {
 					  data_store "a" {information_asset = "not_found"}
 					}
@@ -630,7 +630,7 @@ func TestParseHCLRaw(t *testing.T) {
 			"dfd_mismatch_zone_process",
 			`threatmodel "dfdtest" {
 			  author = "j"
-				data_flow_diagram {
+				data_flow_diagram "dfd" {
 				  trust_zone "tza" {
 					  process "a" {
 						  trust_zone = "nottza"
@@ -648,7 +648,7 @@ func TestParseHCLRaw(t *testing.T) {
 			"dfd_mismatch_zone_element",
 			`threatmodel "dfdtest" {
 			  author = "j"
-				data_flow_diagram {
+				data_flow_diagram "dfd" {
 				  trust_zone "tza" {
 					  external_element "a" {
 						  trust_zone = "nottza"
@@ -666,7 +666,7 @@ func TestParseHCLRaw(t *testing.T) {
 			"dfd_mismatch_zone_data",
 			`threatmodel "dfdtest" {
 			  author = "j"
-				data_flow_diagram {
+				data_flow_diagram "dfd" {
 				  trust_zone "tza" {
 					  data_store "a" {
 						  trust_zone = "nottza"

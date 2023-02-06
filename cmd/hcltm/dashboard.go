@@ -218,7 +218,7 @@ func (c *DashboardCommand) Run(args []string) int {
 
 			outfiles = append(outfiles, outfile)
 
-			if !c.flagNoDfd && tm.DataFlowDiagram != nil {
+			if !c.flagNoDfd && len(tm.DataFlowDiagrams) > 0 {
 				outfiles = append(outfiles, outfilePath(c.flagOutDir, tm.Name, file, ".png"))
 			}
 
@@ -254,7 +254,7 @@ func (c *DashboardCommand) Run(args []string) int {
 		for _, tm := range tmParser.GetWrapped().Threatmodels {
 
 			// First we check if there are any DFDs
-			if !c.flagNoDfd && tm.DataFlowDiagram != nil {
+			if !c.flagNoDfd && len(tm.DataFlowDiagrams) > 0 {
 				dfdPath := outfilePath(c.flagOutDir, tm.Name, file, ".png")
 				err = tm.GenerateDfdPng(dfdPath)
 				if err != nil {
@@ -339,7 +339,7 @@ func (c *DashboardCommand) Run(args []string) int {
 				tmListEntry.Size = tm.Attributes.InitiativeSize
 			}
 
-			if tm.DataFlowDiagram != nil {
+			if len(tm.DataFlowDiagrams) > 0 {
 				tmListEntry.HasDfd = "Yes"
 			}
 

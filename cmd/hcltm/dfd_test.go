@@ -106,8 +106,9 @@ func TestDfdDot(t *testing.T) {
 	if !strings.Contains(out, "Successfully created") {
 		t.Errorf("%s did not contain %s", out, "Successfully created")
 	}
+	t.Logf("out: %s", out)
 
-	_, err = os.Open(fmt.Sprintf("%s/out/tm3-tm2one.dot", d))
+	_, err = os.Open(fmt.Sprintf("%s/out/tm3-tm2onetm2one.dot", d))
 	if err != nil {
 		t.Fatalf("Error opening dot: %s", err)
 	}
