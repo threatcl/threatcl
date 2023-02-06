@@ -79,6 +79,51 @@ func TestDfd(t *testing.T) {
 
 }
 
+func TestDfdSvg(t *testing.T) {
+	d, err := ioutil.TempDir("", "")
+	if err != nil {
+		t.Fatalf("Error creatig tmp dir: %s", err)
+	}
+
+	defer os.RemoveAll(d)
+
+	cmd := testDfdCommand(t)
+
+	var code int
+
+	out := capturer.CaptureStdout(func() {
+		code = cmd.Run([]string{
+			fmt.Sprintf("-outdir=%s/out", d),
+			"-svg",
+			"./testdata/tm3.hcl",
+		})
+	})
+
+	if code != 0 {
+		t.Errorf("Code did not equal 0: %d", code)
+	}
+
+	if !strings.Contains(out, "Successfully created") {
+		t.Errorf("%s did not contain %s", out, "Successfully created")
+	}
+
+	f, err := os.Open(fmt.Sprintf("%s/out/tm3-tm2one.svg", d))
+	if err != nil {
+		t.Fatalf("Error opening svg: %s", err)
+	}
+
+	buffer := make([]byte, 512)
+	_, err = f.Read(buffer)
+	if err != nil {
+		t.Fatalf("Error reading svg: %s", err)
+	}
+
+	if http.DetectContentType(buffer) != "text/xml; charset=utf-8" {
+		t.Errorf("The output file isn't a svg, it's a '%s'", http.DetectContentType(buffer))
+	}
+
+}
+
 func TestDfdDot(t *testing.T) {
 	d, err := ioutil.TempDir("", "")
 	if err != nil {

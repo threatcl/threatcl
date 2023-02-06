@@ -243,11 +243,60 @@ func TestDfdPngGenerate(t *testing.T) {
 	}
 }
 
-func TestDfdSvgGenerate(t *testing.T) {
-	// tm := dfdTm()
-	//
-	// fulltm := fullDfdTm()
+func TestDfdDotGenerate(t *testing.T) {
+	cases := []struct {
+		name        string
+		tm          *Threatmodel
+		exp         string
+		errorthrown bool
+	}{
+		{
+			"valid_full_dfd",
+			fullDfdTm(),
+			"",
+			false,
+		},
+		{
+			"valid_full_dfd2",
+			fullDfdTm2(),
+			"",
+			false,
+		},
+	}
 
+	for _, tc := range cases {
+		tc := tc
+
+		t.Run(tc.name, func(t *testing.T) {
+			// t.Parallel()
+
+			d, err := ioutil.TempDir("", "")
+			if err != nil {
+				t.Fatalf("Error creating tmp dir: %s", err)
+			}
+			defer os.RemoveAll(d)
+
+			dot, err := tc.tm.DataFlowDiagrams[0].GenerateDot(tc.tm.Name)
+
+			if err != nil {
+				if !strings.Contains(err.Error(), tc.exp) {
+					t.Errorf("%s: Error rendering png: %s", tc.name, err)
+				}
+			} else {
+				if tc.errorthrown {
+					t.Errorf("%s: an error was thrown when it shoulnd't have", tc.name)
+				} else {
+					if !strings.Contains(dot, "graph") {
+						t.Errorf("%s: Could not find `graph` in DOT output", tc.name)
+					}
+				}
+			}
+
+		})
+	}
+}
+
+func TestDfdSvgGenerate(t *testing.T) {
 	cases := []struct {
 		name        string
 		tm          *Threatmodel
