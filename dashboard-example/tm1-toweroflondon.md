@@ -31,9 +31,23 @@ Someone who isn't the Queen steals the crown
 
 > Impact Type: Confidentiality
 
-#### Legacy Control Description
+#### Controls
 
-Lots of guards
+
+##### Lots of Guards
+
+
+> Implemented: ✅
+
+Lots of guards patrol the area
+
+_Implementation Notes_
+
+They are trained to be guards as well
+
+|    |    |
+| -- | -- |
+| Risk Reduction | 80 |
 
 ## Third Party Dependencies
 

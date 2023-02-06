@@ -1,4 +1,4 @@
-# Modelly model
+# Sumpidy
 
 Author: @xntrik
 

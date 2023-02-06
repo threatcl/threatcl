@@ -1,7 +1,7 @@
  spec_version = "0.1.5"
 
  threatmodel "Modelly model" {
-   imports = ["aws-security-checklist.hcl", "owasp-proactive-controls.hcl"]
+   imports = ["https://raw.githubusercontent.com/xntrik/hcltm/main/examples/aws-security-checklist.hcl", "https://raw.githubusercontent.com/xntrik/hcltm/main/examples/owasp-proactive-controls.hcl"]
    author = "@xntrik"
 
    threat {
