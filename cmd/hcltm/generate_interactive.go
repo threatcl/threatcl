@@ -161,7 +161,8 @@ func (c *GenerateInteractiveCommand) Run(args []string) int {
 		return 1
 	}
 
-	err = tmParser.ValidateTm(&tm)
+	// err = tmParser.ValidateTm(&tm)
+	err = tm.ValidateTm(tmParser)
 	if err != nil {
 		fmt.Printf("Error validating TM: %s\n", err)
 		return 1
@@ -235,7 +236,8 @@ func (c *GenerateInteractiveCommand) Run(args []string) int {
 		return 1
 	}
 
-	err = tmParser.ValidateTm(&tm)
+	// err = tmParser.ValidateTm(&tm)
+	err = tm.ValidateTm(tmParser)
 	if err != nil {
 		fmt.Printf("Error validating TM: %s\n", err)
 		return 1
@@ -334,7 +336,8 @@ func (c *GenerateInteractiveCommand) Run(args []string) int {
 				return 1
 			}
 
-			err = tmParser.ValidateTm(&tm)
+			// err = tmParser.ValidateTm(&tm)
+			err = tm.ValidateTm(tmParser)
 			if err != nil {
 				fmt.Printf("Error validating TM: %s\n", err)
 				return 1
@@ -412,7 +415,8 @@ func (c *GenerateInteractiveCommand) Run(args []string) int {
 				return 1
 			}
 
-			err = tmParser.ValidateTm(&tm)
+			// err = tmParser.ValidateTm(&tm)
+			err = tm.ValidateTm(tmParser)
 			if err != nil {
 				fmt.Printf("Error validating TM: %s\n", err)
 				return 1
@@ -490,7 +494,8 @@ func (c *GenerateInteractiveCommand) Run(args []string) int {
 				return 1
 			}
 
-			err = tmParser.ValidateTm(&tm)
+			// err = tmParser.ValidateTm(&tm)
+			err = tm.ValidateTm(tmParser)
 			if err != nil {
 				fmt.Printf("Error validating TM: %s\n", err)
 				return 1
@@ -586,7 +591,8 @@ func (c *GenerateInteractiveCommand) Run(args []string) int {
 				return 1
 			}
 
-			err = tmParser.ValidateTm(&tm)
+			// err = tmParser.ValidateTm(&tm)
+			err = tm.ValidateTm(tmParser)
 			if err != nil {
 				fmt.Printf("Error validating TM: %s\n", err)
 				return 1

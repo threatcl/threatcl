@@ -108,7 +108,7 @@ func TestDfdDot(t *testing.T) {
 	}
 	t.Logf("out: %s", out)
 
-	_, err = os.Open(fmt.Sprintf("%s/out/tm3-tm2onetm2one.dot", d))
+	_, err = os.Open(fmt.Sprintf("%s/out/tm3-tm2onelegacydfd.dot", d))
 	if err != nil {
 		t.Fatalf("Error opening dot: %s", err)
 	}
