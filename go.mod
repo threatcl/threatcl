@@ -8,6 +8,7 @@ require (
 	github.com/agext/levenshtein v1.2.3 // indirect
 	github.com/alecthomas/chroma v0.9.4 // indirect
 	github.com/armon/go-radix v1.0.0 // indirect
+	github.com/aws/aws-sdk-go v1.44.194 // indirect
 	github.com/charmbracelet/glamour v0.3.0
 	github.com/davecgh/go-spew v1.1.1
 	github.com/fatih/color v1.13.0 // indirect
@@ -33,13 +34,8 @@ require (
 	github.com/muesli/termenv v0.9.0 // indirect
 	github.com/posener/complete v1.2.3 // indirect
 	github.com/ryanuber/columnize v2.1.2+incompatible
-	github.com/yuin/goldmark v1.4.2 // indirect
 	github.com/zclconf/go-cty v1.9.1
-	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519 // indirect
 	golang.org/x/image v0.0.0-20210628002857-a66eb6448b8d // indirect
-	golang.org/x/net v0.0.0-20211020060615-d418f374d309 // indirect
-	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211 // indirect
-	golang.org/x/text v0.3.7 // indirect
 	gonum.org/v1/gonum v0.9.3
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
