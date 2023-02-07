@@ -109,13 +109,14 @@ type LegacyDataFlowDiagram struct {
 }
 
 type DataFlowDiagram struct {
-	Name             string          `hcl:"name,label"`
-	Processes        []*DfdProcess   `hcl:"process,block"`
-	ExternalElements []*DfdExternal  `hcl:"external_element,block"`
-	DataStores       []*DfdData      `hcl:"data_store,block"`
-	Flows            []*DfdFlow      `hcl:"flow,block"`
-	TrustZones       []*DfdTrustZone `hcl:"trust_zone,block"`
-	ImportFile       string          `hcl:"import,optional"`
+	Name              string `hcl:"name,label"`
+	ShiftedFromLegacy bool
+	Processes         []*DfdProcess   `hcl:"process,block"`
+	ExternalElements  []*DfdExternal  `hcl:"external_element,block"`
+	DataStores        []*DfdData      `hcl:"data_store,block"`
+	Flows             []*DfdFlow      `hcl:"flow,block"`
+	TrustZones        []*DfdTrustZone `hcl:"trust_zone,block"`
+	ImportFile        string          `hcl:"import,optional"`
 }
 
 type Threatmodel struct {

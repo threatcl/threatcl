@@ -225,13 +225,14 @@ func (tm *Threatmodel) validateInformationAssetRef(asset string) error {
 func (tm *Threatmodel) shiftLegacyDfd() (error, int) {
 	if tm.LegacyDfd != nil {
 		newDfd := &DataFlowDiagram{
-			Name:             "Legacy DFD",
-			Processes:        tm.LegacyDfd.Processes,
-			ExternalElements: tm.LegacyDfd.ExternalElements,
-			DataStores:       tm.LegacyDfd.DataStores,
-			Flows:            tm.LegacyDfd.Flows,
-			TrustZones:       tm.LegacyDfd.TrustZones,
-			ImportFile:       tm.LegacyDfd.ImportFile,
+			Name:              "Legacy DFD",
+			ShiftedFromLegacy: true,
+			Processes:         tm.LegacyDfd.Processes,
+			ExternalElements:  tm.LegacyDfd.ExternalElements,
+			DataStores:        tm.LegacyDfd.DataStores,
+			Flows:             tm.LegacyDfd.Flows,
+			TrustZones:        tm.LegacyDfd.TrustZones,
+			ImportFile:        tm.LegacyDfd.ImportFile,
 		}
 		tm.LegacyDfd = nil
 		tm.DataFlowDiagrams = append(tm.DataFlowDiagrams, newDfd)

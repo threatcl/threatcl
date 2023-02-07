@@ -7,6 +7,13 @@ import (
 )
 
 type hcltmConstraint interface {
+	// You can see the format used for verConstraint() here:
+	// https://github.com/hashicorp/go-version
+	//
+	// Examples include:
+	// ">= 0.0.1"
+	// ">= 0.0.1, < 1.4"
+
 	verConstraint() string
 	msg() string
 	asOf() string
@@ -55,10 +62,31 @@ func (c *proposedControlToBlock) tmCheck(tm *Threatmodel) bool {
 	return false
 }
 
+type multiDfd struct{}
+
+func (c *multiDfd) asOf() string {
+	return "0.1.6"
+}
+func (c *multiDfd) verConstraint() string {
+	return ">= 0.0.1"
+}
+func (c *multiDfd) msg() string {
+	return "Deprecation warning: This threat model has a defined `data_flow_diagram` block inside of a `threat` block. As of v0.1.6 it is recommended that you update these to `data_flow_diagram_v2` blocks. In the future, we may retire the old block. The new block requires a `title` label."
+}
+func (c *multiDfd) tmCheck(tm *Threatmodel) bool {
+	for _, d := range tm.DataFlowDiagrams {
+		if d.ShiftedFromLegacy {
+			return true
+		}
+	}
+	return false
+}
+
 func VersionConstraints(tmw *ThreatmodelWrapped, emit bool) (string, error) {
 	hcltmConstraints := make(map[string]hcltmConstraint)
 	hcltmConstraints["control_string_to_block"] = &controlStringToBlock{}
 	hcltmConstraints["proposed_control_to_block"] = &proposedControlToBlock{}
+	hcltmConstraints["multi_dfd"] = &multiDfd{}
 
 	for _, cval := range hcltmConstraints {
 		newConst, err := version.NewConstraint(cval.verConstraint())
