@@ -192,11 +192,7 @@ func (c *ListCommand) Run(args []string) int {
 							bodyString = bodyString + "-"
 						}
 					case "Dfd":
-						if len(tm.DataFlowDiagrams) > 0 {
-							bodyString = bodyString + fmt.Sprintf("%t", true)
-						} else {
-							bodyString = bodyString + fmt.Sprintf("%t", false)
-						}
+						bodyString = bodyString + fmt.Sprintf("%d", len(tm.DataFlowDiagrams))
 					}
 				}
 
