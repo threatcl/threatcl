@@ -22,6 +22,15 @@ See more: {{ .Link }}
 Diagram: {{ .DiagramLink }}
 {{- end }}
 {{- end }}
+{{- range .AllDiagrams }}
+{{- if isImage . }}
+
+![Diagram]({{ . }} "Diagram")
+{{- else }}
+
+Diagram: {{ . }}
+{{- end }}
+{{- end }}
 {{- with .Attributes }}
 
 |    |    |

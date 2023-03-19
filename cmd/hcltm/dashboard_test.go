@@ -154,7 +154,7 @@ func TestDashboardWithDfd(t *testing.T) {
 		t.Errorf("Expected %s to contain %s", dbfile, "tm3-tm2one.md")
 	}
 
-	f, err := os.Open(fmt.Sprintf("%s/out/tm3-tm2one.png", d))
+	f, err := os.Open(fmt.Sprintf("%s/out/tm3-tm2onelegacydfd.png", d))
 	if err != nil {
 		t.Fatalf("Error opening png: %s", err)
 	}

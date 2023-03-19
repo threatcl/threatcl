@@ -11,22 +11,6 @@ import (
 	"gonum.org/v1/gonum/graph/encoding"
 )
 
-// Commenting the below out - I don't think it's used anymore
-// func (tm *Threatmodel) GenerateDot() (string, error) {
-// 	tmpFile, err := ioutil.TempFile("", "dot")
-// 	if err != nil {
-// 		return "", err
-// 	}
-// 	defer os.RemoveAll(tmpFile.Name())
-//
-// 	// dot, err := tm.generateDfdDotFile(tmpFile.Name())
-// 	dot, err := tm.DataFlowDiagrams[0].generateDfdDotFile(tmpFile.Name(), tm.Name)
-// 	if err != nil {
-// 		return "", err
-// 	}
-// 	return dot, nil
-// }
-
 func (d *DataFlowDiagram) GenerateDot(tmName string) (string, error) {
 	tmpFile, err := ioutil.TempFile("", "dot")
 	if err != nil {
@@ -41,15 +25,14 @@ func (d *DataFlowDiagram) GenerateDot(tmName string) (string, error) {
 	return dot, nil
 }
 
-func (tm *Threatmodel) GenerateDfdPng(filepath string) error {
+func (d *DataFlowDiagram) GenerateDfdPng(filepath, tmName string) error {
 	tmpFile, err := ioutil.TempFile("", "dfd")
 	if err != nil {
 		return err
 	}
 	defer os.RemoveAll(tmpFile.Name())
 
-	// dot, err := tm.generateDfdDotFile(tmpFile.Name())
-	dot, err := tm.DataFlowDiagrams[0].generateDfdDotFile(filepath, tm.Name)
+	dot, err := d.generateDfdDotFile(filepath, tmName)
 	if err != nil {
 		return err
 	}
@@ -64,15 +47,14 @@ func (tm *Threatmodel) GenerateDfdPng(filepath string) error {
 	return nil
 }
 
-func (tm *Threatmodel) GenerateDfdSvg(filepath string) error {
+func (d *DataFlowDiagram) GenerateDfdSvg(filepath, tmName string) error {
 	tmpFile, err := ioutil.TempFile("", "dfd")
 	if err != nil {
 		return err
 	}
 	defer os.RemoveAll(tmpFile.Name())
 
-	// dot, err := tm.generateDfdDotFile(tmpFile.Name())
-	dot, err := tm.DataFlowDiagrams[0].generateDfdDotFile(filepath, tm.Name)
+	dot, err := d.generateDfdDotFile(filepath, tmName)
 	if err != nil {
 		return err
 	}

@@ -208,7 +208,9 @@ func TestDfdPngGenerate(t *testing.T) {
 			}
 			defer os.RemoveAll(d)
 
-			err = tc.tm.GenerateDfdPng(fmt.Sprintf("%s/out.png", d))
+			for _, adfd := range tc.tm.DataFlowDiagrams {
+				err = adfd.GenerateDfdPng(fmt.Sprintf("%s/out.png", d), tc.tm.Name)
+			}
 
 			if err != nil {
 				if !strings.Contains(err.Error(), tc.exp) {
@@ -276,22 +278,24 @@ func TestDfdDotGenerate(t *testing.T) {
 			}
 			defer os.RemoveAll(d)
 
-			dot, err := tc.tm.DataFlowDiagrams[0].GenerateDot(tc.tm.Name)
+			for _, adfd := range tc.tm.DataFlowDiagrams {
 
-			if err != nil {
-				if !strings.Contains(err.Error(), tc.exp) {
-					t.Errorf("%s: Error rendering png: %s", tc.name, err)
-				}
-			} else {
-				if tc.errorthrown {
-					t.Errorf("%s: an error was thrown when it shoulnd't have", tc.name)
+				dot, err := adfd.GenerateDot(tc.tm.Name)
+
+				if err != nil {
+					if !strings.Contains(err.Error(), tc.exp) {
+						t.Errorf("%s: Error rendering png: %s", tc.name, err)
+					}
 				} else {
-					if !strings.Contains(dot, "graph") {
-						t.Errorf("%s: Could not find `graph` in DOT output", tc.name)
+					if tc.errorthrown {
+						t.Errorf("%s: an error was thrown when it shoulnd't have", tc.name)
+					} else {
+						if !strings.Contains(dot, "graph") {
+							t.Errorf("%s: Could not find `graph` in DOT output", tc.name)
+						}
 					}
 				}
 			}
-
 		})
 	}
 }
@@ -335,7 +339,9 @@ func TestDfdSvgGenerate(t *testing.T) {
 			}
 			defer os.RemoveAll(d)
 
-			err = tc.tm.GenerateDfdSvg(fmt.Sprintf("%s/out.svg", d))
+			for _, adfd := range tc.tm.DataFlowDiagrams {
+				err = adfd.GenerateDfdSvg(fmt.Sprintf("%s/out.svg", d), tc.tm.Name)
+			}
 
 			if err != nil {
 				if !strings.Contains(err.Error(), tc.exp) {

@@ -4,4 +4,8 @@ threatmodel "Sumpidy" {
   author = "@xntrik"
 
   including = "tm3.hcl"
+
+  data_flow_diagram {
+    process "test" {}
+  }
 }

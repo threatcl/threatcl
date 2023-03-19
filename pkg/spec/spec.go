@@ -126,6 +126,7 @@ type Threatmodel struct {
 	Including              string                  `hcl:"including,optional"`
 	Link                   string                  `hcl:"link,optional"`
 	DiagramLink            string                  `hcl:"diagram_link,optional"`
+	AllDiagrams            []string                // Used for templates
 	Author                 string                  `hcl:"author,attr"`
 	CreatedAt              int64                   `hcl:"created_at,optional"`
 	UpdatedAt              int64                   `hcl:"updated_at,optional"`
