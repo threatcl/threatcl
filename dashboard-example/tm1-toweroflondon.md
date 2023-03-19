@@ -11,6 +11,7 @@ A historic castle
 | Internet Facing | ✅  |
 | New Initiative | ✅  |
 | Initiative Size | Small |
+| network_segment | dmz |
 
 ## Use Cases
 

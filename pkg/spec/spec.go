@@ -6,6 +6,11 @@ type Attribute struct {
 	InitiativeSize string `hcl:"initiative_size,attr"`
 }
 
+type AdditionalAttribute struct {
+	Name  string `hcl:"name,label"`
+	Value string `hcl:"value"`
+}
+
 type InformationAsset struct {
 	Name                      string `hcl:"name,label"`
 	Description               string `hcl:"description,optional"`
@@ -131,6 +136,7 @@ type Threatmodel struct {
 	CreatedAt              int64                   `hcl:"created_at,optional"`
 	UpdatedAt              int64                   `hcl:"updated_at,optional"`
 	Attributes             *Attribute              `hcl:"attributes,block"`
+	AdditionalAttributes   []*AdditionalAttribute  `hcl:"additional_attribute,block"`
 	InformationAssets      []*InformationAsset     `hcl:"information_asset,block"`
 	Threats                []*Threat               `hcl:"threat,block"`
 	UseCases               []*UseCase              `hcl:"usecase,block"`

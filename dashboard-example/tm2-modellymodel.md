@@ -2,7 +2,9 @@
 
 Author: @xntrik
 
-![Diagram](tm2-modellymodel.png "Diagram")
+![Diagram](tm2-modellymodelnewmodel.png "Diagram")
+
+![Diagram](tm2-modellymodellegacydfd.png "Diagram")
 
 ## Threat Scenarios
 

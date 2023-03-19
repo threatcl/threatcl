@@ -64,6 +64,10 @@ EOT
      internet_facing = true
    }
 
+   additional_attribute "network_segment" {
+     value = "dmz"
+   }
+
    information_asset "cred store" {
      description = "This is where creds are stored"
      information_classification = "Restricted"

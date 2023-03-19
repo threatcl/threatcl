@@ -2,6 +2,8 @@
 
 Author: @xntrik
 
+![Diagram](tm4-sumpidylegacydfd.png "Diagram")
+
 ## Threat Scenarios
 
 ### Threat

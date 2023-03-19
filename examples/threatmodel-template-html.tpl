@@ -39,6 +39,10 @@ Diagram: <a href="{{ . }}">{{ . }}</a><br />
 <tr><td>Initiative Size</td><td>{{ .InitiativeSize }}</td></tr>
 </table><br />
 {{- end }}
+<table>
+{{- range .AdditionalAttributes }}
+<tr><td> {{ .Name }}</td><td>{{ .Value }}</td></tr>{{- end }}
+</table>
 {{- with .UseCases }}
 
 <h2>Use Cases</h2>

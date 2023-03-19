@@ -10,6 +10,10 @@ threatmodel "Tower of London" {
     initiative_size = "Small"
   }
 
+  additional_attribute "network_segment" {
+    value = "dmz"
+  }
+
   information_asset "crown jewels" {
     description = "including the imperial state crown"
     information_classification = "Confidential"
