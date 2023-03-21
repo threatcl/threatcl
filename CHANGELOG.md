@@ -1,3 +1,14 @@
+## 0.1.6
+### Mar 21, 2023
+
+CHANGES:
+
+* Updating to Go 1.19
+* CI now builds Docker images locally in ghcr
+* `hcltm` commands now support multiple DFDs per `threatmodel` block
+* Spec now supports `additional_attribute` key/value blocks
+* Spec now supports the legacy `data_flow_diagram` and multiple `data_flow_diagram_v2`
+
 ## 0.1.5
 ### Nov 13, 2022
 
