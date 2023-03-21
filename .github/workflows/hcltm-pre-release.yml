@@ -7,6 +7,10 @@ on:
     tags-ignore:
       - "*"
 
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
 jobs:
   pre-release-linux:
     runs-on: ubuntu-latest
