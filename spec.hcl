@@ -1,5 +1,5 @@
 // To cater for multiple spec versions we specify this in our HCL files
-spec_version = "0.1.5"
+spec_version = "0.1.6"
 
 // You can include variables outside your threatmodel blocks
 
@@ -53,6 +53,12 @@ threatmodel "threatmodel name" {
 
     // initiative_size must be one of 'Undefined, Small, Medium, Large'
     initiative_size = "Undefined"
+  }
+
+  // you can set mutiple additional attribute key/value blocks as well
+
+  additional_attribute "network_segment" {
+    value = "DMZ"
   }
 
   // Each threatmodel may contain a number of information_assets
@@ -190,7 +196,7 @@ threatmodel "threatmodel name" {
 
   // An example of what may be in controls.hcl:
   //
-  // spec_version = "0.1.5"
+  // spec_version = "0.1.6"
   // component "control" "control_name" {
   //   description = "A control that can be used in multiple places"
   // }
@@ -213,10 +219,13 @@ EOT
   }
 
   // Each threatmodel may contain a single data_flow_diagram
-  // The data_flow_diagram is a HCL representation of a data flow diagram
+  // This format will be deprecated in the future ^
+
+  // As of 0.1.6 threatmodels may contain multiple data_flow_diagram_v2 blocks
+  // The data_flow_diagram_v2 is a HCL representation of a data flow diagram
   // You can read more about security DFDs here https://docs.microsoft.com/en-us/learn/modules/tm-create-a-threat-model-using-foundational-data-flow-diagram-elements/
 
-  data_flow_diagram {
+  data_flow_diagram_v2 "level 0 diagram" {
 
     // All blocks must have unique names
     // That means that a process, data_store, or external_element can't all
