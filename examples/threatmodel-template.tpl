@@ -27,6 +27,8 @@ Diagram: {{ .DiagramLink }}
 | New Initiative | {{ if (eq .NewInitiative true) }}✅ {{ else }}❌ {{ end }} |
 | Initiative Size | {{ .InitiativeSize }} |
 {{- end }}
+{{- range .AdditionalAttributes }}
+| {{ .Name }} | {{ .Value }} |{{- end }}
 {{- with .UseCases }}
 
 ## Use Cases

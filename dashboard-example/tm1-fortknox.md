@@ -31,7 +31,17 @@ Someone steals the gold
 
 > Impact Type: Confidentiality
 
-#### Legacy Control Description
+#### Controls
 
-Big walls
+
+##### Big Wall
+
+
+> Implemented: ✅
+
+A large wall surrounds the fort
+
+|    |    |
+| -- | -- |
+| Risk Reduction | 80 |
 

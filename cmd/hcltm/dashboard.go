@@ -218,8 +218,11 @@ func (c *DashboardCommand) Run(args []string) int {
 
 			outfiles = append(outfiles, outfile)
 
-			if !c.flagNoDfd && tm.DataFlowDiagram != nil {
-				outfiles = append(outfiles, outfilePath(c.flagOutDir, tm.Name, file, ".png"))
+			if !c.flagNoDfd && len(tm.DataFlowDiagrams) > 0 {
+				for _, adfd := range tm.DataFlowDiagrams {
+					dfdFile := outfilePath(c.flagOutDir, fmt.Sprintf("%s_%s", tm.Name, adfd.Name), file, ".png")
+					outfiles = append(outfiles, dfdFile)
+				}
 			}
 
 		}
@@ -254,25 +257,21 @@ func (c *DashboardCommand) Run(args []string) int {
 		for _, tm := range tmParser.GetWrapped().Threatmodels {
 
 			// First we check if there are any DFDs
-			if !c.flagNoDfd && tm.DataFlowDiagram != nil {
-				dfdPath := outfilePath(c.flagOutDir, tm.Name, file, ".png")
-				err = tm.GenerateDfdPng(dfdPath)
-				if err != nil {
-					fmt.Printf("Error generating DFD: %s\n", err)
-					return 1
+			if !c.flagNoDfd && len(tm.DataFlowDiagrams) > 0 {
+				for _, adfd := range tm.DataFlowDiagrams {
+					dfdPath := outfilePath(c.flagOutDir, fmt.Sprintf("%s_%s", tm.Name, adfd.Name), file, ".png")
+					err = adfd.GenerateDfdPng(dfdPath, tm.Name)
+					if err != nil {
+						fmt.Printf("Error generating DFD: %s\n", err)
+						return 1
+					}
+
+					fmt.Printf("Successfully wrote to '%s'\n", dfdPath)
+
+					tm.AllDiagrams = append(tm.AllDiagrams, filepath.Base(dfdPath))
 				}
-
-				fmt.Printf("Successfully wrote to '%s'\n", dfdPath)
-
-				// Now we set the tm diagram to this file
-				// if it's currently unset
-				if tm.DiagramLink == "" {
-					tm.DiagramLink = filepath.Base(dfdPath)
-				}
-
 			}
 
-			// tmBuffer, err := tm.RenderMarkdown(spec.TmMDTemplate)
 			tmBuffer, err := tm.RenderMarkdown(tmTemplate)
 			if err != nil {
 				fmt.Println(err)
@@ -339,7 +338,7 @@ func (c *DashboardCommand) Run(args []string) int {
 				tmListEntry.Size = tm.Attributes.InitiativeSize
 			}
 
-			if tm.DataFlowDiagram != nil {
+			if len(tm.DataFlowDiagrams) > 0 {
 				tmListEntry.HasDfd = "Yes"
 			}
 

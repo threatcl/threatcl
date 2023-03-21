@@ -22,6 +22,15 @@ See more: {{ .Link }}
 Diagram: {{ .DiagramLink }}
 {{- end }}
 {{- end }}
+{{- range .AllDiagrams }}
+{{- if isImage . }}
+
+![Diagram]({{ . }} "Diagram")
+{{- else }}
+
+Diagram: {{ . }}
+{{- end }}
+{{- end }}
 {{- with .Attributes }}
 
 |    |    |
@@ -30,6 +39,8 @@ Diagram: {{ .DiagramLink }}
 | New Initiative | {{ if (eq .NewInitiative true) }}✅ {{ else }}❌ {{ end }} |
 | Initiative Size | {{ .InitiativeSize }} |
 {{- end }}
+{{- range .AdditionalAttributes }}
+| {{ .Name }} | {{ .Value }} |{{- end }}
 {{- with .UseCases }}
 
 ## Use Cases
@@ -88,7 +99,8 @@ Impacted Information Assets:
 
 #### Controls
 
-{{ range .Controls }}##### {{ .Name }}
+{{ range .Controls }}
+##### {{ .Name }}
 
 {{ if .Implemented }}
 > Implemented: ✅ {{- else }}> Implemented: ❌ {{- end }}

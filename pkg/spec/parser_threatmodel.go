@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 
 	gg "github.com/hashicorp/go-getter"
+	"github.com/hashicorp/go-multierror"
 )
 
 func (tm *Threatmodel) Include(cfg *ThreatmodelSpecConfig, myfilename string) error {
@@ -56,8 +57,12 @@ func (tm *Threatmodel) Include(cfg *ThreatmodelSpecConfig, myfilename string) er
 		tm.addTpdIfNotExist(*tpd)
 	}
 
-	if tm.DataFlowDiagram == nil {
-		tm.DataFlowDiagram = subTm.DataFlowDiagram
+	// if tm.DataFlowDiagram == nil {
+	// 	tm.DataFlowDiagram = subTm.DataFlowDiagram
+	// }
+
+	for _, dfd := range subTm.DataFlowDiagrams {
+		tm.addDfdIfNotExist(*dfd)
 	}
 
 	for _, t := range subTm.Threats {
@@ -139,6 +144,20 @@ func (tm *Threatmodel) addTIfNotExist(newT Threat) {
 	}
 }
 
+func (tm *Threatmodel) addDfdIfNotExist(newDfd DataFlowDiagram) {
+
+	dfdFound := false
+	for _, dfd := range tm.DataFlowDiagrams {
+		if newDfd.Name == dfd.Name {
+			dfdFound = true
+		}
+	}
+
+	if dfdFound == false {
+		tm.DataFlowDiagrams = append(tm.DataFlowDiagrams, &newDfd)
+	}
+}
+
 func fetchRemoteTm(cfg *ThreatmodelSpecConfig, source, currentFilename string) (*ThreatmodelParser, error) {
 	returnParser := NewThreatmodelParser(cfg)
 
@@ -167,7 +186,7 @@ func fetchRemoteTm(cfg *ThreatmodelSpecConfig, source, currentFilename string) (
 	}
 
 	includePath := fmt.Sprintf("%s/%s", tmpDir, filepath.Base(source))
-	importDiag := returnParser.ParseHCLFile(includePath, true)
+	importDiag := returnParser.ParseHCLFile(includePath, false)
 
 	if importDiag != nil {
 		return nil, importDiag
@@ -201,4 +220,338 @@ func (tm *Threatmodel) validateInformationAssetRef(asset string) error {
 	}
 
 	return nil
+}
+
+func (tm *Threatmodel) shiftLegacyDfd() (error, int) {
+	if tm.LegacyDfd != nil {
+		newDfd := &DataFlowDiagram{
+			Name:              "Legacy DFD",
+			ShiftedFromLegacy: true,
+			Processes:         tm.LegacyDfd.Processes,
+			ExternalElements:  tm.LegacyDfd.ExternalElements,
+			DataStores:        tm.LegacyDfd.DataStores,
+			Flows:             tm.LegacyDfd.Flows,
+			TrustZones:        tm.LegacyDfd.TrustZones,
+			ImportFile:        tm.LegacyDfd.ImportFile,
+		}
+		tm.LegacyDfd = nil
+		tm.DataFlowDiagrams = append(tm.DataFlowDiagrams, newDfd)
+
+		return nil, 1
+	}
+	return nil, 0
+}
+
+func (tm *Threatmodel) ValidateTm(p *ThreatmodelParser) error {
+	var errMap error
+
+	// Normalize threatmodel attributes
+	if tm.Attributes != nil {
+
+		// Normalize threatmodel attributes initiative_size
+		if tm.Attributes.InitiativeSize != "" {
+			tm.Attributes.InitiativeSize = p.normalizeInitiativeSize(tm.Attributes.InitiativeSize)
+		}
+	}
+
+	// Checking for unique information_assets per threatmodel
+	// Also Normalize info classification
+	if tm.InformationAssets != nil {
+		infoAssets := make(map[string]interface{})
+		for _, ia := range tm.InformationAssets {
+			if _, ok := infoAssets[ia.Name]; ok {
+				errMap = multierror.Append(errMap, fmt.Errorf(
+					"TM '%s': duplicate information_asset '%s'",
+					tm.Name,
+					ia.Name,
+				))
+			}
+
+			// Normalize InformationClassification
+			if ia.InformationClassification != "" {
+				ia.InformationClassification = p.normalizeInfoClassification(ia.InformationClassification)
+			}
+
+			infoAssets[ia.Name] = nil
+		}
+	}
+
+	// Validating any DFD data within a threat model
+	// if tm.DataFlowDiagram != nil {
+	for _, adfd := range tm.DataFlowDiagrams {
+
+		// Checking for unique TrustZones
+		zones := make(map[string]interface{})
+		if adfd.TrustZones != nil {
+			for _, zone := range adfd.TrustZones {
+				if _, ok := zones[zone.Name]; ok {
+					errMap = multierror.Append(errMap, fmt.Errorf(
+						"TM '%s': duplicate trust_zone block found '%s'",
+						tm.Name,
+						zone.Name,
+					))
+				}
+
+				zones[zone.Name] = nil
+			}
+		}
+
+		// Checking for unique processes/data_store/external_element in data_flow_diagram
+		elements := make(map[string]interface{})
+		if adfd.Processes != nil {
+			for _, process := range adfd.Processes {
+				if _, ok := elements[process.Name]; ok {
+					errMap = multierror.Append(errMap, fmt.Errorf(
+						"TM '%s': duplicate process found in dfd '%s'",
+						tm.Name,
+						process.Name,
+					))
+				}
+
+				elements[process.Name] = nil
+			}
+		}
+
+		// Now check for Processes in trust_zones
+		if adfd.TrustZones != nil {
+			for _, zone := range adfd.TrustZones {
+				if zone.Processes != nil {
+					for _, process := range zone.Processes {
+						if _, ok := elements[process.Name]; ok {
+							errMap = multierror.Append(errMap, fmt.Errorf(
+								"TM '%s': duplicate process found in dfd '%s'",
+								tm.Name,
+								process.Name,
+							))
+						}
+
+						elements[process.Name] = nil
+					}
+				}
+			}
+		}
+
+		if adfd.ExternalElements != nil {
+			for _, external_element := range adfd.ExternalElements {
+				if _, ok := elements[external_element.Name]; ok {
+					errMap = multierror.Append(errMap, fmt.Errorf(
+						"TM '%s': duplicate external_element found in dfd '%s'",
+						tm.Name,
+						external_element.Name,
+					))
+				}
+
+				elements[external_element.Name] = nil
+			}
+		}
+
+		// Now check for external_elements in trust_zones
+		if adfd.TrustZones != nil {
+			for _, zone := range adfd.TrustZones {
+				if zone.ExternalElements != nil {
+					for _, external_element := range zone.ExternalElements {
+						if _, ok := elements[external_element.Name]; ok {
+							errMap = multierror.Append(errMap, fmt.Errorf(
+								"TM '%s': duplicate external_element found in dfd '%s'",
+								tm.Name,
+								external_element.Name,
+							))
+						}
+
+						elements[external_element.Name] = nil
+					}
+				}
+			}
+		}
+
+		// Checking for unique data_stores in data_flow_diagram
+		if adfd.DataStores != nil {
+			for _, data_store := range adfd.DataStores {
+				if _, ok := elements[data_store.Name]; ok {
+					errMap = multierror.Append(errMap, fmt.Errorf(
+						"TM '%s': duplicate data_store found in dfd '%s'",
+						tm.Name,
+						data_store.Name,
+					))
+				}
+
+				elements[data_store.Name] = nil
+
+				// While in DataStores, let's check if they have iaRefs, and that they
+				// are valid
+				if data_store.IaLink != "" {
+					err := tm.validateInformationAssetRef(data_store.IaLink)
+					if err != nil {
+						errMap = multierror.Append(errMap, fmt.Errorf(
+							"TM '%s' DFD Data Store '%s' %s",
+							tm.Name,
+							data_store.Name,
+							err,
+						))
+					}
+				}
+			}
+		}
+
+		// Now check for data_stores in trust_zones
+		if adfd.TrustZones != nil {
+			for _, zone := range adfd.TrustZones {
+				if zone.DataStores != nil {
+					for _, data_store := range zone.DataStores {
+						if _, ok := elements[data_store.Name]; ok {
+							errMap = multierror.Append(errMap, fmt.Errorf(
+								"TM '%s': duplicate data_store found in dfd '%s'",
+								tm.Name,
+								data_store.Name,
+							))
+						}
+
+						elements[data_store.Name] = nil
+
+						// While in DataStores, let's check if they have iaRefs, and that they
+						// are valid
+						if data_store.IaLink != "" {
+							err := tm.validateInformationAssetRef(data_store.IaLink)
+							if err != nil {
+								errMap = multierror.Append(errMap, fmt.Errorf(
+									"TM '%s' DFD Data Store '%s' %s",
+									tm.Name,
+									data_store.Name,
+									err,
+								))
+							}
+						}
+					}
+				}
+			}
+		}
+
+		// Now check for mis-matched trust-zones
+		if adfd.TrustZones != nil {
+			for _, zone := range adfd.TrustZones {
+				if zone.Processes != nil {
+					for _, process := range zone.Processes {
+						if process.TrustZone != "" && process.TrustZone != zone.Name {
+							errMap = multierror.Append(errMap, fmt.Errorf(
+								"TM '%s': process trust_zone mis-match found in '%s'",
+								tm.Name,
+								process.Name,
+							))
+						}
+					}
+				}
+
+				if zone.ExternalElements != nil {
+					for _, external_element := range zone.ExternalElements {
+						if external_element.TrustZone != "" && external_element.TrustZone != zone.Name {
+							errMap = multierror.Append(errMap, fmt.Errorf(
+								"TM '%s': external_element trust_zone mis-match found in '%s'",
+								tm.Name,
+								external_element.Name,
+							))
+						}
+					}
+				}
+
+				if zone.DataStores != nil {
+					for _, data_store := range zone.DataStores {
+						if data_store.TrustZone != "" && data_store.TrustZone != zone.Name {
+							errMap = multierror.Append(errMap, fmt.Errorf(
+								"TM '%s': data_store trust_zone mis-match found in '%s'",
+								tm.Name,
+								data_store.Name,
+							))
+						}
+					}
+				}
+			}
+		}
+
+		// Validate data flows
+		flows := make(map[string]interface{})
+		if adfd.Flows != nil {
+			for _, rawflow := range adfd.Flows {
+				flow := fmt.Sprintf("%s:%s", rawflow.From, rawflow.To)
+
+				// check for unique flows
+				if _, ok := flows[flow]; ok {
+					errMap = multierror.Append(errMap, fmt.Errorf(
+						"TM '%s': duplicate flow found in dfd '%s'",
+						tm.Name,
+						flow,
+					))
+				}
+
+				// now check that flows connect to legit processes
+				if _, ok := elements[rawflow.From]; !ok {
+					errMap = multierror.Append(errMap, fmt.Errorf(
+						"TM '%s': invalid from connection for flow '%s'",
+						tm.Name,
+						flow,
+					))
+				}
+
+				if _, ok := elements[rawflow.To]; !ok {
+					errMap = multierror.Append(errMap, fmt.Errorf(
+						"TM '%s': invalid to connection for flow '%s'",
+						tm.Name,
+						flow,
+					))
+				}
+
+				// now check that the flow doesn't connect to itself
+				if rawflow.From == rawflow.To {
+					errMap = multierror.Append(errMap, fmt.Errorf(
+						"TM '%s': flow can't connect to itself '%s'",
+						tm.Name,
+						flow,
+					))
+				}
+
+				flows[flow] = nil
+
+			}
+		}
+	} // end of ranging over dataflowdiagrams
+
+	// Normalize threat impacts and stride
+	if tm.Threats != nil {
+		for _, tr := range tm.Threats {
+			normalized := []string{}
+			for _, impact := range tr.ImpactType {
+				normalized = append(normalized, p.normalizeImpactType(impact))
+			}
+			tr.ImpactType = normalized
+
+			normalizedStride := []string{}
+			for _, stride := range tr.Stride {
+				normalizedStride = append(normalizedStride, p.normalizeStride(stride))
+			}
+			tr.Stride = normalizedStride
+
+			// Validating that InformationAssetRefs are valid
+			for _, iaRef := range tr.InformationAssetRefs {
+				err := tm.validateInformationAssetRef(iaRef)
+				if err != nil {
+					errMap = multierror.Append(errMap,
+						fmt.Errorf("TM '%s' / Threat '%s': %s", tm.Name, tr.Description, err),
+					)
+				}
+			}
+		}
+	}
+
+	// Normalize third party deps - uptime dep classification
+	if tm.ThirdPartyDependencies != nil {
+		for _, tpd := range tm.ThirdPartyDependencies {
+			tpd.UptimeDependency = p.normalizeUptimeDepClassification(string(tpd.UptimeDependency))
+		}
+	}
+
+	if errMap != nil {
+		return errMap
+	}
+
+	return nil
+
 }

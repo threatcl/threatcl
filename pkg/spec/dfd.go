@@ -1,6 +1,7 @@
 package spec
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 
@@ -10,28 +11,28 @@ import (
 	"gonum.org/v1/gonum/graph/encoding"
 )
 
-func (tm *Threatmodel) GenerateDot() (string, error) {
+func (d *DataFlowDiagram) GenerateDot(tmName string) (string, error) {
 	tmpFile, err := ioutil.TempFile("", "dot")
 	if err != nil {
 		return "", err
 	}
 	defer os.RemoveAll(tmpFile.Name())
 
-	dot, err := tm.generateDfdDotFile(tmpFile.Name())
+	dot, err := d.generateDfdDotFile(tmpFile.Name(), tmName)
 	if err != nil {
 		return "", err
 	}
 	return dot, nil
 }
 
-func (tm *Threatmodel) GenerateDfdPng(filepath string) error {
+func (d *DataFlowDiagram) GenerateDfdPng(filepath, tmName string) error {
 	tmpFile, err := ioutil.TempFile("", "dfd")
 	if err != nil {
 		return err
 	}
 	defer os.RemoveAll(tmpFile.Name())
 
-	dot, err := tm.generateDfdDotFile(tmpFile.Name())
+	dot, err := d.generateDfdDotFile(filepath, tmName)
 	if err != nil {
 		return err
 	}
@@ -46,14 +47,14 @@ func (tm *Threatmodel) GenerateDfdPng(filepath string) error {
 	return nil
 }
 
-func (tm *Threatmodel) GenerateDfdSvg(filepath string) error {
+func (d *DataFlowDiagram) GenerateDfdSvg(filepath, tmName string) error {
 	tmpFile, err := ioutil.TempFile("", "dfd")
 	if err != nil {
 		return err
 	}
 	defer os.RemoveAll(tmpFile.Name())
 
-	dot, err := tm.generateDfdDotFile(tmpFile.Name())
+	dot, err := d.generateDfdDotFile(filepath, tmName)
 	if err != nil {
 		return err
 	}
@@ -122,9 +123,9 @@ func newDfdStore(name string) (error, *dfd.DataStore) {
 	return err, newStore
 }
 
-func (tm *Threatmodel) generateDfdDotFile(filepath string) (string, error) {
+func (d *DataFlowDiagram) generateDfdDotFile(filepath, tmName string) (string, error) {
 	// Build the DFD
-	g := dfd.InitializeDFD(tm.Name)
+	g := dfd.InitializeDFD(fmt.Sprintf("%s_%s", tmName, d.Name))
 
 	zones := make(map[string]*dfd.TrustBoundary)
 	processes := make(map[string]*dfd.Process)
@@ -132,7 +133,7 @@ func (tm *Threatmodel) generateDfdDotFile(filepath string) (string, error) {
 	data_stores := make(map[string]*dfd.DataStore)
 
 	// Add zones
-	for _, zone := range tm.DataFlowDiagram.TrustZones {
+	for _, zone := range d.TrustZones {
 		if _, existing := zones[zone.Name]; !existing {
 			newZone, err := g.AddTrustBoundary(zone.Name, "red")
 			zones[zone.Name] = newZone
@@ -174,7 +175,7 @@ func (tm *Threatmodel) generateDfdDotFile(filepath string) (string, error) {
 	}
 
 	// Add Processes
-	for _, process := range tm.DataFlowDiagram.Processes {
+	for _, process := range d.Processes {
 		err, newProcess := newDfdProcess(process.Name)
 		if err != nil {
 			return "", err
@@ -197,7 +198,7 @@ func (tm *Threatmodel) generateDfdDotFile(filepath string) (string, error) {
 	}
 
 	// Add External Elements
-	for _, external_element := range tm.DataFlowDiagram.ExternalElements {
+	for _, external_element := range d.ExternalElements {
 		err, newElement := newDfdExternalEntity(external_element.Name)
 		if err != nil {
 			return "", err
@@ -220,7 +221,7 @@ func (tm *Threatmodel) generateDfdDotFile(filepath string) (string, error) {
 	}
 
 	// Add Data Stores
-	for _, data_store := range tm.DataFlowDiagram.DataStores {
+	for _, data_store := range d.DataStores {
 		err, newStore := newDfdStore(data_store.Name)
 		if err != nil {
 			return "", err
@@ -242,7 +243,7 @@ func (tm *Threatmodel) generateDfdDotFile(filepath string) (string, error) {
 		}
 	}
 
-	for _, flow := range tm.DataFlowDiagram.Flows {
+	for _, flow := range d.Flows {
 
 		var to, from graph.Node
 

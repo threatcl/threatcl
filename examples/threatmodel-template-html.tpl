@@ -22,6 +22,15 @@ See more: <a href="{{ .Link }}">{{ .Link }}</a><br />
 Diagram: <a href="{{ .DiagramLink }}">{{ .DiagramLink }}</a><br />
 {{- end }}
 {{- end }}
+{{- range .AllDiagrams }}
+{{- if isImage . }}
+
+<img src="{{ . }}" alt="Diagram" /><br />
+{{- else }}
+
+Diagram: <a href="{{ . }}">{{ . }}</a><br />
+{{- end }}
+{{- end }}
 {{- with .Attributes }}
 
 <table>
@@ -30,6 +39,10 @@ Diagram: <a href="{{ .DiagramLink }}">{{ .DiagramLink }}</a><br />
 <tr><td>Initiative Size</td><td>{{ .InitiativeSize }}</td></tr>
 </table><br />
 {{- end }}
+<table>
+{{- range .AdditionalAttributes }}
+<tr><td> {{ .Name }}</td><td>{{ .Value }}</td></tr>{{- end }}
+</table>
 {{- with .UseCases }}
 
 <h2>Use Cases</h2>

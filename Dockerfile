@@ -1,4 +1,4 @@
-FROM golang:1.16.2-alpine AS builder
+FROM golang:1.19.5-alpine AS builder
 MAINTAINER Christian Frichot <xntrik@gmail.com>
 
 RUN apk update

@@ -13,10 +13,12 @@ func dfdTm() *Threatmodel {
 	tm := &Threatmodel{
 		Name:   "test",
 		Author: "x",
-		DataFlowDiagram: &DataFlowDiagram{
-			Processes: []*DfdProcess{
-				{
-					Name: "proc1",
+		DataFlowDiagrams: []*DataFlowDiagram{
+			{
+				Processes: []*DfdProcess{
+					{
+						Name: "proc1",
+					},
 				},
 			},
 		},
@@ -30,49 +32,51 @@ func fullDfdTm() *Threatmodel {
 	tm := &Threatmodel{
 		Name:   "test",
 		Author: "x",
-		DataFlowDiagram: &DataFlowDiagram{
-			Processes: []*DfdProcess{
-				{
-					Name: "proc1",
+		DataFlowDiagrams: []*DataFlowDiagram{
+			{
+				Processes: []*DfdProcess{
+					{
+						Name: "proc1",
+					},
+					{
+						Name:      "proc2",
+						TrustZone: "zone1",
+					},
 				},
-				{
-					Name:      "proc2",
-					TrustZone: "zone1",
+				DataStores: []*DfdData{
+					{
+						Name: "data1",
+					},
+					{
+						Name:      "data2",
+						TrustZone: "zone2",
+					},
 				},
-			},
-			DataStores: []*DfdData{
-				{
-					Name: "data1",
+				ExternalElements: []*DfdExternal{
+					{
+						Name: "external1",
+					},
+					{
+						Name:      "external2",
+						TrustZone: "zone3",
+					},
 				},
-				{
-					Name:      "data2",
-					TrustZone: "zone2",
-				},
-			},
-			ExternalElements: []*DfdExternal{
-				{
-					Name: "external1",
-				},
-				{
-					Name:      "external2",
-					TrustZone: "zone3",
-				},
-			},
-			Flows: []*DfdFlow{
-				{
-					Name: "flow",
-					From: "proc1",
-					To:   "data1",
-				},
-				{
-					Name: "flow",
-					From: "external1",
-					To:   "proc1",
-				},
-				{
-					Name: "flow",
-					From: "data1",
-					To:   "external1",
+				Flows: []*DfdFlow{
+					{
+						Name: "flow",
+						From: "proc1",
+						To:   "data1",
+					},
+					{
+						Name: "flow",
+						From: "external1",
+						To:   "proc1",
+					},
+					{
+						Name: "flow",
+						From: "data1",
+						To:   "external1",
+					},
 				},
 			},
 		},
@@ -87,69 +91,71 @@ func fullDfdTm2() *Threatmodel {
 	tm := &Threatmodel{
 		Name:   "test",
 		Author: "x",
-		DataFlowDiagram: &DataFlowDiagram{
-			TrustZones: []*DfdTrustZone{
-				{
-					Name: "zone1",
-					Processes: []*DfdProcess{
-						{
-							Name:      "proc2",
-							TrustZone: "zone1",
+		DataFlowDiagrams: []*DataFlowDiagram{
+			{
+				TrustZones: []*DfdTrustZone{
+					{
+						Name: "zone1",
+						Processes: []*DfdProcess{
+							{
+								Name:      "proc2",
+								TrustZone: "zone1",
+							},
+							{
+								Name: "proc9",
+							},
 						},
-						{
-							Name: "proc9",
+						DataStores: []*DfdData{
+							{
+								Name: "new_data",
+							},
+						},
+						ExternalElements: []*DfdExternal{
+							{
+								Name: "ee5",
+							},
 						},
 					},
-					DataStores: []*DfdData{
-						{
-							Name: "new_data",
-						},
-					},
-					ExternalElements: []*DfdExternal{
-						{
-							Name: "ee5",
-						},
+				},
+				Processes: []*DfdProcess{
+					{
+						Name: "proc1",
 					},
 				},
-			},
-			Processes: []*DfdProcess{
-				{
-					Name: "proc1",
+				DataStores: []*DfdData{
+					{
+						Name: "data1",
+					},
+					{
+						Name:      "data2",
+						TrustZone: "zone2",
+					},
 				},
-			},
-			DataStores: []*DfdData{
-				{
-					Name: "data1",
+				ExternalElements: []*DfdExternal{
+					{
+						Name: "external1",
+					},
+					{
+						Name:      "external2",
+						TrustZone: "zone3",
+					},
 				},
-				{
-					Name:      "data2",
-					TrustZone: "zone2",
-				},
-			},
-			ExternalElements: []*DfdExternal{
-				{
-					Name: "external1",
-				},
-				{
-					Name:      "external2",
-					TrustZone: "zone3",
-				},
-			},
-			Flows: []*DfdFlow{
-				{
-					Name: "flow",
-					From: "proc1",
-					To:   "data1",
-				},
-				{
-					Name: "flow",
-					From: "external1",
-					To:   "proc1",
-				},
-				{
-					Name: "flow",
-					From: "data1",
-					To:   "external1",
+				Flows: []*DfdFlow{
+					{
+						Name: "flow",
+						From: "proc1",
+						To:   "data1",
+					},
+					{
+						Name: "flow",
+						From: "external1",
+						To:   "proc1",
+					},
+					{
+						Name: "flow",
+						From: "data1",
+						To:   "external1",
+					},
 				},
 			},
 		},
@@ -202,7 +208,9 @@ func TestDfdPngGenerate(t *testing.T) {
 			}
 			defer os.RemoveAll(d)
 
-			err = tc.tm.GenerateDfdPng(fmt.Sprintf("%s/out.png", d))
+			for _, adfd := range tc.tm.DataFlowDiagrams {
+				err = adfd.GenerateDfdPng(fmt.Sprintf("%s/out.png", d), tc.tm.Name)
+			}
 
 			if err != nil {
 				if !strings.Contains(err.Error(), tc.exp) {
@@ -237,11 +245,62 @@ func TestDfdPngGenerate(t *testing.T) {
 	}
 }
 
-func TestDfdSvgGenerate(t *testing.T) {
-	// tm := dfdTm()
-	//
-	// fulltm := fullDfdTm()
+func TestDfdDotGenerate(t *testing.T) {
+	cases := []struct {
+		name        string
+		tm          *Threatmodel
+		exp         string
+		errorthrown bool
+	}{
+		{
+			"valid_full_dfd",
+			fullDfdTm(),
+			"",
+			false,
+		},
+		{
+			"valid_full_dfd2",
+			fullDfdTm2(),
+			"",
+			false,
+		},
+	}
 
+	for _, tc := range cases {
+		tc := tc
+
+		t.Run(tc.name, func(t *testing.T) {
+			// t.Parallel()
+
+			d, err := ioutil.TempDir("", "")
+			if err != nil {
+				t.Fatalf("Error creating tmp dir: %s", err)
+			}
+			defer os.RemoveAll(d)
+
+			for _, adfd := range tc.tm.DataFlowDiagrams {
+
+				dot, err := adfd.GenerateDot(tc.tm.Name)
+
+				if err != nil {
+					if !strings.Contains(err.Error(), tc.exp) {
+						t.Errorf("%s: Error rendering png: %s", tc.name, err)
+					}
+				} else {
+					if tc.errorthrown {
+						t.Errorf("%s: an error was thrown when it shoulnd't have", tc.name)
+					} else {
+						if !strings.Contains(dot, "graph") {
+							t.Errorf("%s: Could not find `graph` in DOT output", tc.name)
+						}
+					}
+				}
+			}
+		})
+	}
+}
+
+func TestDfdSvgGenerate(t *testing.T) {
 	cases := []struct {
 		name        string
 		tm          *Threatmodel
@@ -280,7 +339,9 @@ func TestDfdSvgGenerate(t *testing.T) {
 			}
 			defer os.RemoveAll(d)
 
-			err = tc.tm.GenerateDfdSvg(fmt.Sprintf("%s/out.svg", d))
+			for _, adfd := range tc.tm.DataFlowDiagrams {
+				err = adfd.GenerateDfdSvg(fmt.Sprintf("%s/out.svg", d), tc.tm.Name)
+			}
 
 			if err != nil {
 				if !strings.Contains(err.Error(), tc.exp) {

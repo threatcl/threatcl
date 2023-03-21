@@ -15,6 +15,51 @@
      }
    }
 
+   data_flow_diagram_v2 "new_model" {
+     external_element "Google Analytics" {}
+
+     trust_zone "Browser" {
+
+       process "Client" {}
+     }
+
+     trust_zone "AWS" {
+       process "Web Server" {}
+
+       data_store "Logs" {}
+
+       data_store "sqlite" {}
+
+
+     }
+
+     flow "https" {
+       from = "Client"
+       to = "Google Analytics"
+     }
+
+     flow "TCP" {
+       from = "Web Server"
+       to = "Logs"
+     }
+
+     flow "https" {
+       from = "Client"
+       to = "Web Server"
+      }
+
+      flow "https" {
+        from = "Web Server"
+        to = "sqlite"
+      }
+
+      flow "https" {
+        from = "sqlite"
+        to = "Web Server"
+      }
+   
+   }
+
    data_flow_diagram {
      external_element "Google Analytics" {}
 

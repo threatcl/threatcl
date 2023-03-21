@@ -694,11 +694,15 @@ func TestParseHCLRaw(t *testing.T) {
 
 			err := tmParser.ParseHCLRaw([]byte(tc.in))
 
+			t.Logf("============ %v+\n", err)
+
 			if err != nil {
+				t.Logf("Err: '%s'. Expected: '%s'.", err.Error(), tc.exp)
 				if !strings.Contains(err.Error(), tc.exp) {
 					t.Errorf("%s: Error parsing hcl tm: %s", tc.name, err)
 				}
 			} else {
+				t.Logf("Expected: '%s'.", tc.exp)
 				if tc.errorthrown {
 					t.Errorf("%s: An error was thrown when it shouldn't have", tc.name)
 				}

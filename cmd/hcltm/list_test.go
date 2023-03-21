@@ -160,7 +160,7 @@ func TestListRun(t *testing.T) {
 		{
 			"valid_dfd_exists",
 			"./testdata/tm3.hcl",
-			"true",
+			"1",
 			false,
 			0,
 			"-fields=dfd",
@@ -168,7 +168,7 @@ func TestListRun(t *testing.T) {
 		{
 			"no_valid_dfd_exists",
 			"./testdata/tm1.hcl",
-			"false",
+			"0",
 			false,
 			0,
 			"-fields=dfd",

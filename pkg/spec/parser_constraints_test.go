@@ -30,6 +30,12 @@ func TestControlStringConstraint(t *testing.T) {
 			[]string{"Deprecation warning: This threat model has defined `proposed_control`"},
 			false,
 		},
+		{
+			"old_dfd",
+			"./testdata/tm-constraint-multidfd.hcl",
+			[]string{"Deprecation warning: This threat model has a defined `data_flow_diagram`"},
+			false,
+		},
 	}
 
 	for _, tc := range cases {
