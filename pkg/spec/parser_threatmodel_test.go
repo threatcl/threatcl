@@ -88,6 +88,35 @@ func TestParseHCLFileWithIncludingRemote(t *testing.T) {
 
 }
 
+func TestParseHCLFileWithIncludingRemoteGit(t *testing.T) {
+	defaultCfg := &ThreatmodelSpecConfig{}
+	defaultCfg.setDefaults()
+	tmParser := NewThreatmodelParser(defaultCfg)
+
+	err := tmParser.ParseFile("./testdata/including/corp-app-remote2.hcl", false)
+
+	if err != nil {
+		t.Errorf("Error parsing legit TM file: %s", err)
+	}
+
+	foundOverwrittenIa := false
+
+	for _, tm := range tmParser.GetWrapped().Threatmodels {
+		if tm.Name == "Tower of London" {
+			for _, ia := range tm.InformationAssets {
+				if strings.Contains(ia.Name, "crown jewels") {
+					foundOverwrittenIa = true
+				}
+			}
+		}
+	}
+
+	if !foundOverwrittenIa {
+		t.Errorf("We didn't find an IA that should have been overwritten")
+	}
+
+}
+
 func TestParseHCLFileWithIncludingTooMany(t *testing.T) {
 	defaultCfg := &ThreatmodelSpecConfig{}
 	defaultCfg.setDefaults()
