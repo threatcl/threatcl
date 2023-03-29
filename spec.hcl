@@ -20,9 +20,17 @@ threatmodel "threatmodel name" {
   //
   // the included file must include only a single threatmodel block
   //
-  // any duplicates will be overwritten by this threatmodel
+  // any duplicate fields will be overwritten by this threatmodel
   //
-  // see https://github.com/xntrik/hcltm/issues/61
+  // You can leverage go-getter's format for downloading too, this means that
+  // you can refer to remote URLs, or Git Repos etc
+  // See https://github.com/hashicorp/go-getter for examples
+  //
+  // There are some issues to select an individual file from a Git repo, as the
+  // entire repo is downloaded by default. To use an individual file, you can
+  // github.com/xntrik/hcltm|examples/aws-security-checklist.hcl
+  // with the | being a separator between the git repo and the file to use
+  // after cloning.
 
   including = "shared/city-threatmodel.hcl"
 
@@ -193,6 +201,7 @@ threatmodel "threatmodel name" {
 
   // You can import an external .hcl file that includes control descriptions
   // Remember to do this at the threatmodel block level
+  // Similar to the "including" block, this can be a remote file too
 
   // An example of what may be in controls.hcl:
   //

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
+	"strings"
 
 	gg "github.com/hashicorp/go-getter"
 	"github.com/hashicorp/go-multierror"
@@ -56,10 +57,6 @@ func (tm *Threatmodel) Include(cfg *ThreatmodelSpecConfig, myfilename string) er
 	for _, tpd := range subTm.ThirdPartyDependencies {
 		tm.addTpdIfNotExist(*tpd)
 	}
-
-	// if tm.DataFlowDiagram == nil {
-	// 	tm.DataFlowDiagram = subTm.DataFlowDiagram
-	// }
 
 	for _, dfd := range subTm.DataFlowDiagrams {
 		tm.addDfdIfNotExist(*dfd)
@@ -166,6 +163,10 @@ func fetchRemoteTm(cfg *ThreatmodelSpecConfig, source, currentFilename string) (
 		return nil, err
 	}
 
+	// @TODO The below refers to a non-existent folder
+	// to cater for https://github.com/hashicorp/go-getter/issues/114
+	tmpDir = fmt.Sprintf("%s/nest", tmpDir)
+
 	absPath, err := filepath.Abs(currentFilename)
 	if err != nil {
 		return nil, err
@@ -173,8 +174,19 @@ func fetchRemoteTm(cfg *ThreatmodelSpecConfig, source, currentFilename string) (
 
 	absPath = filepath.Dir(absPath)
 
+	// @TODO The below is a hack to remote URLs
+	// We allow an explicit "file" to be referenced after
+	// a whole directory (i.e. git repo) is cloned
+	// see: https://github.com/hashicorp/go-getter/issues/98
+
+	// for example, the below allows a remote URL to look like
+	// github.com/xntrik/hcltm|examples/aws-security-checklist.hcl
+	// OR, something more complex, like a private repo
+	// git::ssh://git@github.com/xntrik/test|aws-security-checklist.hcl
+	splitSource := strings.SplitN(source, "|", 2)
+
 	client := gg.Client{
-		Src:  source,
+		Src:  splitSource[0],
 		Dst:  tmpDir,
 		Pwd:  absPath,
 		Mode: gg.ClientModeAny,
@@ -185,7 +197,26 @@ func fetchRemoteTm(cfg *ThreatmodelSpecConfig, source, currentFilename string) (
 		return nil, err
 	}
 
-	includePath := fmt.Sprintf("%s/%s", tmpDir, filepath.Base(source))
+	// err = filepath.Walk(tmpDir,
+	// 	func(path string, info os.FileInfo, err error) error {
+	// 		if err != nil {
+	// 			return err
+	// 		}
+	// 		fmt.Println(path, info.Size())
+	// 		return nil
+	// 	})
+	// if err != nil {
+	// 	fmt.Println("Error: ", err)
+	// }
+
+	includePath := ""
+
+	switch len(splitSource) {
+	case 1:
+		includePath = fmt.Sprintf("%s/%s", tmpDir, filepath.Base(source))
+	case 2:
+		includePath = fmt.Sprintf("%s/%s", tmpDir, splitSource[1])
+	}
 	importDiag := returnParser.ParseHCLFile(includePath, false)
 
 	if importDiag != nil {
