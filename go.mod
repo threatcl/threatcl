@@ -93,4 +93,5 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-replace github.com/marqeta/go-dfd => github.com/xntrik/go-dfd v0.1.2
+// replace github.com/marqeta/go-dfd => github.com/xntrik/go-dfd v0.1.2
+replace github.com/marqeta/go-dfd => /Users/xntrik/go/src/github.com/xntrik/go-dfd

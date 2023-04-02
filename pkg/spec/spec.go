@@ -1,5 +1,7 @@
 package spec
 
+import dfd "github.com/marqeta/go-dfd/dfd"
+
 type Attribute struct {
 	NewInitiative  bool   `hcl:"new_initiative,attr"`
 	InternetFacing bool   `hcl:"internet_facing,attr"`
@@ -98,10 +100,11 @@ type DfdFlow struct {
 }
 
 type DfdTrustZone struct {
-	Name             string         `hcl:"name,label"`
-	Processes        []*DfdProcess  `hcl:"process,block"`
-	ExternalElements []*DfdExternal `hcl:"external_element,block"`
-	DataStores       []*DfdData     `hcl:"data_store,block"`
+	Name             string          `hcl:"name,label"`
+	Processes        []*DfdProcess   `hcl:"process,block"`
+	ExternalElements []*DfdExternal  `hcl:"external_element,block"`
+	DataStores       []*DfdData      `hcl:"data_store,block"`
+	TrustZones       []*DfdTrustZone `hcl:"trust_zone,block"`
 }
 
 type LegacyDataFlowDiagram struct {
@@ -122,6 +125,10 @@ type DataFlowDiagram struct {
 	Flows             []*DfdFlow      `hcl:"flow,block"`
 	TrustZones        []*DfdTrustZone `hcl:"trust_zone,block"`
 	ImportFile        string          `hcl:"import,optional"`
+	internalZones     map[string]*dfd.TrustBoundary
+	internalProcs     map[string]*dfd.Process
+	internalElems     map[string]*dfd.ExternalService
+	internalDatas     map[string]*dfd.DataStore
 }
 
 type Threatmodel struct {

@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/goccy/go-graphviz"
 	dfd "github.com/marqeta/go-dfd/dfd"
 	"gonum.org/v1/gonum/graph"
@@ -123,20 +124,42 @@ func newDfdStore(name string) (error, *dfd.DataStore) {
 	return err, newStore
 }
 
+// func addTrustZones(zones map[string]*dfd.TrustBoundary, processes map[string]
+func addTz(parent *dfd.TrustBoundary) bool {
+	fmt.Println("first")
+	spew.Dump(parent)
+	tb, err := parent.AddTrustBoundary("test", "red")
+	if err != nil {
+		fmt.Printf("ERROR: %s\n", err)
+		return false
+	}
+	fmt.Println("second")
+	spew.Dump(parent)
+
+	parent.TrustBoundaries = make(map[string]*dfd.TrustBoundary)
+	parent.TrustBoundaries["test"] = tb
+	return true
+}
+
 func (d *DataFlowDiagram) generateDfdDotFile(filepath, tmName string) (string, error) {
 	// Build the DFD
 	g := dfd.InitializeDFD(fmt.Sprintf("%s_%s", tmName, d.Name))
 
-	zones := make(map[string]*dfd.TrustBoundary)
-	processes := make(map[string]*dfd.Process)
-	external_elements := make(map[string]*dfd.ExternalService)
-	data_stores := make(map[string]*dfd.DataStore)
+	// fmt.Printf("%s\n", addTz(d))
+
+	d.internalZones = make(map[string]*dfd.TrustBoundary)
+	d.internalProcs = make(map[string]*dfd.Process)
+	d.internalElems = make(map[string]*dfd.ExternalService)
+	d.internalDatas = make(map[string]*dfd.DataStore)
 
 	// Add zones
 	for _, zone := range d.TrustZones {
-		if _, existing := zones[zone.Name]; !existing {
+		if _, existing := d.internalZones[zone.Name]; !existing {
 			newZone, err := g.AddTrustBoundary(zone.Name, "red")
-			zones[zone.Name] = newZone
+			fmt.Printf("%t\n", addTz(newZone))
+			fmt.Println("Outer")
+			spew.Dump(newZone)
+			d.internalZones[zone.Name] = newZone
 			if err != nil {
 				return "", err
 			}
@@ -148,8 +171,8 @@ func (d *DataFlowDiagram) generateDfdDotFile(filepath, tmName string) (string, e
 			if err != nil {
 				return "", err
 			}
-			processes[process.Name] = newProcess
-			zones[zone.Name].AddNodeElem(processes[process.Name])
+			d.internalProcs[process.Name] = newProcess
+			d.internalZones[zone.Name].AddNodeElem(d.internalProcs[process.Name])
 		}
 
 		// Add External Elements from inside zone
@@ -158,8 +181,8 @@ func (d *DataFlowDiagram) generateDfdDotFile(filepath, tmName string) (string, e
 			if err != nil {
 				return "", err
 			}
-			external_elements[external_element.Name] = newElement
-			zones[zone.Name].AddNodeElem(external_elements[external_element.Name])
+			d.internalElems[external_element.Name] = newElement
+			d.internalZones[zone.Name].AddNodeElem(d.internalElems[external_element.Name])
 		}
 
 		// Add Data Stores from inside zone
@@ -168,8 +191,8 @@ func (d *DataFlowDiagram) generateDfdDotFile(filepath, tmName string) (string, e
 			if err != nil {
 				return "", err
 			}
-			data_stores[data_store.Name] = newStore
-			zones[zone.Name].AddNodeElem(data_stores[data_store.Name])
+			d.internalDatas[data_store.Name] = newStore
+			d.internalZones[zone.Name].AddNodeElem(d.internalDatas[data_store.Name])
 		}
 
 	}
@@ -180,20 +203,20 @@ func (d *DataFlowDiagram) generateDfdDotFile(filepath, tmName string) (string, e
 		if err != nil {
 			return "", err
 		}
-		processes[process.Name] = newProcess
+		d.internalProcs[process.Name] = newProcess
 
 		if process.TrustZone != "" {
-			if _, ok := zones[process.TrustZone]; !ok {
+			if _, ok := d.internalZones[process.TrustZone]; !ok {
 				zone, err := g.AddTrustBoundary(process.TrustZone, "red")
-				zones[process.TrustZone] = zone
+				d.internalZones[process.TrustZone] = zone
 				if err != nil {
 					return "", err
 				}
 			}
 
-			zones[process.TrustZone].AddNodeElem(processes[process.Name])
+			d.internalZones[process.TrustZone].AddNodeElem(d.internalProcs[process.Name])
 		} else {
-			g.AddNodeElem(processes[process.Name])
+			g.AddNodeElem(d.internalProcs[process.Name])
 		}
 	}
 
@@ -203,20 +226,20 @@ func (d *DataFlowDiagram) generateDfdDotFile(filepath, tmName string) (string, e
 		if err != nil {
 			return "", err
 		}
-		external_elements[external_element.Name] = newElement
+		d.internalElems[external_element.Name] = newElement
 
 		if external_element.TrustZone != "" {
-			if _, ok := zones[external_element.TrustZone]; !ok {
+			if _, ok := d.internalZones[external_element.TrustZone]; !ok {
 				zone, err := g.AddTrustBoundary(external_element.TrustZone, "red")
-				zones[external_element.TrustZone] = zone
+				d.internalZones[external_element.TrustZone] = zone
 				if err != nil {
 					return "", err
 				}
 			}
 
-			zones[external_element.TrustZone].AddNodeElem(external_elements[external_element.Name])
+			d.internalZones[external_element.TrustZone].AddNodeElem(d.internalElems[external_element.Name])
 		} else {
-			g.AddNodeElem(external_elements[external_element.Name])
+			g.AddNodeElem(d.internalElems[external_element.Name])
 		}
 	}
 
@@ -226,20 +249,20 @@ func (d *DataFlowDiagram) generateDfdDotFile(filepath, tmName string) (string, e
 		if err != nil {
 			return "", err
 		}
-		data_stores[data_store.Name] = newStore
+		d.internalDatas[data_store.Name] = newStore
 
 		if data_store.TrustZone != "" {
-			if _, ok := zones[data_store.TrustZone]; !ok {
+			if _, ok := d.internalZones[data_store.TrustZone]; !ok {
 				zone, err := g.AddTrustBoundary(data_store.TrustZone, "red")
-				zones[data_store.TrustZone] = zone
+				d.internalZones[data_store.TrustZone] = zone
 				if err != nil {
 					return "", err
 				}
 			}
 
-			zones[data_store.TrustZone].AddNodeElem(data_stores[data_store.Name])
+			d.internalZones[data_store.TrustZone].AddNodeElem(d.internalDatas[data_store.Name])
 		} else {
-			g.AddNodeElem(data_stores[data_store.Name])
+			g.AddNodeElem(d.internalDatas[data_store.Name])
 		}
 	}
 
@@ -247,7 +270,7 @@ func (d *DataFlowDiagram) generateDfdDotFile(filepath, tmName string) (string, e
 
 		var to, from graph.Node
 
-		for name, process := range processes {
+		for name, process := range d.internalProcs {
 			if name == flow.From {
 				from = process
 			}
@@ -257,7 +280,7 @@ func (d *DataFlowDiagram) generateDfdDotFile(filepath, tmName string) (string, e
 			}
 		}
 
-		for name, external_element := range external_elements {
+		for name, external_element := range d.internalElems {
 			if name == flow.From {
 				from = external_element
 			}
@@ -267,7 +290,7 @@ func (d *DataFlowDiagram) generateDfdDotFile(filepath, tmName string) (string, e
 			}
 		}
 
-		for name, data_store := range data_stores {
+		for name, data_store := range d.internalDatas {
 			if name == flow.From {
 				from = data_store
 			}

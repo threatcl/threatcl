@@ -30,6 +30,10 @@
 
        data_store "sqlite" {}
 
+       trust_zone "KMS" {
+         data_store "KMS Keys" {}
+       }
+
 
      }
 
