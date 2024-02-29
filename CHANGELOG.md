@@ -1,3 +1,13 @@
+## 0.1.7
+### Feb 29, 2024
+
+CHANGES:
+
+* Updating to Go 1.20
+* Added `export` sub-command
+* Added OTM support to the `export` sub-command
+* Support for remote file inclusion with `go-getter`
+
 ## 0.1.6
 ### Mar 21, 2023
 
