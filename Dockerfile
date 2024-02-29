@@ -1,4 +1,4 @@
-FROM golang:1.19.5-alpine AS builder
+FROM golang:1.20.2-alpine3.17 AS builder
 MAINTAINER Christian Frichot <xntrik@gmail.com>
 
 RUN apk update
@@ -9,7 +9,7 @@ COPY . .
 ENV CGO_ENABLED=1
 RUN go build -o hcltm ./cmd/hcltm
 
-FROM alpine:3.16 AS hcltm
+FROM alpine:3.17 AS hcltm
 WORKDIR /app
 COPY --from=builder /src/hcltm /bin/hcltm
 ENTRYPOINT ["/bin/hcltm"]

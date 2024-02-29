@@ -118,18 +118,6 @@ func (c *DfdCommand) fetchDfd(allFiles []string, index int) (string, error) {
 	return dot, nil
 }
 
-func (c *DfdCommand) fileExistenceCheck(outfiles []string, overwrite bool) error {
-	if !overwrite {
-		for _, outfile := range outfiles {
-			_, err := os.Stat(outfile)
-			if !os.IsNotExist(err) {
-				return fmt.Errorf("'%s' already exists", outfile)
-			}
-		}
-	}
-	return nil
-}
-
 func (c *DfdCommand) Run(args []string) int {
 
 	flagSet := c.GetFlagset("dfd")
@@ -265,7 +253,7 @@ func (c *DfdCommand) Run(args []string) int {
 
 	// We're going to output a single file
 	case c.flagOutFile != "" && c.flagOutDir == "":
-		err := c.fileExistenceCheck([]string{c.flagOutFile}, c.flagOverwrite)
+		err := fileExistenceCheck([]string{c.flagOutFile}, c.flagOverwrite)
 		if err != nil {
 			fmt.Printf("%s\n", err)
 			return 1
@@ -387,7 +375,7 @@ func (c *DfdCommand) Run(args []string) int {
 
 		// Check if there are any files, and whether we're handling
 		// overwriting correctly
-		err := c.fileExistenceCheck(outfiles, c.flagOverwrite)
+		err := fileExistenceCheck(outfiles, c.flagOverwrite)
 		if err != nil {
 			fmt.Printf("%s\n", err)
 			return 1
