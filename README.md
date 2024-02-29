@@ -49,14 +49,14 @@ threatmodel "Tower of London" {
     }
   }
 
-  data_flow_diagram {
+  data_flow_diagram_v2 "dfd name" {
     // ... see below for more information
   }
 
 }
 ```
 
-See [Data Flow Diagram](#data-flow-diagram) for more information on how to construct data flow diagrams that are converted to PNGs automatically.
+See [Data Flow Diagram](#data-flow-diagram) for more information on how to construct data flow diagrams that may be converted to PNGs automatically.
 
 To see an example of how to reference pre-defined control libraries for the [OWASP Proactive Controls](https://owasp.org/www-project-proactive-controls/) and [AWS Security Checklist](https://d1.awsstatic.com/whitepapers/Security/AWS_Security_Checklist.pdf) see [examples/tm3.hcl](examples/tm3.hcl). We also have the [MITRE ATT&CK Controls](https://attack.mitre.org/mitigations/enterprise/) [here](examples/MITRE_ATTACK_controls.hcl).
 
@@ -132,6 +132,7 @@ Usage: hcltm [--version] [--help] <command> [<args>]
 Available commands are:
     dashboard    Generate markdown files from existing HCL threatmodel file(s)
     dfd          Generate Data Flow Diagram PNG or DOT files from existing HCL threatmodel file(s)
+    export       Export threat models into other formats
     generate     Generate an HCL Threat Model
     list         List Threatmodels found in HCL file(s)
     terraform    Parse output from 'terraform show -json'
@@ -139,7 +140,7 @@ Available commands are:
     view         View existing HCL Threatmodel file(s)
 ```
 
-## Config file
+## (Optional) Config file
 
 Most of the `hcltm` commands have a `-config` flag that allows you to specify a `config.hcl` file. HCL within this file may be used to overwrite some of `hcltm`'s default attributes. These are listed below:
 
@@ -190,7 +191,7 @@ Validated 3 threatmodels in 3 files
 
 ## Export
 
-The `hcltm export` command is used to export a `hcltm` threat model (or models) into the native JSON representation (by default), or into the [OTM](https://github.com/iriusrisk/OpenThreatModel) json representation.
+The `hcltm export` command is used to export a `hcltm` threat model (or models) into the native JSON representation (by default), or into the [OTM](https://github.com/iriusrisk/OpenThreatModel) json representation. You can also directly save them into a file with the `-output` flag.
 
 ```bash
 $ hcltm export -format=otm examples/tm1.hcl
@@ -252,11 +253,11 @@ The `hcltm dashboard` command can also take an optional flag to specify a filena
 
 ## Data Flow Diagram
 
-As per the [spec](spec.hcl), a `threatmodel` may include a single `data_flow_diagram`. An example of a simple DFD is available [here](examples/tm2.hcl).
+As per the [spec](spec.hcl), a `threatmodel` may include `data_flow_diagram_v2` blocks. An example of a simple DFD is available [here](examples/tm2.hcl). The old, single-use-block `data_flow_diagram` will be deprecated at some point, so it's better to use `data_flow_diagram_v2` named blocks, that way you can have multiple associated DFDs.
 
 The `hcltm dfd` command takes `hcltm` spec HCL files, and generates a number of png files, dropping them into a selected folder.
 
-If the HCL file doesn't include a `threatmodel` block with a `data_flow_diagram` block, then nothing is output.
+If the HCL file doesn't include a `threatmodel` block with a `data_flow_diagram` or `data_flow_diagram_v2` block, then nothing is output.
 
 The command itself is very similar to the Dashboard command.
 
