@@ -4,6 +4,8 @@
    imports = ["https://raw.githubusercontent.com/xntrik/hcltm/main/examples/aws-security-checklist.hcl", "https://raw.githubusercontent.com/xntrik/hcltm/main/examples/owasp-proactive-controls.hcl"]
    author = "@xntrik"
 
+   diagram_link = "https://link.to.somewhere/diagram"
+
    threat {
      description = "threaty threat"
 #      control = <<EOT

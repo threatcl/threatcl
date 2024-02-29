@@ -18,6 +18,7 @@ require (
 	github.com/marqeta/go-dfd v0.1.0
 	github.com/mitchellh/cli v1.1.2
 	github.com/ryanuber/columnize v2.1.2+incompatible
+	github.com/xntrik/go-otm v0.0.1
 	github.com/zclconf/go-cty v1.9.1
 	gonum.org/v1/gonum v0.9.3
 )
@@ -51,7 +52,6 @@ require (
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
 	github.com/hashicorp/go-safetemp v1.0.0 // indirect
-	github.com/hashicorp/golang-lru v0.5.1 // indirect
 	github.com/huandu/xstrings v1.3.2 // indirect
 	github.com/imdario/mergo v0.3.12 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect

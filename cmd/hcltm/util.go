@@ -331,6 +331,19 @@ func findAllFiles(files []string) []string {
 	return out
 }
 
+// fileExistenceCheck checks for the existence of provided files
+func fileExistenceCheck(outfiles []string, overwrite bool) error {
+	if !overwrite {
+		for _, outfile := range outfiles {
+			_, err := os.Stat(outfile)
+			if !os.IsNotExist(err) {
+				return fmt.Errorf("'%s' already exists", outfile)
+			}
+		}
+	}
+	return nil
+}
+
 // findJsonFiles iterates through a list of files or folders
 // looking for .json files
 // currently it does this recursively through folders too

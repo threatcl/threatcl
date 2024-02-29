@@ -85,6 +85,12 @@ func Run(args []string) int {
 				specCfg:          cfg,
 			}, nil
 		},
+		"export": func() (cli.Command, error) {
+			return &ExportCommand{
+				GlobalCmdOptions: globalCmdOptions,
+				specCfg:          cfg,
+			}, nil
+		},
 	}
 
 	cli := &cli.CLI{
