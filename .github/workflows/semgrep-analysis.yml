@@ -28,7 +28,7 @@ jobs:
       image: returntocorp/semgrep
     steps:
       # Checkout project source
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       # Scan code using project's configuration on https://semgrep.dev/manage
       - run: semgrep scan --sarif --output=semgrep.sarif --config=policy
