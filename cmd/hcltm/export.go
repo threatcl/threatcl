@@ -6,7 +6,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/xntrik/go-otm/pkg/otm"
+	"github.com/threatcl/go-otm/pkg/otm"
 	"github.com/xntrik/hcltm/pkg/spec"
 )
 

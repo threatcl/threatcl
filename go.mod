@@ -18,7 +18,7 @@ require (
 	github.com/marqeta/go-dfd v0.1.0
 	github.com/mitchellh/cli v1.1.2
 	github.com/ryanuber/columnize v2.1.2+incompatible
-	github.com/xntrik/go-otm v0.0.1
+	github.com/threatcl/go-otm v0.0.2
 	github.com/zclconf/go-cty v1.9.1
 	gonum.org/v1/gonum v0.9.3
 )

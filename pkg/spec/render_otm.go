@@ -5,7 +5,7 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/xntrik/go-otm/pkg/otm"
+	"github.com/threatcl/go-otm/pkg/otm"
 )
 
 const (
