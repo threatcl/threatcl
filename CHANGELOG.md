@@ -1,3 +1,10 @@
+## 0.1.8
+### Mar 3, 2024
+
+CHANGES:
+
+* Minor dependency bump
+
 ## 0.1.7
 ### Feb 29, 2024
 
