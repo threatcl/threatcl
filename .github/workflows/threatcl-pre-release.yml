@@ -15,24 +15,24 @@ env:
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  cleanup:
-    permissions:
-      contents: write
-    runs-on: ubuntu-latest
-    steps:
-      - name: Delete old dev release assets
-        uses: mknejp/delete-release-assets@v1
-        with:
-          token: ${{ github.token }}
-          tag: dev
-          fail-if-no-assets: false
-          assets: |
-            threatcl-*
+  # cleanup:
+  #   permissions:
+  #     contents: write
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Delete old dev release assets
+  #       uses: mknejp/delete-release-assets@v1
+  #       with:
+  #         token: ${{ github.token }}
+  #         tag: dev
+  #         fail-if-no-assets: false
+  #         assets: |
+  #           threatcl-*
 
   build-dev-linux:
     permissions:
       contents: write
-    needs: cleanup
+    # needs: cleanup
     runs-on: ubuntu-latest
     strategy:
       matrix:
