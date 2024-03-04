@@ -1,3 +1,11 @@
+## 0.2.0
+### Mar 4, 2024
+
+CHANGES:
+
+* Renamed hcltm to threatcl
+* Moved to a new org at github
+
 ## 0.1.8
 ### Mar 3, 2024
 
