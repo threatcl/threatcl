@@ -43,18 +43,18 @@ jobs:
         uses: actions/checkout@v4
       - name: Set BUILD_TIME
         run: echo BUILD_TIME=$(date -u +%Y%m%d-%H%M) >> ${GITHUB_ENV}
-      - name: Go dev release
-        uses: wangyoucao577/go-release-action@v1
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          goos: ${{ matrix.goos }}
-          goarch: ${{ matrix.goarch }}
-          release_tag: dev
-          overwrite: true
-          pre_command: export CGO_ENABLED=1
-          project_path: cmd/threatcl
-          binary_name: threatcl
-          asset_name: "threatcl-${{ env.BUILD_TIME }}-${{ matrix.goos}}-${{ matrix.goarch }}"
+      # - name: Go dev release
+      #   uses: wangyoucao577/go-release-action@v1
+      #   with:
+      #     github_token: ${{ secrets.GITHUB_TOKEN }}
+      #     goos: ${{ matrix.goos }}
+      #     goarch: ${{ matrix.goarch }}
+      #     release_tag: dev
+      #     overwrite: true
+      #     pre_command: export CGO_ENABLED=1
+      #     project_path: cmd/threatcl
+      #     binary_name: threatcl
+      #     asset_name: "threatcl-${{ env.BUILD_TIME }}-${{ matrix.goos}}-${{ matrix.goarch }}"
 
   build-macos:
     permissions:
@@ -68,6 +68,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Setup Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: '1.22'
       # - name: OXCross for CGO Support
       #   run: |
       #     mkdir ../../osxcross
@@ -79,18 +83,29 @@ jobs:
       #     platform: x64
       - name: Set BUILD_TIME
         run: echo BUILD_TIME=$(date -u +%Y%m%d-%H%M) >> ${GITHUB_ENV}
-      - name: Go dev release
-        uses: wangyoucao577/go-release-action@v1
+      # - name: Go dev release
+      #   uses: wangyoucao577/go-release-action@v1
+      #   with:
+      #     github_token: ${{ secrets.GITHUB_TOKEN }}
+      #     goos: ${{ matrix.goos }}
+      #     goarch: ${{ matrix.goarch }}
+      #     release_tag: dev
+      #     overwrite: true
+      #     pre_command: export CGO_ENABLED=1
+      #     project_path: cmd/threatcl
+      #     binary_name: threatcl
+      #     asset_name: "threatcl-${{ env.BUILD_TIME }}-${{ matrix.goos}}-${{ matrix.goarch }}"
+      - name: Go build
+        run: |
+          CGO_ENABLED=1 GOARCH=${{ matrix.goarch }} GOOS=${{ matrix.goos }} go build -o threatcl ./cmd/threatcl
+          tar -zcvf threatcl-${{ env.BUILD_TIME }}-${{ matrix.goos }}-${{ matrix.goarch }}.tar.gz threatcl
+      - name: Upload OSX Package
+        uses: actions/upload-artifact@v2
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          goos: ${{ matrix.goos }}
-          goarch: ${{ matrix.goarch }}
-          release_tag: dev
-          overwrite: true
-          pre_command: export CGO_ENABLED=1
-          project_path: cmd/threatcl
-          binary_name: threatcl
-          asset_name: "threatcl-${{ env.BUILD_TIME }}-${{ matrix.goos}}-${{ matrix.goarch }}"
+          name: osx-pkg-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: threatcl-${{ env.BUILD_time }}-${{ matrix.goos }}-${{ matrix.goarch }}.tar.gz
+
+
 
   pre-build-and-push-image:
     runs-on: ubuntu-latest
