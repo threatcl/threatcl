@@ -1,4 +1,4 @@
-FROM golang:1.20.2-alpine3.17 AS builder
+FROM golang:1.22.0-alpine3.19 AS builder
 MAINTAINER Christian Frichot <xntrik@gmail.com>
 
 RUN apk update
@@ -7,9 +7,9 @@ RUN apk add --update git gcc libc-dev libgcc make
 WORKDIR /src
 COPY . .
 ENV CGO_ENABLED=1
-RUN go build -o hcltm ./cmd/hcltm
+RUN go build -o threatcl ./cmd/threatcl
 
-FROM alpine:3.17 AS hcltm
+FROM alpine:3.19 AS threatcl
 WORKDIR /app
-COPY --from=builder /src/hcltm /bin/hcltm
-ENTRYPOINT ["/bin/hcltm"]
+COPY --from=builder /src/threatcl /bin/threatcl
+ENTRYPOINT ["/bin/threatcl"]

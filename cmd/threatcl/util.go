@@ -1,5 +1,22 @@
-// To cater for multiple spec versions we specify this in our HCL files
-spec_version = "0.2.0"
+package main
+
+import (
+	"bytes"
+	"errors"
+	"flag"
+	"fmt"
+	"os"
+	"path/filepath"
+	"regexp"
+	"strings"
+	"text/template"
+
+	"github.com/threatcl/spec"
+)
+
+const (
+	BoilerplateTemplate = `// To cater for multiple spec versions we specify this in our HCL files
+spec_version = "{{.SpecVersion}}"
 
 // You can include variables outside your threatmodel blocks
 
@@ -45,7 +62,7 @@ threatmodel "threatmodel name" {
 
   // If a diagram_link isn't set, but the threatmodel includes a
   // data_flow_diagram, this will be automatically generated and included
-  // when running hcltm dashboard
+  // when running threatcl dashboard
 
   diagram_link = "https://link/to/diagram"
 
@@ -59,8 +76,8 @@ threatmodel "threatmodel name" {
     new_initiative = "true" // boolean
     internet_facing = "true" // boolean
 
-    // initiative_size must be one of 'Undefined, Small, Medium, Large'
-    initiative_size = "Undefined"
+    // initiative_size must be one of '{{.InitiativeSizeOptions}}'
+    initiative_size = "{{.DefaultInitiativeSize}}"
   }
 
   // you can set mutiple additional attribute key/value blocks as well
@@ -76,8 +93,8 @@ threatmodel "threatmodel name" {
     // The description is optional
     description = "This is where creds are stored"
 
-    // information_classification must be one of 'Restricted, Confidential, Public'
-    information_classification = "Confidential"
+    // information_classification must be one of '{{.InfoClassificationOptions}}'
+    information_classification = "{{.DefaultInfoClassification}}"
 
     // source is optional, and can be used to specify if this asset was sourced
     // from an external resource, such as terraform
@@ -87,7 +104,7 @@ threatmodel "threatmodel name" {
   information_asset "special sauce" {
     // Here is how you can refer to your variables set above
     description = var.variable_name
-    information_classification = "Confidential"
+    information_classification = "{{.DefaultInfoClassification}}"
   }
 
   // Each threatmodel may contain a number of usecases
@@ -118,9 +135,9 @@ threatmodel "threatmodel name" {
     open_source = "false"
     infrastructure = "false"
 
-    // The uptime dependency is required, and must be one of "none", "degraded", "hard", "operational"
+    // The uptime dependency is required, and must be one of {{.UptimeDeps}}
     // This specifies the impact to our system if the dependency is unavailable
-    uptime_dependency = "none"
+    uptime_dependency = "{{.DefaultUptimeDep}}"
 
     // Uptime notes are optional
     uptime_notes = "If this dependency goes down users can't login"
@@ -133,8 +150,8 @@ threatmodel "threatmodel name" {
     description = "System is compromised by hackers"
 
     // The impact is an optional array of potential impact values
-    // The available values are 'Confidentiality, Integrity, Availability'
-    impacts = ["Confidentiality", "Integrity", "Availability"]
+    // The available values are '{{.ImpactTypes}}'
+    impacts = [{{.ImpactTypesOut}}]
 
     // A threat may contain multiple expanded_control blocks
     // These blocks will be replacing the older "control" string or
@@ -173,13 +190,8 @@ threatmodel "threatmodel name" {
 
     // The stride is an optional array of STRIDE elements that apply to this threat
     // The available values are:
-    // Spoofing
-    // Tampering
-    // Repudiation
-    // Info Disclosure
-    // Denial Of Service
-    // Elevation Of Privilege
-    stride = ["Spoofing", "Tampering", "Repudiation", "Info Disclosure", "Denial Of Service", "Elevation Of Privilege"]
+    // {{.StrideElements}}
+    stride = [{{.StrideElementsOut}}]
 
     // The information_asset_refs are an optional array of information_assets
     // the elements must much existing information_assets - as above
@@ -205,7 +217,7 @@ threatmodel "threatmodel name" {
 
   // An example of what may be in controls.hcl:
   //
-  // spec_version = "0.2.0"
+  // spec_version = "{{.SpecVersion}}"
   // component "control" "control_name" {
   //   description = "A control that can be used in multiple places"
   // }
@@ -295,4 +307,214 @@ EOT
     }
   }
 }
+`
+)
 
+func prettyBool(in bool) string {
+	if in {
+		return "Yes"
+	}
+	return "No"
+}
+
+func prettyBoolFromString(in string) bool {
+	if in == "Yes" {
+		return true
+	}
+	return false
+}
+
+// findAllFiles wraps Json and Hcl file finding
+func findAllFiles(files []string) []string {
+	out := findHclFiles(files)
+	out = append(out, findJsonFiles(files)...)
+	return out
+}
+
+// fileExistenceCheck checks for the existence of provided files
+func fileExistenceCheck(outfiles []string, overwrite bool) error {
+	if !overwrite {
+		for _, outfile := range outfiles {
+			_, err := os.Stat(outfile)
+			if !os.IsNotExist(err) {
+				return fmt.Errorf("'%s' already exists", outfile)
+			}
+		}
+	}
+	return nil
+}
+
+// findJsonFiles iterates through a list of files or folders
+// looking for .json files
+// currently it does this recursively through folders too
+func findJsonFiles(files []string) []string {
+	out := []string{}
+	recurse := true // @TODO potentially in the future we may make this an argument / flag
+	for _, file := range files {
+		info, err := os.Stat(file)
+		if !os.IsNotExist(err) {
+			if !info.IsDir() {
+				if filepath.Ext(file) == ".json" {
+					out = append(out, file)
+				}
+			} else {
+				if recurse {
+					re_err := filepath.Walk(file, func(path string, re_info os.FileInfo, err error) error {
+						if !re_info.IsDir() && filepath.Ext(path) == ".json" {
+							out = append(out, path)
+						}
+						return nil
+					})
+					if re_err != nil {
+						panic(re_err) // @TODO - handle this error better
+					}
+				}
+			}
+		}
+	}
+	return out
+}
+
+// findHclFiles iterates through a list of files or folders
+// looking for .hcl files
+// currently it does this recursively through folders too
+func findHclFiles(files []string) []string {
+	out := []string{}
+	recurse := true // @TODO potentially in the future we may make this an argument / flag
+	for _, file := range files {
+		info, err := os.Stat(file)
+		if !os.IsNotExist(err) {
+			if !info.IsDir() {
+				if filepath.Ext(file) == ".hcl" {
+					out = append(out, file)
+				}
+			} else {
+				if recurse {
+					re_err := filepath.Walk(file, func(path string, re_info os.FileInfo, err error) error {
+						if !re_info.IsDir() && filepath.Ext(path) == ".hcl" {
+							out = append(out, path)
+						}
+						return nil
+					})
+					if re_err != nil {
+						panic(re_err) // @TODO - handle this error better
+					}
+				}
+			}
+		}
+	}
+	return out
+}
+
+func configFileLocation() (string, error) {
+	homeDir := os.Getenv("HOME")
+	if homeDir == "" {
+		return "", errors.New("Can't find home directory")
+	}
+
+	return filepath.Join(homeDir, ".hcltmrc"), nil
+}
+
+func validateFilename(filename string) error {
+	reg := regexp.MustCompile("[^a-zA-Z0-9_-]+")
+	validFilename := reg.ReplaceAllString(filename, "")
+
+	if filename != validFilename {
+		return fmt.Errorf("Provided filename contains illegal characters")
+	}
+
+	return nil
+}
+
+// createOrValidateFolder is used for creating or validating
+// an output folder. This is used when a command needs to
+// output files into a folder
+func createOrValidateFolder(folder string, overwrite bool) error {
+	info, err := os.Stat(folder)
+
+	if os.IsNotExist(err) {
+
+		// Need to create the directory
+		err = os.Mkdir(folder, 0755)
+		if err != nil {
+			return fmt.Errorf("Error creating directory: %s", err)
+		}
+	} else {
+		if !info.IsDir() {
+			// The outdir exists but isn't a directory
+			return fmt.Errorf("You're trying to output to a file that exists and isn't a directory")
+		} else {
+			if !overwrite {
+				return fmt.Errorf("Won't overwrite content in the '%s' folder, to overwrite contents provide the -overwrite option", folder)
+			}
+		}
+	}
+
+	return nil
+}
+
+func outfilePath(outDir, tmName, file, ext string) string {
+	reg := regexp.MustCompile("[^a-zA-Z0-9]+")
+	processedTmname := strings.ToLower(reg.ReplaceAllString(tmName, ""))
+
+	processedFile := filepath.Base(file)
+	processedFile = strings.TrimSuffix(processedFile, filepath.Ext(processedFile))
+
+	return fmt.Sprintf("%s/%s-%s%s", outDir, processedFile, processedTmname, ext)
+
+}
+
+func parseBoilerplateTemplate(cfg *spec.ThreatmodelSpecConfig) (string, error) {
+	type boilerplate struct {
+		SpecVersion               string
+		InitiativeSizeOptions     string
+		DefaultInitiativeSize     string
+		InfoClassificationOptions string
+		DefaultInfoClassification string
+		ImpactTypes               string
+		ImpactTypesOut            string
+		StrideElements            string
+		StrideElementsOut         string
+		UptimeDeps                string
+		DefaultUptimeDep          string
+	}
+
+	bp := boilerplate{
+		SpecVersion:               cfg.Version,
+		InitiativeSizeOptions:     strings.Join(cfg.InitiativeSizes, ", "),
+		DefaultInitiativeSize:     cfg.DefaultInitiativeSize,
+		InfoClassificationOptions: strings.Join(cfg.InfoClassifications, ", "),
+		DefaultInfoClassification: cfg.DefaultInfoClassification,
+		ImpactTypes:               strings.Join(cfg.ImpactTypes, ", "),
+		ImpactTypesOut:            fmt.Sprintf("\"%s\"", strings.Join(cfg.ImpactTypes, "\", \"")),
+		StrideElements:            strings.Join(cfg.STRIDE, "\n    // "),
+		StrideElementsOut:         fmt.Sprintf("\"%s\"", strings.Join(cfg.STRIDE, "\", \"")),
+		UptimeDeps:                fmt.Sprintf("\"%s\"", strings.Join(cfg.UptimeDepClassifications, "\", \"")),
+		DefaultUptimeDep:          cfg.DefaultUptimeDepClassification,
+	}
+
+	tmpl, err := template.New("BPTemplate").Parse(BoilerplateTemplate)
+	if err != nil {
+		return "", err
+	}
+
+	var b bytes.Buffer
+
+	err = tmpl.Execute(&b, bp)
+	if err != nil {
+		return "", err
+	}
+	return b.String(), nil
+}
+
+type GlobalCmdOptions struct {
+	flagDebug  bool
+	flagConfig string
+}
+
+func (g *GlobalCmdOptions) GetFlagset(name string) *flag.FlagSet {
+	flagSet := flag.NewFlagSet(name, flag.ExitOnError)
+	flagSet.BoolVar(&g.flagDebug, "debug", false, "Enable debug output")
+	flagSet.StringVar(&g.flagConfig, "config", "", "Optional config file")
+	return flagSet
+}

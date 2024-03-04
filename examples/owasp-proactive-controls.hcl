@@ -1,4 +1,4 @@
-spec_version = "0.1.8"
+spec_version = "0.2.0"
 
 // These are from https://github.com/OWASP/www-project-proactive-controls/tree/7622bebed900a6a5d7b7b9b01fb3fe2b0e695545/v3/en
 
