@@ -59,7 +59,7 @@ jobs:
   build-macos:
     permissions:
       contents: write
-    needs: cleanup
+    needs: build-dev-linux
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -85,7 +85,7 @@ jobs:
 
   pre-build-and-push-image:
     runs-on: ubuntu-latest
-    needs: [pre-release]
+    needs: [build-macos]
     permissions:
       contents: read
       packages: write
