@@ -7,79 +7,81 @@ on:
     tags-ignore:
       - "*"
 
+permissions:
+  contents: read
+
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  pre-release-linux:
+  cleanup:
+    permissions:
+      contents: write
     runs-on: ubuntu-latest
+    steps:
+      - name: Delete old dev release assets
+        uses: mknejp/delete-release-assets@v1
+        with:
+          token: ${{ github.token }}
+          tag: dev
+          fail-if-no-assets: false
+          assets: |
+            threatcl-*
+
+  build-dev-linux:
+    permissions:
+      contents: write
+    needs: cleanup
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        goos: [linux]
+        goarch: [amd64]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Setup Go
-        uses: actions/setup-go@v4
+      - name: Set BUILD_TIME
+        run: echo BUILD_TIME=$(date -u +%Y%m%d-%H%M) >> ${GITHUB_ENV}
+      - name: Go dev release
+        uses: wangyoucao577/go-release-action@v1
         with:
-          go-version: '1.22'
-      - name: Bootstrap
-        run: make bootstrap
-      - name: Test
-        run: make test
-      - name: Package
-        run: make pkg-linux
-      - name: Upload Linux Package
-        uses: actions/upload-artifact@v2
-        with:
-          name: linux-pkg
-          path: out/threatcl-linux-amd64.tar.gz
+          github_token: ${{ github.token }}
+          goos: ${{ matrix.goos }}
+          goarch: ${{ matrix.goarch }}
+          release_tag: dev
+          overwrite: true
+          pre_command: export CGO_ENABLED=1
+          project_path: cmd/threatcl
+          binary_name: threatcl
+          asset_name: "threatcl-${{ env.BUILD_TIME }}-${{ matrix.goos}}-${{ matrix.goarch }}"
 
-  pre-release-osx:
-    runs-on: macos-latest
+  build-macos:
+    permissions:
+      contents: write
+    needs: cleanup
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        goos: [darwin]
+        goarch: [amd64, arm64]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Setup Go
-        uses: actions/setup-go@v4
+      - name: Set BUILD_TIME
+        run: echo BUILD_TIME=$(date -u +%Y%m%d-%H%M) >> ${GITHUB_ENV}
+      - name: Go dev release
+        uses: wangyoucao577/go-release-action@v1
         with:
-          go-version: '1.22'
-      - name: Bootstrap
-        run: make bootstrap
-      - name: Package
-        run: make pkg-osx
-      - name: Upload OSX Package
-        uses: actions/upload-artifact@v2
-        with:
-          name: osx-pkg
-          path: out/threatcl-darwin-amd64.tar.gz
-
-  pre-release:
-    runs-on: ubuntu-latest
-    needs: [pre-release-linux, pre-release-osx]
-    steps:
-      - name: Download linux package
-        uses: actions/download-artifact@v2
-        with:
-          name: linux-pkg
-      - name: Download osx package
-        uses: actions/download-artifact@v2
-        with:
-          name: osx-pkg
-      - name: Automatic Pre-Release
-        uses: "marvinpinto/action-automatic-releases@latest"
-        with:
-          repo_token: "${{ secrets.GITHUB_TOKEN }}"
-          automatic_release_tag: "latest"
-          prerelease: true
-          title: "Development Build"
-          files: |
-            threatcl-linux-amd64.tar.gz
-            threatcl-darwin-amd64.tar.gz
-      - name: Remove artifacts
-        uses: geekyeggo/delete-artifact@v1
-        with:
-          name: |
-            linux-pkg
-            osx-pkg
+          github_token: ${{ github.token }}
+          goos: ${{ matrix.goos }}
+          goarch: ${{ matrix.goarch }}
+          release_tag: dev
+          overwrite: true
+          pre_command: export CGO_ENABLED=1
+          project_path: cmd/threatcl
+          binary_name: threatcl
+          asset_name: "threatcl-${{ env.BUILD_TIME }}-${{ matrix.goos}}-${{ matrix.goarch }}"
 
   pre-build-and-push-image:
     runs-on: ubuntu-latest
