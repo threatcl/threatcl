@@ -66,7 +66,7 @@ jobs:
       - name: Upload Linux Package
         uses: actions/upload-artifact@v2
         with:
-          name: linux-pkg-${{ matrix.goos }}-${{ matrix.goarch }}
+          name: linux-pkg-${{ matrix.goarch }}
           path: threatcl-${{ env.BUILD_TIME }}-${{ matrix.goos }}-${{ matrix.goarch }}.tar.gz
 
   build-macos:
@@ -114,15 +114,15 @@ jobs:
       - name: Download linux packages
         uses: actions/download-artifact@v2
         with:
-          name: linux-pkg-linux-amd64
+          name: linux-pkg-amd64
       - name: Download osx arm64
         uses: actions/download-artifact@v2
         with:
-          name: osx-pkg-darwin-arm64
+          name: osx-pkg-arm64
       - name: Download osx amd64
         uses: actions/download-artifact@v2
         with:
-          name: osx-pkg-darwin-amd64
+          name: osx-pkg-amd64
       - name: Automatic pre-release
         uses: "marvinpinto/action-automatic-releases@latest"
         with:
@@ -136,9 +136,9 @@ jobs:
         uses: geekyeggo/delete-artifact@v1
         with:
           name: |
-            linux-pkg-linux-amd64
-            osx-pkg-darwin-arm64
-            osx-pkg-darwin-amd64
+            linux-pkg-amd64
+            osx-pkg-arm64
+            osx-pkg-amd64
 
   pre-build-and-push-image:
     runs-on: ubuntu-latest
