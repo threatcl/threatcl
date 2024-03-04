@@ -103,7 +103,7 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           name: osx-pkg-${{ matrix.goos }}-${{ matrix.goarch }}
-          path: threatcl-${{ env.BUILD_time }}-${{ matrix.goos }}-${{ matrix.goarch }}.tar.gz
+          path: threatcl-${{ env.BUILD_TIME }}-${{ matrix.goos }}-${{ matrix.goarch }}.tar.gz
 
 
 
