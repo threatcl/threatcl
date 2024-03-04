@@ -46,7 +46,7 @@ jobs:
       - name: Go dev release
         uses: wangyoucao577/go-release-action@v1
         with:
-          github_token: ${{ github.token }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
           goos: ${{ matrix.goos }}
           goarch: ${{ matrix.goarch }}
           release_tag: dev
@@ -73,7 +73,7 @@ jobs:
       - name: Go dev release
         uses: wangyoucao577/go-release-action@v1
         with:
-          github_token: ${{ github.token }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
           goos: ${{ matrix.goos }}
           goarch: ${{ matrix.goarch }}
           release_tag: dev
