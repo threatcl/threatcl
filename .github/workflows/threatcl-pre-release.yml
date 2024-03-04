@@ -41,6 +41,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Setup Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: '1.22'
       - name: Set BUILD_TIME
         run: echo BUILD_TIME=$(date -u +%Y%m%d-%H%M) >> ${GITHUB_ENV}
       # - name: Go dev release
@@ -55,6 +59,15 @@ jobs:
       #     project_path: cmd/threatcl
       #     binary_name: threatcl
       #     asset_name: "threatcl-${{ env.BUILD_TIME }}-${{ matrix.goos}}-${{ matrix.goarch }}"
+      - name: Go build
+        run: |
+          CGO_ENABLED=1 GOARCH=${{ matrix.goarch }} GOOS=${{ matrix.goos }} go build -o threatcl ./cmd/threatcl
+          tar -zcvf threatcl-${{ env.BUILD_TIME }}-${{ matrix.goos }}-${{ matrix.goarch }}.tar.gz threatcl
+      - name: Upload Linux Package
+        uses: actions/upload-artifact@v2
+        with:
+          name: linux-pkg-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: threatcl-${{ env.BUILD_TIME }}-${{ matrix.goos }}-${{ matrix.goarch }}.tar.gz
 
   build-macos:
     permissions:
@@ -83,18 +96,6 @@ jobs:
       #     platform: x64
       - name: Set BUILD_TIME
         run: echo BUILD_TIME=$(date -u +%Y%m%d-%H%M) >> ${GITHUB_ENV}
-      # - name: Go dev release
-      #   uses: wangyoucao577/go-release-action@v1
-      #   with:
-      #     github_token: ${{ secrets.GITHUB_TOKEN }}
-      #     goos: ${{ matrix.goos }}
-      #     goarch: ${{ matrix.goarch }}
-      #     release_tag: dev
-      #     overwrite: true
-      #     pre_command: export CGO_ENABLED=1
-      #     project_path: cmd/threatcl
-      #     binary_name: threatcl
-      #     asset_name: "threatcl-${{ env.BUILD_TIME }}-${{ matrix.goos}}-${{ matrix.goarch }}"
       - name: Go build
         run: |
           CGO_ENABLED=1 GOARCH=${{ matrix.goarch }} GOOS=${{ matrix.goos }} go build -o threatcl ./cmd/threatcl
@@ -102,14 +103,46 @@ jobs:
       - name: Upload OSX Package
         uses: actions/upload-artifact@v2
         with:
-          name: osx-pkg-${{ matrix.goos }}-${{ matrix.goarch }}
+          name: osx-pkg-${{ matrix.goarch }}
           path: threatcl-${{ env.BUILD_TIME }}-${{ matrix.goos }}-${{ matrix.goarch }}.tar.gz
 
 
+  pre-release:
+    runs-on: ubuntu-latest
+    needs: [build-macos, build-dev-linux]
+    steps:
+      - name: Download linux packages
+        uses: actions/download-artifacts@v2
+        with:
+          name: linux-pkg-linux-amd64
+      - name: Download osx arm64
+        uses: actions/download-artifacts@v2
+        with:
+          name: osx-pkg-darwin-arm64
+      - name: Download osx amd64
+        uses: actions/download-artifacts@v2
+        with:
+          name: osx-pkg-darwin-amd64
+      - name: Automatic pre-release
+        uses: "marvinpinto/action-automatic-releases@latest"
+        with:
+          repo_token: "${{ secrets.GITHUB_TOKEN }}"
+          automatic_release_tag: "dev"
+          prerelease: true
+          title: "Development Build"
+          files: |
+            threatcl*.tar.gz
+      - name: Remove artifacts
+        uses: geekyeggo/delete-artifact@v1
+        with:
+          name: |
+            linux-pkg-linux-amd64
+            osx-pkg-darwin-arm64
+            osx-pkg-darwin-amd64
 
   pre-build-and-push-image:
     runs-on: ubuntu-latest
-    needs: [build-macos, build-dev-linux]
+    needs: [pre-release]
     permissions:
       contents: read
       packages: write
@@ -123,22 +156,22 @@ jobs:
         with:
           platforms: arm64
 
-      - name: Setup Docker Buildx
-        uses: docker/setup-buildx-action@v2
-
-      - name: Extract metadata (tags, labels) for Docker
-        id: meta
-        uses: docker/metadata-action@98669ae865ea3cffbcbaa878cf57c20bbf1c6c38
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-          flavor: |
-            latest=false
-
-      - name: Build and push Docker image
-        uses: docker/build-push-action@ad44023a93711e3deb337508980b4b5e9bcdc5dc
-        with:
-          context: .
-          push: false
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          platforms: linux/amd64,linux/arm64
+      # - name: Setup Docker Buildx
+      #   uses: docker/setup-buildx-action@v2
+      #
+      # - name: Extract metadata (tags, labels) for Docker
+      #   id: meta
+      #   uses: docker/metadata-action@98669ae865ea3cffbcbaa878cf57c20bbf1c6c38
+      #   with:
+      #     images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+      #     flavor: |
+      #       latest=false
+      #
+      # - name: Build and push Docker image
+      #   uses: docker/build-push-action@ad44023a93711e3deb337508980b4b5e9bcdc5dc
+      #   with:
+      #     context: .
+      #     push: false
+      #     tags: ${{ steps.meta.outputs.tags }}
+      #     labels: ${{ steps.meta.outputs.labels }}
+      #     platforms: linux/amd64,linux/arm64
