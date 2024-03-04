@@ -87,7 +87,7 @@ jobs:
           goarch: ${{ matrix.goarch }}
           release_tag: dev
           overwrite: true
-          pre_command: export CGO_ENABLED=1 && export CC=/home/runner/work/osxcross/target/bin/o64-clang && CXX=/home/runner/work/osxcross/target/bin/o64-clang++
+          pre_command: export CGO_ENABLED=1 && export CC=/home/runner/work/osxcross/target/bin/o64-clang && export CXX=/home/runner/work/osxcross/target/bin/o64-clang++
           project_path: cmd/threatcl
           binary_name: threatcl
           asset_name: "threatcl-${{ env.BUILD_TIME }}-${{ matrix.goos}}-${{ matrix.goarch }}"
