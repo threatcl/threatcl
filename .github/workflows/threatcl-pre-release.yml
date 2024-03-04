@@ -68,11 +68,15 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Set up clang
-        uses: egor-tensin/setup-clang@v1
-        with:
-          version: latest
-          platform: x64
+      - name: OXCross for CGO Support
+        run: |
+          mkdir ../../osxcross
+          git clone https://github.com/plentico/osxcross-target.git ../../osxcross/target
+      # - name: Set up clang
+      #   uses: egor-tensin/setup-clang@v1
+      #   with:
+      #     version: latest
+      #     platform: x64
       - name: Set BUILD_TIME
         run: echo BUILD_TIME=$(date -u +%Y%m%d-%H%M) >> ${GITHUB_ENV}
       - name: Go dev release
@@ -83,7 +87,7 @@ jobs:
           goarch: ${{ matrix.goarch }}
           release_tag: dev
           overwrite: true
-          pre_command: export CGO_ENABLED=1
+          pre_command: export CGO_ENABLED=1 && export CC=/home/runner/work/osxcross/target/bin/o64-clang && CXX=/home/runner/work/osxcross/target/bin/o64-clang++
           project_path: cmd/threatcl
           binary_name: threatcl
           asset_name: "threatcl-${{ env.BUILD_TIME }}-${{ matrix.goos}}-${{ matrix.goarch }}"
