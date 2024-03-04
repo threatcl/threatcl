@@ -108,6 +108,8 @@ jobs:
 
 
   pre-release:
+    permissions:
+      contents: write
     runs-on: ubuntu-latest
     needs: [build-macos, build-dev-linux]
     steps:
@@ -127,7 +129,7 @@ jobs:
         uses: "marvinpinto/action-automatic-releases@latest"
         with:
           repo_token: "${{ secrets.GITHUB_TOKEN }}"
-          automatic_release_tag: "latest"
+          automatic_release_tag: "dev"
           prerelease: true
           title: "Development Build"
           files: |
