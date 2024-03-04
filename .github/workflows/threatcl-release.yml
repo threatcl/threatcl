@@ -5,63 +5,86 @@ on:
     tags:
       - "v*"
 
+permissions:
+  contents: read
+
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  pre-release-linux:
+  build-linux:
+    permissions:
+      contents: write
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        goos: [linux]
+        goarch: [amd64]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
       - name: Setup Go
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v3
         with:
           go-version: '1.22'
-      - name: Bootstrap
-        run: make bootstrap
-      - name: Test
-        run: make test
-      - name: Package
-        run: make pkg-linux
+      - name: Set BUILD_TIME
+        run: echo BUILD_TIME=$(date -u +%Y%m%d-%H%M) >> ${GITHUB_ENV}
+      - name: Go build
+        run: |
+          CGO_ENABLED=1 GOARCH=${{ matrix.goarch }} GOOS=${{ matrix.goos }} go build -o threatcl ./cmd/threatcl
+          tar -zcvf threatcl-${{ env.BUILD_TIME }}-${{ matrix.goos }}-${{ matrix.goarch }}.tar.gz threatcl
       - name: Upload Linux Package
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
-          name: linux-pkg
-          path: out/threatcl-linux-amd64.tar.gz
+          name: linux-pkg-${{ matrix.goarch }}
+          path: threatcl-${{ env.BUILD_TIME }}-${{ matrix.goos }}-${{ matrix.goarch }}.tar.gz
 
-  pre-release-osx:
+  build-macos:
+    permissions:
+      contents: write
     runs-on: macos-latest
+    strategy:
+      matrix:
+        goos: [darwin]
+        goarch: [amd64, arm64]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
       - name: Setup Go
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v3
         with:
           go-version: '1.22'
-      - name: Bootstrap
-        run: make bootstrap
-      - name: Package
-        run: make pkg-osx
+      - name: Set BUILD_TIME
+        run: echo BUILD_TIME=$(date -u +%Y%m%d-%H%M) >> ${GITHUB_ENV}
+      - name: Go build
+        run: |
+          CGO_ENABLED=1 GOARCH=${{ matrix.goarch }} GOOS=${{ matrix.goos }} go build -o threatcl ./cmd/threatcl
+          tar -zcvf threatcl-${{ env.BUILD_TIME }}-${{ matrix.goos }}-${{ matrix.goarch }}.tar.gz threatcl
       - name: Upload OSX Package
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
-          name: osx-pkg
-          path: out/threatcl-darwin-amd64.tar.gz
+          name: osx-pkg-${{ matrix.goarch }}
+          path: threatcl-${{ env.BUILD_TIME }}-${{ matrix.goos }}-${{ matrix.goarch }}.tar.gz
 
   release:
+    permissions:
+      contents: write
     runs-on: ubuntu-latest
-    needs: [pre-release-linux, pre-release-osx]
+    needs: [build-linux, build-macos]
     steps:
-      - name: Download linux package
-        uses: actions/download-artifact@v2
+      - name: Download linux packages
+        uses: actions/download-artifact@v3
         with:
-          name: linux-pkg
-      - name: Download osx package
-        uses: actions/download-artifact@v2
+          name: linux-pkg-amd64
+      - name: Download osx arm64
+        uses: actions/download-artifact@v3
         with:
-          name: osx-pkg
+          name: osx-pkg-arm64
+      - name: Download osx amd64
+        uses: actions/download-artifact@v3
+        with:
+          name: osx-pkg-amd64
       - name: Automatic Release
         uses: "marvinpinto/action-automatic-releases@latest"
         with:
@@ -69,14 +92,14 @@ jobs:
           prerelease: false
           title: "Release"
           files: |
-            threatcl-linux-amd64.tar.gz
-            threatcl-darwin-amd64.tar.gz
+            threatcl*.tar.gz
       - name: Remove artifacts
         uses: geekyeggo/delete-artifact@v1
         with:
           name: |
-            linux-pkg
-            osx-pkg
+            linux-pkg-amd64
+            osx-pkg-arm64
+            osx-pkg-amd64
 
   build-and-push-image:
     runs-on: ubuntu-latest

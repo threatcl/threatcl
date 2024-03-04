@@ -47,18 +47,6 @@ jobs:
           go-version: '1.22'
       - name: Set BUILD_TIME
         run: echo BUILD_TIME=$(date -u +%Y%m%d-%H%M) >> ${GITHUB_ENV}
-      # - name: Go dev release
-      #   uses: wangyoucao577/go-release-action@v1
-      #   with:
-      #     github_token: ${{ secrets.GITHUB_TOKEN }}
-      #     goos: ${{ matrix.goos }}
-      #     goarch: ${{ matrix.goarch }}
-      #     release_tag: dev
-      #     overwrite: true
-      #     pre_command: export CGO_ENABLED=1
-      #     project_path: cmd/threatcl
-      #     binary_name: threatcl
-      #     asset_name: "threatcl-${{ env.BUILD_TIME }}-${{ matrix.goos}}-${{ matrix.goarch }}"
       - name: Go build
         run: |
           CGO_ENABLED=1 GOARCH=${{ matrix.goarch }} GOOS=${{ matrix.goos }} go build -o threatcl ./cmd/threatcl
@@ -69,7 +57,7 @@ jobs:
           name: linux-pkg-${{ matrix.goarch }}
           path: threatcl-${{ env.BUILD_TIME }}-${{ matrix.goos }}-${{ matrix.goarch }}.tar.gz
 
-  build-macos:
+  build-macos-dev:
     permissions:
       contents: write
     needs: cleanup
@@ -85,15 +73,6 @@ jobs:
         uses: actions/setup-go@v3
         with:
           go-version: '1.22'
-      # - name: OXCross for CGO Support
-      #   run: |
-      #     mkdir ../../osxcross
-      #     git clone https://github.com/plentico/osxcross-target.git ../../osxcross/target
-      # - name: Set up clang
-      #   uses: egor-tensin/setup-clang@v1
-      #   with:
-      #     version: latest
-      #     platform: x64
       - name: Set BUILD_TIME
         run: echo BUILD_TIME=$(date -u +%Y%m%d-%H%M) >> ${GITHUB_ENV}
       - name: Go build
@@ -111,7 +90,7 @@ jobs:
     permissions:
       contents: write
     runs-on: ubuntu-latest
-    needs: [build-macos, build-dev-linux]
+    needs: [build-macos-dev, build-dev-linux]
     steps:
       - name: Download linux packages
         uses: actions/download-artifact@v3
@@ -142,7 +121,7 @@ jobs:
             osx-pkg-arm64
             osx-pkg-amd64
 
-  pre-build-and-push-image:
+  pre-build-image-test:
     runs-on: ubuntu-latest
     needs: [pre-release]
     permissions:
