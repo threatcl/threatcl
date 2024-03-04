@@ -112,15 +112,15 @@ jobs:
     needs: [build-macos, build-dev-linux]
     steps:
       - name: Download linux packages
-        uses: actions/download-artifacts@v2
+        uses: actions/download-artifact@v2
         with:
           name: linux-pkg-linux-amd64
       - name: Download osx arm64
-        uses: actions/download-artifacts@v2
+        uses: actions/download-artifact@v2
         with:
           name: osx-pkg-darwin-arm64
       - name: Download osx amd64
-        uses: actions/download-artifacts@v2
+        uses: actions/download-artifact@v2
         with:
           name: osx-pkg-darwin-amd64
       - name: Automatic pre-release
