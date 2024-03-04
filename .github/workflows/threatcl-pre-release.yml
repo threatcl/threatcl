@@ -64,7 +64,7 @@ jobs:
           CGO_ENABLED=1 GOARCH=${{ matrix.goarch }} GOOS=${{ matrix.goos }} go build -o threatcl ./cmd/threatcl
           tar -zcvf threatcl-${{ env.BUILD_TIME }}-${{ matrix.goos }}-${{ matrix.goarch }}.tar.gz threatcl
       - name: Upload Linux Package
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: linux-pkg-${{ matrix.goarch }}
           path: threatcl-${{ env.BUILD_TIME }}-${{ matrix.goos }}-${{ matrix.goarch }}.tar.gz
@@ -101,7 +101,7 @@ jobs:
           CGO_ENABLED=1 GOARCH=${{ matrix.goarch }} GOOS=${{ matrix.goos }} go build -o threatcl ./cmd/threatcl
           tar -zcvf threatcl-${{ env.BUILD_TIME }}-${{ matrix.goos }}-${{ matrix.goarch }}.tar.gz threatcl
       - name: Upload OSX Package
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: osx-pkg-${{ matrix.goarch }}
           path: threatcl-${{ env.BUILD_TIME }}-${{ matrix.goos }}-${{ matrix.goarch }}.tar.gz
@@ -112,22 +112,22 @@ jobs:
     needs: [build-macos, build-dev-linux]
     steps:
       - name: Download linux packages
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v3
         with:
           name: linux-pkg-amd64
       - name: Download osx arm64
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v3
         with:
           name: osx-pkg-arm64
       - name: Download osx amd64
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v3
         with:
           name: osx-pkg-amd64
       - name: Automatic pre-release
         uses: "marvinpinto/action-automatic-releases@latest"
         with:
           repo_token: "${{ secrets.GITHUB_TOKEN }}"
-          automatic_release_tag: "dev"
+          automatic_release_tag: "latest"
           prerelease: true
           title: "Development Build"
           files: |
