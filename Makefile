@@ -4,8 +4,7 @@ DOCKERNAME=xntrik/threatcl
 DOCKERPLATFORM="linux/amd64,linux/arm64"
 GOPATH?=$$($(GO_CMD) env GOPATH)
 EXTERNAL_TOOLS=\
-	golang.org/x/tools/cmd/goimports \
-	github.com/mitchellh/gox
+	golang.org/x/tools/cmd/goimports
 GOFMT_FILES?=$$(find . -name '*.go')
 LINUX_PKG_TARGETS="linux/amd64"
 MACOS_PKG_TARGETS="darwin/amd64"
@@ -31,23 +30,6 @@ endif
 build: ## Build threatcl and copy to your GOPATH/bin
 	$(GO_CMD) build -o ${BINNAME} ./cmd/threatcl
 
-pkg-linux: ## Build packages with gox on linux
-	gox \
-		-osarch=${LINUX_PKG_TARGETS} \
-		-output="out/{{.OS}}_{{.Arch}}/${BINNAME}" \
-		-gocmd=${GO_CMD} \
-		-cgo \
-		./cmd/threatcl
-	cd out/linux_amd64 && tar -zcvf ../threatcl-linux-amd64.tar.gz threatcl
-
-pkg-osx: ## Build packages with gox
-	gox \
-		-osarch=${MACOS_PKG_TARGETS} \
-		-output="out/{{.OS}}_{{.Arch}}/${BINNAME}" \
-		-gocmd=${GO_CMD} \
-		./cmd/threatcl
-	cd out/darwin_amd64 && tar -zcvf ../threatcl-darwin-amd64.tar.gz threatcl
-
 fmt: ## Checks go formatting
 	goimports -w $(GOFMT_FILES)
 
@@ -57,7 +39,7 @@ install: ## Pretty similar to dev
 bootstrap: ## Install build dependencies
 	@for tool in $(EXTERNAL_TOOLS) ; do \
 		echo "Installing/Updating $$tool" ; \
-		$(GO_CMD) get -u $$tool; \
+		$(GO_CMD) install $$tool; \
 	done
 
 vet: ## Run go vet
@@ -74,4 +56,4 @@ testcover: ## Run go test and go tool cover
 help: ## Output make targets
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
 
-.PHONY: build help image imagepush pkg-linux pkg-osx fmg install bootstrap vet test testvet testcover check-tag-env check-ver-env
+.PHONY: build help image imagepush fmt install bootstrap vet test testvet testcover check-tag-env check-ver-env

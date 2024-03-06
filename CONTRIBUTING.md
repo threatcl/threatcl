@@ -71,26 +71,12 @@ All changes merged into the "main" branch will auto create a "Pre-release" https
 To release a new version:
 * Update all the references to the version number to the new version, particularly the [version](version/version.go) file.
 * Update the [CHANGELOG](CHANGELOG.md)
-* Once the main branch has been merged and updated and all the [actions](https://github.com/threatcl/threatcl/actions) are complete
+* Once the main branch has been merged and updated and all the [actions](https://github.com/threatcl/threatcl/actions) are complete - this is basically setup to release "dev" release (without docker)
+* Once that's complete and you're ready to do the primary release, you tag
 * `git tag -a vN.N.N -m 'vN.N.N'`
 * `git tag -f latest`
 * `git push --tags`
 * This should then run a "threatcl release" action to release a new version, including amd64/arm64 docker images to ghcr.io
-* The following step is now redundant:
-** From this repo, you need to push the new docker container (`VERSION=N.N.N TAG=latest make imagepush`) - this may take a while :grimace:
-* From the https://github.com/xntrik/hcltm/pkgs/container/hcltm page, docker pull the two architectures locally
-* You then need to re-tag them for docker.io:
-** docker tag [imageid-arm64] xntrik/hcltm:latest
-** docker push xntrik/hcltm:latest
-** docker tag [imageid-arm64] xntrik/hcltm-arm64:latest
-** docker push xntrik/hcltm-arm64:latest
-** docker tag [imageid-amd64] xntrik/hcltm-amd64:latest
-** docker push xntrik/hcltm-amd64:latest
-** docker manifest create xntrik/hcltm:latest xntrik/hcltm-arm64:latest xntrik/hcltm-amd64:latest
-** docker manifest annotate xntrik/hcltm:latest xntrik/hcltm-arm64:latest --arch arm64
-** docker manifest annotate xntrik/hcltm:latest xntrik/hcltm-amd64:latest --arch amd64
-** docker manifest push xntrik/hcltm:latest
-** Check that the "latest" tag includes both architectures, then, repeat the above and use the new version instead of "latest"
 * Then don't forget to update https://github.com/xntrik/homebrew-repo
 * And also https://github.com/xntrik/hcltm-action and https://github.com/xntrik/hcltm-action-example
 

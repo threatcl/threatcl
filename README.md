@@ -100,19 +100,21 @@ Download the latest version from [releases](https://github.com/threatcl/threatcl
 
 ## Install with Homebrew
 
-The following will add a local tap, and install `hcltm` with [Homebrew](https://brew.sh/)
+The following will add a local tap, and install `threatcl` with [Homebrew](https://brew.sh/)
 
 ```bash
-brew install xntrik/repo/hcltm
+brew install threatcl/repo/threatcl
 ```
 
 ## Run with Docker
 
 ```bash
-docker run --rm -it xntrik/hcltm
+docker run --rm -it ghcr.io/threatcl/threatcl:latest
 ```
 
 ## Run with GitHub Actions
+
+> Updated GitHub actions are on their way soon for `threatcl`
 
 `hcltm` can be integrated directly into your GitHub repos with https://github.com/xntrik/hcltm-action. This is one of the ideal methods to manage your threat models, and helps meet the goal of integrating into your version control systems.
 
