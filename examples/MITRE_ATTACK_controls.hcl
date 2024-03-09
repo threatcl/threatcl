@@ -1,6 +1,6 @@
 //controls listed for MITRE ATT&CK
 
-spec_version = "0.2.0"
+spec_version = "0.1.9"
 
 component "control" "Account_Use_Policies" {
   description = "[M1036](https://attack.mitre.org/mitigations/M1036/) - Configure features related to account use like login attempt lockouts, specific login times, etc."

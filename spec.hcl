@@ -1,5 +1,5 @@
 // To cater for multiple spec versions we specify this in our HCL files
-spec_version = "0.2.0"
+spec_version = "0.1.9"
 
 // You can include variables outside your threatmodel blocks
 
@@ -28,7 +28,7 @@ threatmodel "threatmodel name" {
   //
   // There are some issues to select an individual file from a Git repo, as the
   // entire repo is downloaded by default. To use an individual file, you can
-  // github.com/xntrik/hcltm|examples/aws-security-checklist.hcl
+  // github.com/threatcl/threatcl|examples/aws-security-checklist.hcl
   // with the | being a separator between the git repo and the file to use
   // after cloning.
 
@@ -45,7 +45,7 @@ threatmodel "threatmodel name" {
 
   // If a diagram_link isn't set, but the threatmodel includes a
   // data_flow_diagram, this will be automatically generated and included
-  // when running hcltm dashboard
+  // when running threatcl dashboard
 
   diagram_link = "https://link/to/diagram"
 
@@ -205,7 +205,7 @@ threatmodel "threatmodel name" {
 
   // An example of what may be in controls.hcl:
   //
-  // spec_version = "0.2.0"
+  // spec_version = "0.1.9"
   // component "control" "control_name" {
   //   description = "A control that can be used in multiple places"
   // }

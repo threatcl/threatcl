@@ -1,4 +1,4 @@
- spec_version = "0.2.0"
+ spec_version = "0.1.9"
 
  threatmodel "tm2 one" {
    description = "This is some arbitrary text"

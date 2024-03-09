@@ -45,7 +45,7 @@ threatmodel "threatmodel name" {
   //
   // There are some issues to select an individual file from a Git repo, as the
   // entire repo is downloaded by default. To use an individual file, you can
-  // github.com/xntrik/hcltm|examples/aws-security-checklist.hcl
+  // github.com/threatcl/threatcl|examples/aws-security-checklist.hcl
   // with the | being a separator between the git repo and the file to use
   // after cloning.
 
