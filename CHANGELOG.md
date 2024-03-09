@@ -1,3 +1,11 @@
+## 0.2.1
+### Mar 9, 2024
+
+CHANGES:
+
+* Upgraded to threatcl/spec v0.1.9
+* This is a minor change and doesn't actually change the spec at all
+
 ## 0.2.0
 ### Mar 4, 2024
 
