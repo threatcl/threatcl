@@ -8,6 +8,9 @@ hcltm has been renamed to `threatcl`. Welcome!
 
 ## Overview
 
+> [!TIP]
+> Want to read the new documentation? Head over to [threatcl.github.io](https://threatcl.github.io/)
+
 There are many different ways in which a threat model can be documented. From a simple text file, to more in-depth word documents, to fully instrumented threat models in a centralised solution. Two of the most valuable attributes of a threat model are being able to clearly document the threats, and to be able to drive valuable change. 
 
 `threatcl` aims to provide a DevOps-first approach to documenting a [system threat model](https://owasp.org/www-community/Threat_Modeling) by focusing on the following goals:
