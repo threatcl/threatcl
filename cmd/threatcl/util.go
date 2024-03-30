@@ -209,7 +209,7 @@ threatmodel "threatmodel name" {
       // The implemented boolean is optional, and defaults to false
       // implemented = true
     // }
-  // }
+  } // End of threat block
 
   // You can import an external .hcl file that includes control descriptions
   // Remember to do this at the threatmodel block level
