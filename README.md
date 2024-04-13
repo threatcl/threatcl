@@ -11,13 +11,13 @@ hcltm has been renamed to `threatcl`. Welcome!
 > [!TIP]
 > Want to read the new documentation? Head over to [threatcl.github.io](https://threatcl.github.io/)
 
-There are many different ways in which a threat model can be documented. From a simple text file, to more in-depth word documents, to fully instrumented threat models in a centralised solution. Two of the most valuable attributes of a threat model are being able to clearly document the threats, and to be able to drive valuable change. 
+There are many different ways in which a threat model can be documented. From a simple text file, to more in-depth word documents, to fully instrumented threat models in a centralised solution. Two of the most valuable attributes of a threat model are being able to clearly document the threats, and to be able to drive valuable change.
 
 `threatcl` aims to provide a DevOps-first approach to documenting a [system threat model](https://owasp.org/www-community/Threat_Modeling) by focusing on the following goals:
 
-* Simple text-file format
-* Simple cli-driven user experience
-* Integration into version control systems (VCS)
+- Simple text-file format
+- Simple cli-driven user experience
+- Integration into version control systems (VCS)
 
 This repository is the home of the `threatcl` cli software. The `threatcl` [spec](spec.hcl) is based on [HCL2](https://github.com/hashicorp/hcl/tree/hcl2), HashiCorp's Configuration Language, which aims to be "_pleasant to read and write for humans, and a JSON-based variant that is easier for machines to generate and parse_". The `threatcl` spec lives at [github.com/threatcl/spec](https://github.com/threatcl/spec). Combining the `threatcl` cli software and the `threatcl` spec allows practitioners to define a system threat model in HCL, for example:
 
@@ -117,9 +117,7 @@ docker run --rm -it ghcr.io/threatcl/threatcl:latest
 
 ## Run with GitHub Actions
 
-> Updated GitHub actions are on their way soon for `threatcl`
-
-`hcltm` can be integrated directly into your GitHub repos with https://github.com/xntrik/hcltm-action. This is one of the ideal methods to manage your threat models, and helps meet the goal of integrating into your version control systems.
+`threatcl` can be integrated directly into your GitHub repos with https://github.com/threatcl/threatcl-action. This is one of the ideal methods to manage your threat models, and helps meet the goal of integrating into your version control systems.
 
 ## Building from Source
 
@@ -153,14 +151,14 @@ Available commands are:
 
 Most of the `threatcl` commands have a `-config` flag that allows you to specify a `config.hcl` file. HCL within this file may be used to overwrite some of `threatcl`'s default attributes. These are listed below:
 
-* **Initiative Sizes** - defaults to "Undefined", "Small", "Medium", "Large"
-* **Default Initiative Size** - defaults to "Undefined
-* **Information Classifications** - defaults to "Restricted", "Confidential", "Public"
-* **Default Information Classification** - defaults to "Confidential"
-* **Impact Types** - defaults to "Confidentiality", "Integrity", "Availability"
-* **STRIDE Elements** - defaults to "Spoofing", "Tampering", "Info Disclosure", "Denial Of Service", "Elevation Of Privilege"
-* **Uptime Dependency Classifications** - defaults to "none", "degraded", "hard", "operational"
-* **Default Uptime Depency Classification** - defaults to "none"
+- **Initiative Sizes** - defaults to "Undefined", "Small", "Medium", "Large"
+- **Default Initiative Size** - defaults to "Undefined
+- **Information Classifications** - defaults to "Restricted", "Confidential", "Public"
+- **Default Information Classification** - defaults to "Confidential"
+- **Impact Types** - defaults to "Confidentiality", "Integrity", "Availability"
+- **STRIDE Elements** - defaults to "Spoofing", "Tampering", "Info Disclosure", "Denial Of Service", "Elevation Of Privilege"
+- **Uptime Dependency Classifications** - defaults to "none", "degraded", "hard", "operational"
+- **Default Uptime Depency Classification** - defaults to "none"
 
 For example:
 
@@ -318,4 +316,4 @@ With the `-add-to-existing` flag, you can also specify `-tm-name=<string>` if yo
 
 These commands can also take a file as input too, in which case, omit the `-stdin` flag.
 
-The terraform resources that `threatcl` is aware of are hard coded in [pkg/terraform/terraform.go](pkg/terraform/terraform.go). If you want the `threatcl terraform` command to output other `information_asset` resources that aren't in there, you can supply your own version of this json via the `-tf-collection=<json file>` flag. 
+The terraform resources that `threatcl` is aware of are hard coded in [pkg/terraform/terraform.go](pkg/terraform/terraform.go). If you want the `threatcl terraform` command to output other `information_asset` resources that aren't in there, you can supply your own version of this json via the `-tf-collection=<json file>` flag.
