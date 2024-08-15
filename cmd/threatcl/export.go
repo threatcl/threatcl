@@ -31,7 +31,7 @@ Options:
  -config=<file>
    Optional config file
 
- -format=<json|otm>
+ -format=<json|otm|hcl>
 
  -output=<file>
    Optional filename to output to. 
@@ -45,7 +45,7 @@ Options:
 // Run executes the "threatcl export" logic
 func (e *ExportCommand) Run(args []string) int {
 	flagSet := e.GetFlagset("export")
-	flagSet.StringVar(&e.flagFormat, "format", "json", "Format of output. json, or otm. Defaults to json")
+	flagSet.StringVar(&e.flagFormat, "format", "json", "Format of output. json, hcl, or otm. Defaults to json")
 	flagSet.StringVar(&e.flagOutput, "output", "", "Name of output file. If not set, will output to STDOUT")
 	flagSet.BoolVar(&e.flagOverwrite, "overwrite", false, "Overwrite existing file. Defaults to false")
 	flagSet.Parse(args)
@@ -67,9 +67,11 @@ func (e *ExportCommand) Run(args []string) int {
 		AllFiles := findAllFiles(flagSet.Args())
 		var AllTms []spec.Threatmodel
 
+		var tmParser *spec.ThreatmodelParser
+
 		// Parse all the identified .hcl files
 		for _, file := range AllFiles {
-			tmParser := spec.NewThreatmodelParser(e.specCfg)
+			tmParser = spec.NewThreatmodelParser(e.specCfg)
 			err := tmParser.ParseFile(file, false)
 			if err != nil {
 				fmt.Printf("Error parsing %s: %s\n", file, err)
@@ -125,6 +127,15 @@ func (e *ExportCommand) Run(args []string) int {
 			}
 
 			outputString = string(otmJson)
+
+		case "hcl":
+			outputString = tmParser.HclString()
+			// allHclStrings := []string{}
+			// for _, tm := range AllTms {
+			// 	allHclStrings = append(allHclStrings, tm.HclString())
+			// }
+			//
+			// outputString = strings.Join(allHclStrings, "\n\n")
 
 		default:
 

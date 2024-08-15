@@ -205,6 +205,34 @@ func TestExportOtmSingle(t *testing.T) {
 
 }
 
+func TestExportHclSingle(t *testing.T) {
+	d, err := ioutil.TempDir("", "")
+	if err != nil {
+		t.Fatalf("Error creating tmp dir: %s", err)
+	}
+
+	defer os.RemoveAll(d)
+
+	cmd := testExportCommand(t)
+
+	var code int
+
+	out := capturer.CaptureStdout(func() {
+		code = cmd.Run([]string{
+			"-format=hcl",
+			"./testdata/tm3.hcl",
+		})
+	})
+
+	if code != 0 {
+		t.Errorf("Code did not equal 0: %d", code)
+	}
+
+	if !strings.Contains(out, "This is some arbitrary text") {
+		t.Errorf("%s did not contain %s", out, "This is some arbitrary text")
+	}
+}
+
 func TestExportGoodOverwrite(t *testing.T) {
 	d, err := ioutil.TempDir("", "")
 	if err != nil {
