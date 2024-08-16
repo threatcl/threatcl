@@ -1,3 +1,11 @@
+## 0.2.2
+### Aug 16, 2024
+
+CHANGES:
+
+* Upgraded to threatcl/spec v0.1.10
+* Added `export -format=hcl` flag
+
 ## 0.2.1
 ### Mar 9, 2024
 

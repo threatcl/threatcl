@@ -198,7 +198,7 @@ Validated 3 threatmodels in 3 files
 
 ## Export
 
-The `threatcl export` command is used to export a `threatcl` threat model (or models) into the native JSON representation (by default), or into the [OTM](https://github.com/iriusrisk/OpenThreatModel) json representation. You can also directly save them into a file with the `-output` flag.
+The `threatcl export` command is used to export a `threatcl` threat model (or models) into the native JSON representation (by default), or into the [OTM](https://github.com/iriusrisk/OpenThreatModel) json representation, or even back into `hcl` (Which is useful to output fresh HCL from dynamic threat models). You can also directly save them into a file with the `-output` flag.
 
 ```bash
 $ threatcl export -format=otm examples/tm1.hcl
