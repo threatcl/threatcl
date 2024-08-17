@@ -32,6 +32,12 @@ rules:
     languages: [hcl]
     metadata:
       category: security
+      cwe: "CWE-657: Violation of Secure Design Principles"
+      confidence: LOW
+      likelihood: LOW
+      impact: LOW
+      subcategory:
+        - audit
 
   - id: threatcl-control-risk-reduction-low-or-missing
     pattern-either:
@@ -61,6 +67,12 @@ rules:
     languages: [hcl]
     metadata:
       category: security
+      cwe: "CWE-657: Violation of Secure Design Principles"
+      confidence: LOW
+      likelihood: LOW
+      impact: LOW
+      subcategory:
+        - audit
       
   - id: threatcl-control-not-implemented
     pattern-either:
@@ -93,3 +105,9 @@ rules:
     languages: [hcl]
     metadata:
       category: security
+      cwe: "CWE-657: Violation of Secure Design Principles"
+      confidence: LOW
+      likelihood: LOW
+      impact: LOW
+      subcategory:
+        - audit
