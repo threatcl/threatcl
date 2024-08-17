@@ -1,0 +1,95 @@
+rules:
+  - id: threatcl-current-spec-version
+    patterns:
+      - pattern: |
+          spec_version = "$VERSION"
+      - pattern-not: |
+          spec_version = "0.1.10"
+    message: "spec_version is '$VERSION', not '0.1.10'"
+    severity: WARNING
+    languages: [hcl]
+    metadata:
+      category: configuration
+
+  - id: threatcl-missing-control
+    patterns:
+      - pattern: |
+          threat {
+            ...
+            description = "$THREAT"
+            ...
+          }
+      - pattern-not: |
+          threat {
+            ...
+            expanded_control "$CONTROL_NAME" {
+              ...
+            }
+            ...
+          }
+    message: "The `threat` block '$THREAT' is missing an `expanded_control`"
+    severity: WARNING
+    languages: [hcl]
+    metadata:
+      category: security
+
+  - id: threatcl-control-risk-reduction-low-or-missing
+    pattern-either:
+      - patterns:
+        - patterns:
+          - pattern: risk_reduction = $RR
+          - metavariable-comparison:
+              comparison: $RR < 25
+              metavariable: $RR
+        - pattern-inside: |
+            expanded_control "$CONTROL_NAME" {
+              ...
+            }
+      - patterns:
+        - pattern: |
+            expanded_control "$CONTROL_NAME" {
+              ...
+            }
+        - pattern-not: |
+            expanded_control "$CONTROL_NAME" {
+              ...
+              risk_reduction = $RR
+              ...
+            }
+    message: "The '$CONTROL_NAME' `expanded_control` is missing a `risk_reduction` or the value is below 25"
+    severity: WARNING
+    languages: [hcl]
+    metadata:
+      category: security
+      
+  - id: threatcl-control-not-implemented
+    pattern-either:
+      - patterns:
+        - pattern: |
+            expanded_control "$CONTROL_NAME" {
+              ...
+              implemented = $VALUE
+              ...
+            }
+        - pattern-not: |
+            expanded_control "$CONTROL_NAME" {
+              ...
+              implemented = true
+              ...
+            }
+      - patterns:
+        - pattern: |
+            expanded_control "$CONTROL_NAME" {
+              ...
+            }
+        - pattern-not: |
+            expanded_control "$CONTROL_NAME" {
+              ...
+              implemented = $VALUE
+              ...
+            }
+    message: "The '$CONTROL_NAME' `expanded_control` `implemented` attribute is false or missing"
+    severity: WARNING
+    languages: [hcl]
+    metadata:
+      category: security
