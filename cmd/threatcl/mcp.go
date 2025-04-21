@@ -86,8 +86,16 @@ func (c *MCPCommand) Run(args []string) int {
 
 	mcpserver.AddTool(mcp.NewTool(
 		"list_all_tms",
-		mcp.WithDescription("Get a detailed listing of all the threatcl threat models, and their files, located within our specific directory"),
+		mcp.WithDescription("Get a listing of all the threatcl threat models, and their files, located within our specific directory"),
 	), c.handleListTms)
+
+	mcpserver.AddTool(mcp.NewTool(
+		"list_all_tms_with_cols",
+		mcp.WithDescription("Get a detailed listing of all the threatcl threat models, and their files, located within our specific directory. This tool allows you to specify what columns are displayed, for instance: file, author, threatmodel, threatcount, internetfacing."),
+		mcp.WithString("columns",
+			mcp.Description("The columns you want to list against each threat model. Is expected to be a comma-separated list of values from this set: number, threatmodel, author, file, threatcount, internetfacing, assetcount, usecasecount, tpdcount, exclusioncount, size, newinitiative, dfd."),
+		),
+	), c.handleListTmsWithCustomCols)
 
 	if err := server.ServeStdio(mcpserver); err != nil {
 		c.errPrint(fmt.Sprintf("Server error: %v\n", err))
@@ -121,7 +129,7 @@ func (c *MCPCommand) resourceHandler(ctx context.Context, req mcp.ReadResourceRe
 
 func (c *MCPCommand) handleListTms(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	var result strings.Builder
-	result.WriteString(fmt.Sprintf("Listing all threatcl files in: %s\n\n", c.flagDir))
+	result.WriteString(fmt.Sprintf("Listing all threatcl models in: %s\n\n", c.flagDir))
 
 	// Build the ListCommand so we can execute it and handle the output
 	cfg, _ := spec.LoadSpecConfig()
@@ -130,6 +138,39 @@ func (c *MCPCommand) handleListTms(ctx context.Context, req mcp.CallToolRequest)
 	lc := &ListCommand{
 		GlobalCmdOptions: global,
 		specCfg:          cfg,
+	}
+
+	output, err := lc.Execute([]string{c.flagDir})
+	if err != nil {
+		return nil, fmt.Errorf("error executing list command: %w", err)
+	}
+
+	for _, line := range output {
+		result.WriteString(fmt.Sprintf("%s\n", line))
+	}
+
+	return mcp.NewToolResultText(result.String()), nil
+}
+
+func (c *MCPCommand) handleListTmsWithCustomCols(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	var result strings.Builder
+
+	cols, ok := req.Params.Arguments["columns"].(string)
+	if !ok {
+		cols = "number,file,threatmodel,author"
+		result.WriteString(fmt.Sprintf("Listing all threatcl models in %s using the default columns of file, threatmodel and author\n\n", c.flagDir))
+	} else {
+		result.WriteString(fmt.Sprintf("Listing all threatcl models in: %s with custom cols: %s\n\n", c.flagDir, cols))
+	}
+
+	// Build the ListCommand so we can execute it and handle the output
+	cfg, _ := spec.LoadSpecConfig()
+	global := &GlobalCmdOptions{}
+
+	lc := &ListCommand{
+		GlobalCmdOptions: global,
+		specCfg:          cfg,
+		flagFields:       cols,
 	}
 
 	output, err := lc.Execute([]string{c.flagDir})
