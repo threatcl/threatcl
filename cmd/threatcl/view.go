@@ -38,6 +38,37 @@ Options:
 	return strings.TrimSpace(helpText)
 }
 
+func (c *ViewCommand) Execute(args []string) (string, error) {
+	mdBuffer := new(strings.Builder)
+
+	// Find all the .hcl files we're going to parse
+	AllFiles := findAllFiles(args)
+
+	// Parse all the identified .hcl files
+	for _, file := range AllFiles {
+		tmParser := spec.NewThreatmodelParser(c.specCfg)
+		err := tmParser.ParseFile(file, false)
+		if err != nil {
+			return "", fmt.Errorf("Error parsing %s: %s\n", file, err)
+		}
+
+		for _, tm := range tmParser.GetWrapped().Threatmodels {
+			tmBuffer, err := tm.RenderMarkdown(spec.TmMDTemplate)
+			if err != nil {
+				return "", err
+			}
+
+			_, err = io.Copy(mdBuffer, tmBuffer)
+			if err != nil {
+				return "", fmt.Errorf("Failed to copy threatmodel buffer to markdown buffer: %s", err)
+			}
+		}
+	}
+
+	return mdBuffer.String(), nil
+
+}
+
 func (c *ViewCommand) Run(args []string) int {
 
 	flagSet := c.GetFlagset("view")
@@ -53,42 +84,19 @@ func (c *ViewCommand) Run(args []string) int {
 		}
 	}
 
-	mdBuffer := new(strings.Builder)
-
 	if len(flagSet.Args()) == 0 {
 		fmt.Printf("Please provide a filename\n")
 		return 1
-	} else {
-
-		// Find all the .hcl files we're going to parse
-		AllFiles := findAllFiles(flagSet.Args())
-
-		// Parse all the identified .hcl files
-		for _, file := range AllFiles {
-			tmParser := spec.NewThreatmodelParser(c.specCfg)
-			err := tmParser.ParseFile(file, false)
-			if err != nil {
-				fmt.Printf("Error parsing %s: %s\n", file, err)
-				return 1
-			}
-
-			for _, tm := range tmParser.GetWrapped().Threatmodels {
-				tmBuffer, err := tm.RenderMarkdown(spec.TmMDTemplate)
-				if err != nil {
-					fmt.Println(err)
-					return 1
-				}
-
-				_, err = io.Copy(mdBuffer, tmBuffer)
-				if err != nil {
-					fmt.Printf("Failed to copy threatmodel buffer to markdown buffer: %s", err)
-					return 1
-				}
-			}
-		}
 	}
+
+	output, err := c.Execute(flagSet.Args())
+	if err != nil {
+		fmt.Printf("%s\n", err)
+		return 1
+	}
+
 	if c.flagRawOut {
-		fmt.Println(mdBuffer.String())
+		fmt.Println(output)
 		return 0
 	} else {
 		var mdRenderer *glamour.TermRenderer
@@ -111,7 +119,7 @@ func (c *ViewCommand) Run(args []string) int {
 		if err != nil {
 			return 1
 		}
-		out, err := mdRenderer.Render(mdBuffer.String())
+		out, err := mdRenderer.Render(output)
 		if err != nil {
 			return 1
 		}
