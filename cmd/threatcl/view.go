@@ -99,33 +99,45 @@ func (c *ViewCommand) Run(args []string) int {
 		fmt.Println(output)
 		return 0
 	} else {
-		var mdRenderer *glamour.TermRenderer
-		var err error
-		if !c.testEnv {
-			mdRenderer, err = glamour.NewTermRenderer(
-				// detect background color and pick either the default dark or light theme
-				glamour.WithAutoStyle(),
-				// wrap output at specific width
-				glamour.WithWordWrap(80),
-			)
-		} else {
-			// For some reason we can't use the WithAutoStyle() in `go test`
-			// It causes Go to hang
-			mdRenderer, err = glamour.NewTermRenderer(
-				// wrap output at specific width
-				glamour.WithWordWrap(80),
-			)
-		}
+		// out, err := mdRenderer.Render(output)
+		out, err := c.RenderMd(output)
 		if err != nil {
-			return 1
-		}
-		out, err := mdRenderer.Render(output)
-		if err != nil {
+			fmt.Printf("%s\n", err)
 			return 1
 		}
 		fmt.Println(out)
 		return 0
 	}
+}
+
+func (c *ViewCommand) RenderMd(md string) (string, error) {
+	var mdRenderer *glamour.TermRenderer
+	var err error
+	if !c.testEnv {
+		mdRenderer, err = glamour.NewTermRenderer(
+			// detect background color and pick either the default dark or light theme
+			glamour.WithAutoStyle(),
+			// wrap output at specific width
+			glamour.WithWordWrap(80),
+		)
+	} else {
+		// For some reason we can't use the WithAutoStyle() in `go test`
+		// It causes Go to hang
+		mdRenderer, err = glamour.NewTermRenderer(
+			// wrap output at specific width
+			glamour.WithWordWrap(80),
+		)
+	}
+	if err != nil {
+		return "", err
+	}
+	out, err := mdRenderer.Render(md)
+	if err != nil {
+		return "", err
+	}
+
+	return out, nil
+
 }
 
 func (c *ViewCommand) Synopsis() string {
