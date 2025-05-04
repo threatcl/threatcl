@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -97,34 +96,37 @@ func (c *MCPCommand) Run(args []string) int {
 		),
 	), c.handleListTmsWithCustomCols)
 
+	mcpserver.AddTool(mcp.NewTool(
+		"view_tm",
+		mcp.WithDescription("View the markdown of a threatcl threat model file, located within our specific directory. This tool requires you provide the threatcl file."),
+		mcp.WithString("file",
+			mcp.Description("The threatcl file to view"),
+		),
+	), c.handleViewTmFile)
+
+	mcpserver.AddTool(mcp.NewTool(
+		"view_tm_hcl",
+		mcp.WithDescription("View the raw hcl contents of a threatcl threat model file, located within our specific directory. This tool requires you provide the threatcl file."),
+		mcp.WithString("file",
+			mcp.Description("The threatcl file to view the raw version of"),
+		),
+	), c.handleViewTmFileRaw)
+
+	mcpserver.AddResource(mcp.NewResource("threatcl://static/spec",
+		"Threatcl HCL Specificiation",
+		mcp.WithMIMEType("text/plain"),
+	), c.handleShowSpecResource)
+
+	mcpserver.AddTool(mcp.NewTool(
+		"view_threatcl_hcl_spec",
+		mcp.WithDescription("View the raw hcl contents of the threatcl specification"),
+	), c.handleViewSpecTool)
+
 	if err := server.ServeStdio(mcpserver); err != nil {
 		c.errPrint(fmt.Sprintf("Server error: %v\n", err))
 	}
 
 	return 0
-}
-
-func (c *MCPCommand) helloHandler(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	name, ok := req.Params.Arguments["name"].(string)
-	if !ok {
-		return nil, errors.New("name must be a string")
-	}
-
-	return mcp.NewToolResultText(fmt.Sprintf("Hello, %s, from threatcl!", name)), nil
-}
-
-func (c *MCPCommand) resourceHandler(ctx context.Context, req mcp.ReadResourceRequest) ([]mcp.ResourceContents, error) {
-	uri := req.Params.URI
-
-	if !strings.HasPrefix(uri, "hcltm://") {
-		return nil, fmt.Errorf("unsupported URI scheme: %s", uri)
-	}
-
-	path := strings.TrimPrefix(uri, "hcltm://")
-
-	c.errPrint(path)
-	return nil, nil
-
 }
 
 func (c *MCPCommand) handleListTms(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -183,6 +185,142 @@ func (c *MCPCommand) handleListTmsWithCustomCols(ctx context.Context, req mcp.Ca
 	}
 
 	return mcp.NewToolResultText(result.String()), nil
+}
+
+func (c *MCPCommand) handleViewTmFile(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+
+	var result strings.Builder
+
+	file, ok := req.Params.Arguments["file"].(string)
+	if !ok {
+		return nil, fmt.Errorf("file must be a string")
+	}
+
+	validFile, err := c.validateTmFilePath(file)
+	if err != nil {
+		return nil, fmt.Errorf("error in TM file path: %w", err)
+	}
+
+	cfg, _ := spec.LoadSpecConfig()
+	global := &GlobalCmdOptions{}
+
+	vc := &ViewCommand{
+		GlobalCmdOptions: global,
+		specCfg:          cfg,
+		flagRawOut:       true,
+	}
+
+	// Read and return file contents
+	// contents, err := os.ReadFile(validFile)
+	contents, err := vc.Execute([]string{validFile})
+	if err != nil {
+		return nil, fmt.Errorf("error reading file: %w", err)
+	}
+
+	result.WriteString(string(contents))
+	return mcp.NewToolResultText(result.String()), nil
+}
+
+func (c *MCPCommand) handleViewTmFileRaw(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	var result strings.Builder
+
+	file, ok := req.Params.Arguments["file"].(string)
+	if !ok {
+		return nil, fmt.Errorf("file must be a string")
+	}
+
+	validFile, err := c.validateTmFilePath(file)
+	if err != nil {
+		return nil, fmt.Errorf("error in TM file path: %w", err)
+	}
+
+	// Read and return file contents
+	contents, err := os.ReadFile(validFile)
+	if err != nil {
+		return nil, fmt.Errorf("error reading file: %w", err)
+	}
+
+	result.WriteString(string(contents))
+	return mcp.NewToolResultText(result.String()), nil
+
+}
+
+func (c *MCPCommand) validateTmFilePath(inpath string) (string, error) {
+	file := strings.TrimPrefix(inpath, string(filepath.Separator))
+	rootFolder := strings.TrimSuffix(c.flagDir, string(filepath.Separator))
+	fullPath, err := filepath.Abs(filepath.Join(rootFolder, file))
+	if err != nil {
+		return "", err
+	}
+
+	// Validate the path is within configured directory
+	if !c.isPathInCfg(fullPath) {
+		return "", fmt.Errorf("file path %s is not within configured directory", fullPath)
+	}
+
+	return fullPath, nil
+}
+
+func (c *MCPCommand) isPathInCfg(path string) bool {
+	absPath, err := filepath.Abs(path)
+	if err != nil {
+		return false
+	}
+
+	if !strings.HasSuffix(absPath, string(filepath.Separator)) {
+		if info, err := os.Stat(absPath); err == nil && !info.IsDir() {
+			absPath = filepath.Dir(absPath) + string(filepath.Separator)
+		} else {
+			absPath = absPath + string(filepath.Separator)
+		}
+	}
+
+	if strings.HasPrefix(absPath, c.flagDir) {
+		return true
+	}
+
+	return false
+}
+
+func (c *MCPCommand) handleShowSpecResource(ctx context.Context, req mcp.ReadResourceRequest) ([]mcp.ResourceContents, error) {
+	cfg, _ := spec.LoadSpecConfig()
+
+	spec, err := parseBoilerplateTemplate(cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	return []mcp.ResourceContents{
+		mcp.TextResourceContents{
+			URI:      "threatcl://static/spec",
+			MIMEType: "text/plain",
+			Text:     spec,
+		},
+	}, nil
+}
+
+func (c *MCPCommand) handleViewSpecTool(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	resourceReq := mcp.ReadResourceRequest{
+		Params: struct {
+			URI       string                 `json:"uri"`
+			Arguments map[string]interface{} `json:"arguments,omitempty"`
+		}{
+			URI: "threatcl://static/spec",
+		},
+	}
+	spec, err := c.handleShowSpecResource(ctx, resourceReq)
+	if err != nil {
+		return nil, err
+	}
+
+	return &mcp.CallToolResult{
+		Content: []mcp.Content{
+			mcp.EmbeddedResource{
+				Type:     "resource",
+				Resource: spec[0],
+			},
+		},
+	}, nil
 }
 
 func (c *MCPCommand) Synopsis() string {
