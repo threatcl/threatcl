@@ -138,6 +138,17 @@ func (c *MCPCommand) Run(args []string) int {
 		),
 	), c.handleValidateTmString)
 
+	mcpserver.AddTool(mcp.NewTool(
+		"write_tm_file",
+		mcp.WithDescription("Write a threatcl threat model to a file"),
+		mcp.WithString("filename",
+			mcp.Description("The filename to write the threatcl threat model to"),
+		),
+		mcp.WithString("hcl",
+			mcp.Description("The threatcl string to write to the file"),
+		),
+	), c.handleWriteTmFile)
+
 	if err := server.ServeStdio(mcpserver); err != nil {
 		c.errPrint(fmt.Sprintf("Server error: %v\n", err))
 	}
@@ -390,6 +401,36 @@ func (c *MCPCommand) handleViewSpecTool(ctx context.Context, req mcp.CallToolReq
 			},
 		},
 	}, nil
+}
+
+func (c *MCPCommand) handleWriteTmFile(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+
+	filename, ok := req.Params.Arguments["filename"].(string)
+	if !ok {
+		return nil, fmt.Errorf("filename must be a string")
+	}
+
+	hclString, ok := req.Params.Arguments["hcl"].(string)
+	if !ok {
+		return nil, fmt.Errorf("hcl must be a string")
+	}
+
+	validFile, err := c.validateTmFilePath(filename)
+	if err != nil {
+		return nil, fmt.Errorf("error in TM file path: %w", err)
+	}
+
+	// only write the file if it doesn't exist
+	if _, err := os.Stat(validFile); os.IsNotExist(err) {
+		writeErr := os.WriteFile(validFile, []byte(hclString), 0644)
+		if writeErr != nil {
+			return nil, fmt.Errorf("error writing file: %w", writeErr)
+		}
+	} else {
+		return nil, fmt.Errorf("file already exists: %s", validFile)
+	}
+
+	return mcp.NewToolResultText(fmt.Sprintf("Wrote threat model to file: %s\n", validFile)), nil
 }
 
 func (c *MCPCommand) Synopsis() string {
