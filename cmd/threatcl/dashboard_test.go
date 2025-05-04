@@ -271,8 +271,8 @@ func TestDashboardExistingDir(t *testing.T) {
 		t.Errorf("Code did not equal 1: %d", code)
 	}
 
-	if !strings.Contains(out, "Won't overwrite content in the") {
-		t.Errorf("%s did not contain %s", out, "Won't overwrite content in the")
+	if !strings.Contains(out, "won't overwrite content in the") {
+		t.Errorf("%s did not contain %s", out, "won't overwrite content in the")
 	}
 
 }
@@ -300,8 +300,8 @@ func TestDashboardExistingFile(t *testing.T) {
 		t.Errorf("Code did not equal 1: %d", code)
 	}
 
-	if !strings.Contains(out, "You're trying to output to a file that exists") {
-		t.Errorf("%s did not contain %s", out, "You're trying to output to a file that exists")
+	if !strings.Contains(out, "you're trying to output to a file that exists") {
+		t.Errorf("%s did not contain %s", out, "you're trying to output to a file that exists")
 	}
 
 }
