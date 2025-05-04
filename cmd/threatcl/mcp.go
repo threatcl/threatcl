@@ -122,6 +122,22 @@ func (c *MCPCommand) Run(args []string) int {
 		mcp.WithDescription("View the raw hcl contents of the threatcl specification"),
 	), c.handleViewSpecTool)
 
+	mcpserver.AddTool(mcp.NewTool(
+		"validate_tm_file",
+		mcp.WithDescription("Validate a threatcl threat model file"),
+		mcp.WithString("file",
+			mcp.Description("The threatcl file to validate"),
+		),
+	), c.handleValidateTmFile)
+
+	mcpserver.AddTool(mcp.NewTool(
+		"validate_tm_string",
+		mcp.WithDescription("Validate a threatcl threat model by providing the raw hcl string"),
+		mcp.WithString("hcl",
+			mcp.Description("The threatcl string to validate"),
+		),
+	), c.handleValidateTmString)
+
 	if err := server.ServeStdio(mcpserver); err != nil {
 		c.errPrint(fmt.Sprintf("Server error: %v\n", err))
 	}
@@ -245,20 +261,73 @@ func (c *MCPCommand) handleViewTmFileRaw(ctx context.Context, req mcp.CallToolRe
 
 }
 
-func (c *MCPCommand) validateTmFilePath(inpath string) (string, error) {
-	file := strings.TrimPrefix(inpath, string(filepath.Separator))
-	rootFolder := strings.TrimSuffix(c.flagDir, string(filepath.Separator))
-	fullPath, err := filepath.Abs(filepath.Join(rootFolder, file))
+func (c *MCPCommand) handleValidateTmFile(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+
+	file, ok := req.Params.Arguments["file"].(string)
+	if !ok {
+		return nil, fmt.Errorf("file must be a string")
+	}
+
+	validFile, err := c.validateTmFilePath(file)
 	if err != nil {
-		return "", err
+		return nil, fmt.Errorf("error in TM file path: %w", err)
 	}
 
-	// Validate the path is within configured directory
-	if !c.isPathInCfg(fullPath) {
-		return "", fmt.Errorf("file path %s is not within configured directory", fullPath)
+	cfg, _ := spec.LoadSpecConfig()
+	tmParser := spec.NewThreatmodelParser(cfg)
+	err = tmParser.ParseFile(validFile, false)
+	if err != nil {
+		// return nil, fmt.Errorf("error parsing file: %w", err)
+		return mcp.NewToolResultError(fmt.Sprintf("error parsing file: %s", err)), nil
 	}
 
-	return fullPath, nil
+	tmCount := len(tmParser.GetWrapped().Threatmodels)
+
+	return mcp.NewToolResultText(fmt.Sprintf("Validated %d threat models in file: %s\n", tmCount, validFile)), nil
+
+}
+
+func (c *MCPCommand) handleValidateTmString(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+
+	hclstring, ok := req.Params.Arguments["hcl"].(string)
+	if !ok {
+		return nil, fmt.Errorf("file must be a string")
+	}
+
+	cfg, _ := spec.LoadSpecConfig()
+	tmParser := spec.NewThreatmodelParser(cfg)
+	err := tmParser.ParseHCLRaw([]byte(hclstring))
+	if err != nil {
+		// return nil, fmt.Errorf("error parsing string: %w", err)
+		return mcp.NewToolResultError(fmt.Sprintf("error parsing string: %s", err)), nil
+	}
+
+	tmCount := len(tmParser.GetWrapped().Threatmodels)
+
+	return mcp.NewToolResultText(fmt.Sprintf("Validated %d threat models in string\n", tmCount)), nil
+
+}
+
+func (c *MCPCommand) validateTmFilePath(inpath string) (string, error) {
+	// before we try and build the path, let's first check if they provided a full path
+	if c.isPathInCfg(inpath) {
+		return inpath, nil
+	} else {
+
+		file := strings.TrimPrefix(inpath, string(filepath.Separator))
+		rootFolder := strings.TrimSuffix(c.flagDir, string(filepath.Separator))
+		fullPath, err := filepath.Abs(filepath.Join(rootFolder, file))
+		if err != nil {
+			return "", err
+		}
+
+		// Validate the path is within configured directory
+		if !c.isPathInCfg(fullPath) {
+			return "", fmt.Errorf("file path %s is not within configured directory", fullPath)
+		}
+
+		return fullPath, nil
+	}
 }
 
 func (c *MCPCommand) isPathInCfg(path string) bool {
