@@ -73,24 +73,14 @@ func (c *MCPCommand) Run(args []string) int {
 		// server.WithResourceCapabilities(true, true),
 	)
 
-	// tool := mcp.NewTool("hello_world",
-	// 	mcp.WithDescription("Returns a greeting message."),
-	// 	mcp.WithString("name",
-	// 		mcp.Required(),
-	// 		mcp.Description("Name of the person to greet."),
-	// 	),
-	// )
-
-	// mcpserver.AddTool(tool, c.helloHandler)
-
 	mcpserver.AddTool(mcp.NewTool(
 		"list_all_tms",
-		mcp.WithDescription("Get a listing of all the threatcl threat models, and their files, located within our specific directory"),
+		mcp.WithDescription("Get a listing of all the threatcl threat models, and their files, located within the directory set by the -dir flag"),
 	), c.handleListTms)
 
 	mcpserver.AddTool(mcp.NewTool(
 		"list_all_tms_with_cols",
-		mcp.WithDescription("Get a detailed listing of all the threatcl threat models, and their files, located within our specific directory. This tool allows you to specify what columns are displayed, for instance: file, author, threatmodel, threatcount, internetfacing."),
+		mcp.WithDescription("Get a detailed listing of all the threatcl threat models, and their files, located within the directory set by the -dir flag. This tool allows you to specify what columns are displayed, for instance: file, author, threatmodel, threatcount, internetfacing."),
 		mcp.WithString("columns",
 			mcp.Description("The columns you want to list against each threat model. Is expected to be a comma-separated list of values from this set: number, threatmodel, author, file, threatcount, internetfacing, assetcount, usecasecount, tpdcount, exclusioncount, size, newinitiative, dfd."),
 		),
@@ -98,7 +88,7 @@ func (c *MCPCommand) Run(args []string) int {
 
 	mcpserver.AddTool(mcp.NewTool(
 		"view_tm",
-		mcp.WithDescription("View the markdown of a threatcl threat model file, located within our specific directory. This tool requires you provide the threatcl file."),
+		mcp.WithDescription("View the markdown of a threatcl threat model file, located within the directory set by the -dir flag. This tool requires you provide the threatcl file."),
 		mcp.WithString("file",
 			mcp.Description("The threatcl file to view"),
 		),
@@ -106,7 +96,7 @@ func (c *MCPCommand) Run(args []string) int {
 
 	mcpserver.AddTool(mcp.NewTool(
 		"view_tm_hcl",
-		mcp.WithDescription("View the raw hcl contents of a threatcl threat model file, located within our specific directory. This tool requires you provide the threatcl file."),
+		mcp.WithDescription("View the raw hcl contents of a threatcl threat model file, located within the directory set by the -dir flag. This tool requires you provide the threatcl file."),
 		mcp.WithString("file",
 			mcp.Description("The threatcl file to view the raw version of"),
 		),
@@ -118,13 +108,18 @@ func (c *MCPCommand) Run(args []string) int {
 	), c.handleShowSpecResource)
 
 	mcpserver.AddTool(mcp.NewTool(
+		"view_threatcl_hcl_spec_resource",
+		mcp.WithDescription("View the raw hcl contents of the threatcl specification, with an embedded resource."),
+	), c.handleViewSpecToolResource)
+
+	mcpserver.AddTool(mcp.NewTool(
 		"view_threatcl_hcl_spec",
-		mcp.WithDescription("View the raw hcl contents of the threatcl specification"),
+		mcp.WithDescription("View the raw hcl contents of the threatcl specification, this will return it as a text string, not an embedded resource."),
 	), c.handleViewSpecTool)
 
 	mcpserver.AddTool(mcp.NewTool(
 		"validate_tm_file",
-		mcp.WithDescription("Validate a threatcl threat model file"),
+		mcp.WithDescription("Validate a threatcl threat model file, located within the directory set by the -dir flag"),
 		mcp.WithString("file",
 			mcp.Description("The threatcl file to validate"),
 		),
@@ -140,7 +135,7 @@ func (c *MCPCommand) Run(args []string) int {
 
 	mcpserver.AddTool(mcp.NewTool(
 		"write_tm_file",
-		mcp.WithDescription("Write a threatcl threat model to a file"),
+		mcp.WithDescription("Write a threatcl threat model to a file, located within the directory set by the -dir flag. If you want to write to a different location, you should leverage other MCP tools."),
 		mcp.WithString("filename",
 			mcp.Description("The filename to write the threatcl threat model to"),
 		),
@@ -362,10 +357,28 @@ func (c *MCPCommand) isPathInCfg(path string) bool {
 	return false
 }
 
-func (c *MCPCommand) handleShowSpecResource(ctx context.Context, req mcp.ReadResourceRequest) ([]mcp.ResourceContents, error) {
+func (c *MCPCommand) getBoilerplateSpec() (string, error) {
 	cfg, _ := spec.LoadSpecConfig()
-
 	spec, err := parseBoilerplateTemplate(cfg)
+	if err != nil {
+		return "", err
+	}
+
+	return spec, nil
+}
+
+func (c *MCPCommand) handleViewSpecTool(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	spec, err := c.getBoilerplateSpec()
+	if err != nil {
+		return nil, err
+	}
+
+	return mcp.NewToolResultText(spec), nil
+}
+
+func (c *MCPCommand) handleShowSpecResource(ctx context.Context, req mcp.ReadResourceRequest) ([]mcp.ResourceContents, error) {
+
+	spec, err := c.getBoilerplateSpec()
 	if err != nil {
 		return nil, err
 	}
@@ -379,7 +392,7 @@ func (c *MCPCommand) handleShowSpecResource(ctx context.Context, req mcp.ReadRes
 	}, nil
 }
 
-func (c *MCPCommand) handleViewSpecTool(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func (c *MCPCommand) handleViewSpecToolResource(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	resourceReq := mcp.ReadResourceRequest{
 		Params: struct {
 			URI       string                 `json:"uri"`
