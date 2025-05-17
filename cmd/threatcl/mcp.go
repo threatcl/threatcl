@@ -54,54 +54,14 @@ func (c *MCPCommand) Run(args []string) int {
 		}
 	}
 
-	if c.flagDir == "" {
-		c.errPrint("Please provide a directory path using the -dir flag\n")
-		return 1
-	}
-
-	absPath, err := c.validatePath(c.flagDir)
-	if err != nil {
-		c.errPrint(fmt.Sprintf("Error: %s\n", err))
-		return 1
-	}
-
-	c.errPrint(fmt.Sprintf("Threatcl MCP server started - using directory: %s\n", absPath))
-
+	// Initialize MCP server
 	mcpserver := server.NewMCPServer(
 		"threatlcl-mcp",
 		"0.0.1",
 		// server.WithResourceCapabilities(true, true),
 	)
 
-	mcpserver.AddTool(mcp.NewTool(
-		"list_all_tms",
-		mcp.WithDescription("Get a listing of all the threatcl threat models, and their files, located within the directory set by the -dir flag"),
-	), c.handleListTms)
-
-	mcpserver.AddTool(mcp.NewTool(
-		"list_all_tms_with_cols",
-		mcp.WithDescription("Get a detailed listing of all the threatcl threat models, and their files, located within the directory set by the -dir flag. This tool allows you to specify what columns are displayed, for instance: file, author, threatmodel, threatcount, internetfacing."),
-		mcp.WithString("columns",
-			mcp.Description("The columns you want to list against each threat model. Is expected to be a comma-separated list of values from this set: number, threatmodel, author, file, threatcount, internetfacing, assetcount, usecasecount, tpdcount, exclusioncount, size, newinitiative, dfd."),
-		),
-	), c.handleListTmsWithCustomCols)
-
-	mcpserver.AddTool(mcp.NewTool(
-		"view_tm",
-		mcp.WithDescription("View the markdown of a threatcl threat model file, located within the directory set by the -dir flag. This tool requires you provide the threatcl file."),
-		mcp.WithString("file",
-			mcp.Description("The threatcl file to view"),
-		),
-	), c.handleViewTmFile)
-
-	mcpserver.AddTool(mcp.NewTool(
-		"view_tm_hcl",
-		mcp.WithDescription("View the raw hcl contents of a threatcl threat model file, located within the directory set by the -dir flag. This tool requires you provide the threatcl file."),
-		mcp.WithString("file",
-			mcp.Description("The threatcl file to view the raw version of"),
-		),
-	), c.handleViewTmFileRaw)
-
+	// Add tools that don't depend on flagDir
 	mcpserver.AddResource(mcp.NewResource("threatcl://static/spec",
 		"Threatcl HCL Specificiation",
 		mcp.WithMIMEType("text/plain"),
@@ -109,21 +69,13 @@ func (c *MCPCommand) Run(args []string) int {
 
 	mcpserver.AddTool(mcp.NewTool(
 		"view_threatcl_hcl_spec_resource",
-		mcp.WithDescription("View the raw hcl contents of the threatcl specification, with an embedded resource."),
+		mcp.WithDescription("View the raw hcl contents of the threatcl specification, with an embedded resource. Some MCP Clients may not support embedded resources, in which case use the view_threatcl_hcl_spec tool instead."),
 	), c.handleViewSpecToolResource)
 
 	mcpserver.AddTool(mcp.NewTool(
 		"view_threatcl_hcl_spec",
 		mcp.WithDescription("View the raw hcl contents of the threatcl specification, this will return it as a text string, not an embedded resource."),
 	), c.handleViewSpecTool)
-
-	mcpserver.AddTool(mcp.NewTool(
-		"validate_tm_file",
-		mcp.WithDescription("Validate a threatcl threat model file, located within the directory set by the -dir flag"),
-		mcp.WithString("file",
-			mcp.Description("The threatcl file to validate"),
-		),
-	), c.handleValidateTmFile)
 
 	mcpserver.AddTool(mcp.NewTool(
 		"validate_tm_string",
@@ -133,16 +85,66 @@ func (c *MCPCommand) Run(args []string) int {
 		),
 	), c.handleValidateTmString)
 
-	mcpserver.AddTool(mcp.NewTool(
-		"write_tm_file",
-		mcp.WithDescription("Write a threatcl threat model to a file, located within the directory set by the -dir flag. If you want to write to a different location, you should leverage other MCP tools."),
-		mcp.WithString("filename",
-			mcp.Description("The filename to write the threatcl threat model to"),
-		),
-		mcp.WithString("hcl",
-			mcp.Description("The threatcl string to write to the file"),
-		),
-	), c.handleWriteTmFile)
+	// Only add directory-dependent tools if flagDir is set
+	if c.flagDir != "" {
+		absPath, err := c.validatePath(c.flagDir)
+		if err != nil {
+			c.errPrint(fmt.Sprintf("Error: %s\n", err))
+			return 1
+		}
+
+		c.errPrint(fmt.Sprintf("Threatcl MCP server started - using directory: %s\n", absPath))
+
+		mcpserver.AddTool(mcp.NewTool(
+			"list_all_tms",
+			mcp.WithDescription("Get a listing of all the threatcl threat models, and their files, located within the directory set by the -dir flag"),
+		), c.handleListTms)
+
+		mcpserver.AddTool(mcp.NewTool(
+			"list_all_tms_with_cols",
+			mcp.WithDescription("Get a detailed listing of all the threatcl threat models, and their files, located within the directory set by the -dir flag. This tool allows you to specify what columns are displayed, for instance: file, author, threatmodel, threatcount, internetfacing."),
+			mcp.WithString("columns",
+				mcp.Description("The columns you want to list against each threat model. Is expected to be a comma-separated list of values from this set: number, threatmodel, author, file, threatcount, internetfacing, assetcount, usecasecount, tpdcount, exclusioncount, size, newinitiative, dfd."),
+			),
+		), c.handleListTmsWithCustomCols)
+
+		mcpserver.AddTool(mcp.NewTool(
+			"view_tm",
+			mcp.WithDescription("View the markdown of a threatcl threat model file, located within the directory set by the -dir flag. This tool requires you provide the threatcl file."),
+			mcp.WithString("file",
+				mcp.Description("The threatcl file to view"),
+			),
+		), c.handleViewTmFile)
+
+		mcpserver.AddTool(mcp.NewTool(
+			"view_tm_hcl",
+			mcp.WithDescription("View the raw hcl contents of a threatcl threat model file, located within the directory set by the -dir flag. This tool requires you provide the threatcl file."),
+			mcp.WithString("file",
+				mcp.Description("The threatcl file to view the raw version of"),
+			),
+		), c.handleViewTmFileRaw)
+
+		mcpserver.AddTool(mcp.NewTool(
+			"validate_tm_file",
+			mcp.WithDescription("Validate a threatcl threat model file, located within the directory set by the -dir flag"),
+			mcp.WithString("file",
+				mcp.Description("The threatcl file to validate"),
+			),
+		), c.handleValidateTmFile)
+
+		mcpserver.AddTool(mcp.NewTool(
+			"write_tm_file",
+			mcp.WithDescription("Write a threatcl threat model to a file, located within the directory set by the -dir flag. If you want to write to a different location, you should leverage other MCP tools."),
+			mcp.WithString("filename",
+				mcp.Description("The filename to write the threatcl threat model to"),
+			),
+			mcp.WithString("hcl",
+				mcp.Description("The threatcl string to write to the file"),
+			),
+		), c.handleWriteTmFile)
+	} else {
+		c.errPrint("Threatcl MCP server started - no directory specified. Only non-filesystem tools are available.\n")
+	}
 
 	if err := server.ServeStdio(mcpserver); err != nil {
 		c.errPrint(fmt.Sprintf("Server error: %v\n", err))
