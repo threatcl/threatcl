@@ -3,12 +3,15 @@ package main
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/threatcl/spec"
+
+	"encoding/base64"
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
@@ -84,6 +87,22 @@ func (c *MCPCommand) Run(args []string) int {
 			mcp.Description("The threatcl string to validate"),
 		),
 	), c.handleValidateTmString)
+
+	mcpserver.AddTool(mcp.NewTool(
+		"view_tm_string",
+		mcp.WithDescription("View the markdown of a threatcl threat model by providing the raw hcl string"),
+		mcp.WithString("hcl",
+			mcp.Description("The threatcl string to view"),
+		),
+	), c.handleViewTmString)
+
+	mcpserver.AddTool(mcp.NewTool(
+		"view_dfd_png_from_tm_string",
+		mcp.WithDescription("View the png of a specific data flow diagram of a threatcl threat model by providing the raw hcl string"),
+		mcp.WithString("hcl",
+			mcp.Description("The threatcl string, including the data flow diagram, to then render the png of"),
+		),
+	), c.handlePngDfdViewFromTmString)
 
 	// Only add directory-dependent tools if flagDir is set
 	if c.flagDir != "" {
@@ -209,6 +228,70 @@ func (c *MCPCommand) handleListTmsWithCustomCols(ctx context.Context, req mcp.Ca
 	}
 
 	return mcp.NewToolResultText(result.String()), nil
+}
+
+func (c *MCPCommand) handleViewTmString(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	tmString, ok := req.Params.Arguments["hcl"].(string)
+	if !ok {
+		return nil, fmt.Errorf("hcl must be a string")
+	}
+
+	cfg, _ := spec.LoadSpecConfig()
+	tmParser := spec.NewThreatmodelParser(cfg)
+	err := tmParser.ParseHCLRaw([]byte(tmString))
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("error parsing string: %s", err)), nil
+	}
+
+	mdBuffer := new(strings.Builder)
+
+	tmBuffer, err := tmParser.GetWrapped().Threatmodels[0].RenderMarkdown(spec.TmMDTemplate)
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("error rendering markdown: %s", err)), nil
+	}
+
+	_, err = io.Copy(mdBuffer, tmBuffer)
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("error copying buffer: %s", err)), nil
+	}
+
+	return mcp.NewToolResultText(mdBuffer.String()), nil
+
+}
+
+func (c *MCPCommand) handlePngDfdViewFromTmString(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	tmString, ok := req.Params.Arguments["hcl"].(string)
+	if !ok {
+		return nil, fmt.Errorf("hcl must be a string")
+	}
+
+	cfg, _ := spec.LoadSpecConfig()
+	tmParser := spec.NewThreatmodelParser(cfg)
+	err := tmParser.ParseHCLRaw([]byte(tmString))
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("error parsing string: %s", err)), nil
+	}
+
+	dfd := tmParser.GetWrapped().Threatmodels[0].DataFlowDiagrams[0]
+	tmName := tmParser.GetWrapped().Threatmodels[0].Name
+
+	pngBytes, err := dfd.GenerateDfdPngBytes(tmName)
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("error generating dfd png bytes: %s", err)), nil
+	}
+
+	// Base64 encode the PNG bytes
+	base64Bytes := base64.StdEncoding.EncodeToString(pngBytes)
+
+	return &mcp.CallToolResult{
+		Content: []mcp.Content{
+			mcp.ImageContent{
+				Type:     "image",
+				Data:     base64Bytes,
+				MIMEType: "image/png",
+			},
+		},
+	}, nil
 }
 
 func (c *MCPCommand) handleViewTmFile(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {

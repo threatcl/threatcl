@@ -384,6 +384,15 @@ func TestMCPAdditionalTools(t *testing.T) {
 			"threatmodel",
 			false,
 		},
+		{
+			"view_tm_string",
+			"view_tm_string",
+			map[string]interface{}{
+				"hcl": "threatmodel \"string_test\" {\n  author = \"test_author\"\n}\n",
+			},
+			"# string_test\n\nAuthor: test_author",
+			false,
+		},
 	}
 
 	for _, tc := range cases {
@@ -430,6 +439,19 @@ func TestMCPAdditionalTools(t *testing.T) {
 						} `json:"_meta,omitempty"`
 					}{
 						Name:      "view_tm_hcl",
+						Arguments: tc.args,
+					},
+				})
+			case "view_tm_string":
+				result, err = cmd.handleViewTmString(context.Background(), mcp.CallToolRequest{
+					Params: struct {
+						Name      string                 `json:"name"`
+						Arguments map[string]interface{} `json:"arguments,omitempty"`
+						Meta      *struct {
+							ProgressToken mcp.ProgressToken `json:"progressToken,omitempty"`
+						} `json:"_meta,omitempty"`
+					}{
+						Name:      "view_tm_string",
 						Arguments: tc.args,
 					},
 				})
@@ -596,5 +618,77 @@ func TestMCPWriteTmFile(t *testing.T) {
 	})
 	if err == nil || !strings.Contains(err.Error(), "already exists") {
 		t.Error("Expected error about file already existing")
+	}
+}
+
+func TestMCPPngDfdViewFromTmString(t *testing.T) {
+	cmd := testMCPCommand(t)
+
+	hclString := `threatmodel "test_dfd" {
+  author = "test_author"
+  description = "Test DFD"
+
+  data_flow_diagram {
+    external_element "Google Analytics" {}
+
+    process "Client" {
+      trust_zone = "Browser"
+    }
+
+    flow "https" {
+      from = "Client"
+      to = "Google Analytics"
+    }
+
+    process "Web Server" {
+      trust_zone = "AWS"
+    }
+
+    data_store "Logs" {
+      trust_zone = "AWS"
+    }
+
+    flow "TCP" {
+      from = "Web Server"
+      to = "Logs"
+    }
+  }
+}`
+
+	result, err := cmd.handlePngDfdViewFromTmString(context.Background(), mcp.CallToolRequest{
+		Params: struct {
+			Name      string                 `json:"name"`
+			Arguments map[string]interface{} `json:"arguments,omitempty"`
+			Meta      *struct {
+				ProgressToken mcp.ProgressToken `json:"progressToken,omitempty"`
+			} `json:"_meta,omitempty"`
+		}{
+			Name: "png_dfd_view_from_tm_string",
+			Arguments: map[string]interface{}{
+				"hcl": hclString,
+			},
+		},
+	})
+
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+
+	if len(result.Content) == 0 {
+		t.Fatal("Expected content in result")
+	}
+
+	if imageContent, ok := result.Content[0].(mcp.ImageContent); ok {
+		if imageContent.Type != "image" {
+			t.Errorf("Expected Type to be 'image', got %s", imageContent.Type)
+		}
+		if imageContent.MIMEType != "image/png" {
+			t.Errorf("Expected MIMEType to be 'image/png', got %s", imageContent.MIMEType)
+		}
+		if imageContent.Data == "" {
+			t.Error("Expected non-empty base64 data")
+		}
+	} else {
+		t.Error("Expected ImageContent in result")
 	}
 }
