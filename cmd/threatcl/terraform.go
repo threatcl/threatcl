@@ -133,7 +133,7 @@ func (c *TerraformCommand) Run(args []string) int {
 			}
 
 			if !foundExisting {
-				fmt.Printf(errMsg)
+				fmt.Print(errMsg)
 				return 1
 			}
 		} else {
