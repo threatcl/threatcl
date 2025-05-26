@@ -317,8 +317,8 @@ func TestDfdExistingDir(t *testing.T) {
 		t.Errorf("Code did not equal 1: %d", code)
 	}
 
-	if !strings.Contains(out, "Won't overwrite content") {
-		t.Errorf("%s did not contain %s", out, "Won't overwrite content")
+	if !strings.Contains(out, "won't overwrite content") {
+		t.Errorf("%s did not contain %s", out, "won't overwrite content")
 	}
 
 }

@@ -318,10 +318,7 @@ func prettyBool(in bool) string {
 }
 
 func prettyBoolFromString(in string) bool {
-	if in == "Yes" {
-		return true
-	}
-	return false
+	return in == "Yes"
 }
 
 // findAllFiles wraps Json and Hcl file finding
@@ -409,7 +406,7 @@ func findHclFiles(files []string) []string {
 func configFileLocation() (string, error) {
 	homeDir := os.Getenv("HOME")
 	if homeDir == "" {
-		return "", errors.New("Can't find home directory")
+		return "", errors.New("can't find home directory")
 	}
 
 	return filepath.Join(homeDir, ".hcltmrc"), nil
@@ -420,7 +417,7 @@ func validateFilename(filename string) error {
 	validFilename := reg.ReplaceAllString(filename, "")
 
 	if filename != validFilename {
-		return fmt.Errorf("Provided filename contains illegal characters")
+		return fmt.Errorf("provided filename contains illegal characters")
 	}
 
 	return nil
@@ -437,15 +434,15 @@ func createOrValidateFolder(folder string, overwrite bool) error {
 		// Need to create the directory
 		err = os.Mkdir(folder, 0755)
 		if err != nil {
-			return fmt.Errorf("Error creating directory: %s", err)
+			return fmt.Errorf("error creating directory: %s", err)
 		}
 	} else {
 		if !info.IsDir() {
 			// The outdir exists but isn't a directory
-			return fmt.Errorf("You're trying to output to a file that exists and isn't a directory")
+			return fmt.Errorf("you're trying to output to a file that exists and isn't a directory")
 		} else {
 			if !overwrite {
-				return fmt.Errorf("Won't overwrite content in the '%s' folder, to overwrite contents provide the -overwrite option", folder)
+				return fmt.Errorf("won't overwrite content in the '%s' folder, to overwrite contents provide the -overwrite option", folder)
 			}
 		}
 	}
