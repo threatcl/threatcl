@@ -77,8 +77,8 @@ To release a new version:
 * `git tag -f latest`
 * `git push --tags`
 * This should then run a "threatcl release" action to release a new version, including amd64/arm64 docker images to ghcr.io
-* Then don't forget to update https://github.com/xntrik/homebrew-repo
-* And also https://github.com/xntrik/hcltm-action and https://github.com/xntrik/hcltm-action-example
+* Then don't forget to update https://github.com/threatcl/homebrew-repo
+* And also https://github.com/threatcl/threatcl-action and https://github.com/threatcl/threatcl-action-example
 
 Thanks,
 Christian @xntrik Frichot
