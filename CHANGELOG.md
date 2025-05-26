@@ -1,3 +1,10 @@
+## 0.2.3
+### May 26, 2025
+
+CHANGES:
+
+* Added `mcp` command
+
 ## 0.2.2
 ### Aug 16, 2024
 
