@@ -1,4 +1,4 @@
-FROM golang:1.22.0-alpine3.19 AS builder
+FROM golang:1.24.3-alpine3.19 AS builder
 MAINTAINER Christian Frichot <xntrik@gmail.com>
 
 RUN apk update
