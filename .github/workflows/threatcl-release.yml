@@ -74,15 +74,15 @@ jobs:
     needs: [build-linux, build-macos]
     steps:
       - name: Download linux packages
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: linux-pkg-amd64
       - name: Download osx arm64
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: osx-pkg-arm64
       - name: Download osx amd64
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: osx-pkg-amd64
       - name: Automatic Release
