@@ -35,7 +35,7 @@ jobs:
           CGO_ENABLED=1 GOARCH=${{ matrix.goarch }} GOOS=${{ matrix.goos }} go build -o threatcl ./cmd/threatcl
           tar -zcvf threatcl-${{ env.BUILD_TIME }}-${{ matrix.goos }}-${{ matrix.goarch }}.tar.gz threatcl
       - name: Upload Linux Package
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: linux-pkg-${{ matrix.goarch }}
           path: threatcl-${{ env.BUILD_TIME }}-${{ matrix.goos }}-${{ matrix.goarch }}.tar.gz
@@ -62,7 +62,7 @@ jobs:
           CGO_ENABLED=1 GOARCH=${{ matrix.goarch }} GOOS=${{ matrix.goos }} go build -o threatcl ./cmd/threatcl
           tar -zcvf threatcl-${{ env.BUILD_TIME }}-${{ matrix.goos }}-${{ matrix.goarch }}.tar.gz threatcl
       - name: Upload OSX Package
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: osx-pkg-${{ matrix.goarch }}
           path: threatcl-${{ env.BUILD_TIME }}-${{ matrix.goos }}-${{ matrix.goarch }}.tar.gz
