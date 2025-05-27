@@ -94,7 +94,7 @@ jobs:
           files: |
             threatcl*.tar.gz
       - name: Remove artifacts
-        uses: geekyeggo/delete-artifact@v1
+        uses: geekyeggo/delete-artifact@v5
         with:
           name: |
             linux-pkg-amd64
