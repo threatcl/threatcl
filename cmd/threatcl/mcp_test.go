@@ -692,3 +692,109 @@ func TestMCPPngDfdViewFromTmString(t *testing.T) {
 		t.Error("Expected ImageContent in result")
 	}
 }
+
+func TestMCPWriteDfdPngFile(t *testing.T) {
+	d, err := ioutil.TempDir("", "")
+	if err != nil {
+		t.Fatalf("Error creating tmp dir: %s", err)
+	}
+	defer os.RemoveAll(d)
+
+	cmd := testMCPCommand(t)
+	cmd.flagDir = d
+
+	filename := "test_dfd.png"
+	hclString := `threatmodel "test_dfd" {
+  author = "test_author"
+  description = "Test DFD"
+
+  data_flow_diagram {
+    external_element "Google Analytics" {}
+
+    process "Client" {
+      trust_zone = "Browser"
+    }
+
+    flow "https" {
+      from = "Client"
+      to = "Google Analytics"
+    }
+
+    process "Web Server" {
+      trust_zone = "AWS"
+    }
+
+    data_store "Logs" {
+      trust_zone = "AWS"
+    }
+
+    flow "TCP" {
+      from = "Web Server"
+      to = "Logs"
+    }
+  }
+}`
+
+	// First write should succeed
+	result, err := cmd.handleWriteDfdPngFile(context.Background(), mcp.CallToolRequest{
+		Params: struct {
+			Name      string                 `json:"name"`
+			Arguments map[string]interface{} `json:"arguments,omitempty"`
+			Meta      *struct {
+				ProgressToken mcp.ProgressToken `json:"progressToken,omitempty"`
+			} `json:"_meta,omitempty"`
+		}{
+			Name: "write_dfd_png_file",
+			Arguments: map[string]interface{}{
+				"filename": filename,
+				"hcl":      hclString,
+			},
+		},
+	})
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+	if result == nil || len(result.Content) == 0 {
+		t.Fatal("Expected content in result")
+	}
+	if textContent, ok := result.Content[0].(mcp.TextContent); ok {
+		if !strings.Contains(textContent.Text, filename) {
+			t.Errorf("Expected result to mention filename, got %s", textContent.Text)
+		}
+	} else {
+		t.Error("Expected TextContent in result")
+	}
+
+	// Check file exists and is a valid PNG
+	written, err := os.ReadFile(filepath.Join(d, filename))
+	if err != nil {
+		t.Fatalf("Expected file to be written: %v", err)
+	}
+	if len(written) == 0 {
+		t.Error("Expected non-empty PNG file")
+	}
+	// Check PNG magic number
+	if len(written) < 8 || string(written[0:8]) != "\x89PNG\r\n\x1a\n" {
+		t.Error("Expected valid PNG file format")
+	}
+
+	// Second write should fail (file already exists)
+	_, err = cmd.handleWriteDfdPngFile(context.Background(), mcp.CallToolRequest{
+		Params: struct {
+			Name      string                 `json:"name"`
+			Arguments map[string]interface{} `json:"arguments,omitempty"`
+			Meta      *struct {
+				ProgressToken mcp.ProgressToken `json:"progressToken,omitempty"`
+			} `json:"_meta,omitempty"`
+		}{
+			Name: "write_dfd_png_file",
+			Arguments: map[string]interface{}{
+				"filename": filename,
+				"hcl":      hclString,
+			},
+		},
+	})
+	if err == nil || !strings.Contains(err.Error(), "already exists") {
+		t.Error("Expected error about file already existing")
+	}
+}

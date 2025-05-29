@@ -1,3 +1,11 @@
+## 0.2.4
+
+### May 29, 2025
+
+CHANGES:
+
+* New `mcp` tool added to support writing DFD PNG files
+
 ## 0.2.3
 ### May 26, 2025
 

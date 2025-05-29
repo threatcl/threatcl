@@ -161,6 +161,17 @@ func (c *MCPCommand) Run(args []string) int {
 				mcp.Description("The threatcl string to write to the file"),
 			),
 		), c.handleWriteTmFile)
+
+		mcpserver.AddTool(mcp.NewTool(
+			"write_dfd_png_file",
+			mcp.WithDescription("Write a DFD PNG to a file, located within the directory set by the -dir flag. If you want to write to a different location, you should leverage other MCP tools."),
+			mcp.WithString("filename",
+				mcp.Description("The filename to write the DFD PNG to"),
+			),
+			mcp.WithString("hcl",
+				mcp.Description("The threatcl string to write to the file"),
+			),
+		), c.handleWriteDfdPngFile)
 	} else {
 		c.errPrint("Threatcl MCP server started - no directory specified. Only non-filesystem tools are available.\n")
 	}
@@ -529,6 +540,52 @@ func (c *MCPCommand) handleWriteTmFile(ctx context.Context, req mcp.CallToolRequ
 	}
 
 	return mcp.NewToolResultText(fmt.Sprintf("Wrote threat model to file: %s\n", validFile)), nil
+}
+
+func (c *MCPCommand) handleWriteDfdPngFile(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	filename, ok := req.Params.Arguments["filename"].(string)
+	if !ok {
+		return nil, fmt.Errorf("filename must be a string")
+	}
+
+	hclString, ok := req.Params.Arguments["hcl"].(string)
+	if !ok {
+		return nil, fmt.Errorf("hcl must be a string")
+	}
+
+	validFile, err := c.validateTmFilePath(filename)
+	if err != nil {
+		return nil, fmt.Errorf("error in TM file path: %w", err)
+	}
+
+	// Parse the HCL string to get the DFD
+	cfg, _ := spec.LoadSpecConfig()
+	tmParser := spec.NewThreatmodelParser(cfg)
+	err = tmParser.ParseHCLRaw([]byte(hclString))
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("error parsing string: %s", err)), nil
+	}
+
+	dfd := tmParser.GetWrapped().Threatmodels[0].DataFlowDiagrams[0]
+	tmName := tmParser.GetWrapped().Threatmodels[0].Name
+
+	// Generate the PNG bytes
+	pngBytes, err := dfd.GenerateDfdPngBytes(tmName)
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("error generating dfd png bytes: %s", err)), nil
+	}
+
+	// only write the file if it doesn't exist
+	if _, err := os.Stat(validFile); os.IsNotExist(err) {
+		writeErr := os.WriteFile(validFile, pngBytes, 0644)
+		if writeErr != nil {
+			return nil, fmt.Errorf("error writing file: %w", writeErr)
+		}
+	} else {
+		return nil, fmt.Errorf("file already exists: %s", validFile)
+	}
+
+	return mcp.NewToolResultText(fmt.Sprintf("Wrote DFD PNG to file: %s\n", validFile)), nil
 }
 
 func (c *MCPCommand) Synopsis() string {
