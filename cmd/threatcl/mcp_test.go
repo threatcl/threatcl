@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -561,8 +562,87 @@ func TestMCPWriteTmFile(t *testing.T) {
 	filename := "newtm.hcl"
 	hclString := "threatmodel \"new\" {\n  author = \"author\"\n}\n"
 
-	// First write should succeed
+	// Test invalid HCL first
+	invalidHclString := "invalid hcl content"
 	result, err := cmd.handleWriteTmFile(context.Background(), mcp.CallToolRequest{
+		Params: struct {
+			Name      string                 `json:"name"`
+			Arguments map[string]interface{} `json:"arguments,omitempty"`
+			Meta      *struct {
+				ProgressToken mcp.ProgressToken `json:"progressToken,omitempty"`
+			} `json:"_meta,omitempty"`
+		}{
+			Name: "write_tm_file",
+			Arguments: map[string]interface{}{
+				"filename": filename,
+				"hcl":      invalidHclString,
+			},
+		},
+	})
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+	if result == nil || !result.IsError {
+		t.Error("Expected error result for invalid HCL")
+	}
+	if len(result.Content) == 0 {
+		t.Fatal("Expected error content in result")
+	}
+	if textContent, ok := result.Content[0].(mcp.TextContent); ok {
+		if !strings.Contains(textContent.Text, "error parsing string") {
+			t.Errorf("Expected error about parsing string, got %s", textContent.Text)
+		}
+	} else {
+		t.Error("Expected TextContent in result")
+	}
+
+	// Test OTM format conversion
+	otmFilename := "newtm.otm.json"
+	result, err = cmd.handleWriteTmFile(context.Background(), mcp.CallToolRequest{
+		Params: struct {
+			Name      string                 `json:"name"`
+			Arguments map[string]interface{} `json:"arguments,omitempty"`
+			Meta      *struct {
+				ProgressToken mcp.ProgressToken `json:"progressToken,omitempty"`
+			} `json:"_meta,omitempty"`
+		}{
+			Name: "write_tm_file",
+			Arguments: map[string]interface{}{
+				"filename": otmFilename,
+				"hcl":      hclString,
+				"format":   "otm",
+			},
+		},
+	})
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+	if result == nil || len(result.Content) == 0 {
+		t.Fatal("Expected content in result")
+	}
+	if textContent, ok := result.Content[0].(mcp.TextContent); ok {
+		if !strings.Contains(textContent.Text, otmFilename) {
+			t.Errorf("Expected result to mention filename, got %s", textContent.Text)
+		}
+	} else {
+		t.Error("Expected TextContent in result")
+	}
+
+	// Check OTM file exists and is valid JSON
+	written, err := os.ReadFile(filepath.Join(d, otmFilename))
+	if err != nil {
+		t.Fatalf("Expected file to be written: %v", err)
+	}
+	var otmJson map[string]interface{}
+	if err := json.Unmarshal(written, &otmJson); err != nil {
+		t.Errorf("Expected valid JSON file: %v", err)
+	}
+	if otmJson["otmVersion"] == nil {
+		t.Error("Expected OTM version in JSON")
+	}
+
+	// First write should succeed (HCL format)
+	result, err = cmd.handleWriteTmFile(context.Background(), mcp.CallToolRequest{
 		Params: struct {
 			Name      string                 `json:"name"`
 			Arguments map[string]interface{} `json:"arguments,omitempty"`
@@ -592,7 +672,7 @@ func TestMCPWriteTmFile(t *testing.T) {
 	}
 
 	// Check file exists and content matches
-	written, err := os.ReadFile(filepath.Join(d, filename))
+	written, err = os.ReadFile(filepath.Join(d, filename))
 	if err != nil {
 		t.Fatalf("Expected file to be written: %v", err)
 	}

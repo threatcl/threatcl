@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -10,8 +12,6 @@ import (
 	"time"
 
 	"github.com/threatcl/spec"
-
-	"encoding/base64"
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
@@ -159,6 +159,9 @@ func (c *MCPCommand) Run(args []string) int {
 			),
 			mcp.WithString("hcl",
 				mcp.Description("The threatcl string to write to the file"),
+			),
+			mcp.WithString("format",
+				mcp.Description("The format to write the file in. Options are 'hcl' (default) or 'otm'"),
 			),
 		), c.handleWriteTmFile)
 
@@ -529,9 +532,43 @@ func (c *MCPCommand) handleWriteTmFile(ctx context.Context, req mcp.CallToolRequ
 		return nil, fmt.Errorf("error in TM file path: %w", err)
 	}
 
+	// Validate the HCL string before writing
+	cfg, _ := spec.LoadSpecConfig()
+	tmParser := spec.NewThreatmodelParser(cfg)
+	err = tmParser.ParseHCLRaw([]byte(hclString))
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("error parsing string: %s", err)), nil
+	}
+
+	// Get the format parameter, default to "hcl" if not specified
+	format, _ := req.Params.Arguments["format"].(string)
+	if format == "" {
+		format = "hcl"
+	}
+
+	var contentToWrite []byte
+	switch format {
+	case "hcl":
+		contentToWrite = []byte(hclString)
+	case "otm":
+		// Convert to OTM format
+		tm := tmParser.GetWrapped().Threatmodels[0]
+		tmOtm, err := tm.RenderOtm()
+		if err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("error converting to OTM: %s", err)), nil
+		}
+		otmJson, err := json.Marshal(tmOtm)
+		if err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("error marshaling OTM: %s", err)), nil
+		}
+		contentToWrite = otmJson
+	default:
+		return mcp.NewToolResultError(fmt.Sprintf("unsupported format: %s", format)), nil
+	}
+
 	// only write the file if it doesn't exist
 	if _, err := os.Stat(validFile); os.IsNotExist(err) {
-		writeErr := os.WriteFile(validFile, []byte(hclString), 0644)
+		writeErr := os.WriteFile(validFile, contentToWrite, 0644)
 		if writeErr != nil {
 			return nil, fmt.Errorf("error writing file: %w", writeErr)
 		}
