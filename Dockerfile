@@ -1,5 +1,4 @@
 FROM golang:1.24.3-alpine3.21 AS builder
-MAINTAINER Christian Frichot <xntrik@gmail.com>
 
 RUN apk update
 RUN apk upgrade
@@ -10,6 +9,9 @@ ENV CGO_ENABLED=1
 RUN go build -o threatcl ./cmd/threatcl
 
 FROM alpine:3.21 AS threatcl
+
+MAINTAINER Christian Frichot <xntrik@gmail.com>
+LABEL org.opencontainers.image.authors="Christian Frichot <xntrik@gmail.com>"
 
 RUN addgroup -S threatcl && adduser -S -G threatcl threatcl
 
