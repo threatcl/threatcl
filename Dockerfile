@@ -11,6 +11,10 @@ RUN go build -o threatcl ./cmd/threatcl
 
 FROM alpine:3.21 AS threatcl
 
+RUN addgroup -S threatcl && adduser -S -G threatcl threatcl
+
 WORKDIR /app
 COPY --from=builder /src/threatcl /bin/threatcl
+
+USER threatcl
 ENTRYPOINT ["/bin/threatcl"]
