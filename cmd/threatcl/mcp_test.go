@@ -171,26 +171,14 @@ func TestMCPToolHandlers(t *testing.T) {
 			switch tc.tool {
 			case "validate_tm_string":
 				result, err = cmd.handleValidateTmString(context.Background(), mcp.CallToolRequest{
-					Params: struct {
-						Name      string                 `json:"name"`
-						Arguments map[string]interface{} `json:"arguments,omitempty"`
-						Meta      *struct {
-							ProgressToken mcp.ProgressToken `json:"progressToken,omitempty"`
-						} `json:"_meta,omitempty"`
-					}{
+					Params: mcp.CallToolParams{
 						Name:      "validate_tm_string",
 						Arguments: tc.args,
 					},
 				})
 			case "view_threatcl_hcl_spec":
 				result, err = cmd.handleViewSpecTool(context.Background(), mcp.CallToolRequest{
-					Params: struct {
-						Name      string                 `json:"name"`
-						Arguments map[string]interface{} `json:"arguments,omitempty"`
-						Meta      *struct {
-							ProgressToken mcp.ProgressToken `json:"progressToken,omitempty"`
-						} `json:"_meta,omitempty"`
-					}{
+					Params: mcp.CallToolParams{
 						Name: "view_threatcl_hcl_spec",
 					},
 				})
@@ -282,25 +270,13 @@ func TestMCPDirectoryTools(t *testing.T) {
 			switch tc.tool {
 			case "list_all_tms":
 				result, err = cmd.handleListTms(context.Background(), mcp.CallToolRequest{
-					Params: struct {
-						Name      string                 `json:"name"`
-						Arguments map[string]interface{} `json:"arguments,omitempty"`
-						Meta      *struct {
-							ProgressToken mcp.ProgressToken `json:"progressToken,omitempty"`
-						} `json:"_meta,omitempty"`
-					}{
+					Params: mcp.CallToolParams{
 						Name: "list_all_tms",
 					},
 				})
 			case "validate_tm_file":
 				result, err = cmd.handleValidateTmFile(context.Background(), mcp.CallToolRequest{
-					Params: struct {
-						Name      string                 `json:"name"`
-						Arguments map[string]interface{} `json:"arguments,omitempty"`
-						Meta      *struct {
-							ProgressToken mcp.ProgressToken `json:"progressToken,omitempty"`
-						} `json:"_meta,omitempty"`
-					}{
+					Params: mcp.CallToolParams{
 						Name:      "validate_tm_file",
 						Arguments: tc.args,
 					},
@@ -405,52 +381,28 @@ func TestMCPAdditionalTools(t *testing.T) {
 			switch tc.tool {
 			case "list_all_tms_with_cols":
 				result, err = cmd.handleListTmsWithCustomCols(context.Background(), mcp.CallToolRequest{
-					Params: struct {
-						Name      string                 `json:"name"`
-						Arguments map[string]interface{} `json:"arguments,omitempty"`
-						Meta      *struct {
-							ProgressToken mcp.ProgressToken `json:"progressToken,omitempty"`
-						} `json:"_meta,omitempty"`
-					}{
+					Params: mcp.CallToolParams{
 						Name:      "list_all_tms_with_cols",
 						Arguments: tc.args,
 					},
 				})
 			case "view_tm":
 				result, err = cmd.handleViewTmFile(context.Background(), mcp.CallToolRequest{
-					Params: struct {
-						Name      string                 `json:"name"`
-						Arguments map[string]interface{} `json:"arguments,omitempty"`
-						Meta      *struct {
-							ProgressToken mcp.ProgressToken `json:"progressToken,omitempty"`
-						} `json:"_meta,omitempty"`
-					}{
+					Params: mcp.CallToolParams{
 						Name:      "view_tm",
 						Arguments: tc.args,
 					},
 				})
 			case "view_tm_hcl":
 				result, err = cmd.handleViewTmFileRaw(context.Background(), mcp.CallToolRequest{
-					Params: struct {
-						Name      string                 `json:"name"`
-						Arguments map[string]interface{} `json:"arguments,omitempty"`
-						Meta      *struct {
-							ProgressToken mcp.ProgressToken `json:"progressToken,omitempty"`
-						} `json:"_meta,omitempty"`
-					}{
+					Params: mcp.CallToolParams{
 						Name:      "view_tm_hcl",
 						Arguments: tc.args,
 					},
 				})
 			case "view_tm_string":
 				result, err = cmd.handleViewTmString(context.Background(), mcp.CallToolRequest{
-					Params: struct {
-						Name      string                 `json:"name"`
-						Arguments map[string]interface{} `json:"arguments,omitempty"`
-						Meta      *struct {
-							ProgressToken mcp.ProgressToken `json:"progressToken,omitempty"`
-						} `json:"_meta,omitempty"`
-					}{
+					Params: mcp.CallToolParams{
 						Name:      "view_tm_string",
 						Arguments: tc.args,
 					},
@@ -519,13 +471,7 @@ func TestMCPShowSpecResource(t *testing.T) {
 func TestMCPViewSpecToolResource(t *testing.T) {
 	cmd := testMCPCommand(t)
 	result, err := cmd.handleViewSpecToolResource(context.Background(), mcp.CallToolRequest{
-		Params: struct {
-			Name      string                 `json:"name"`
-			Arguments map[string]interface{} `json:"arguments,omitempty"`
-			Meta      *struct {
-				ProgressToken mcp.ProgressToken `json:"progressToken,omitempty"`
-			} `json:"_meta,omitempty"`
-		}{
+		Params: mcp.CallToolParams{
 			Name: "view_spec_tool_resource",
 		},
 	})
@@ -563,13 +509,7 @@ func TestMCPWriteTmFile(t *testing.T) {
 
 	// First write should succeed
 	result, err := cmd.handleWriteTmFile(context.Background(), mcp.CallToolRequest{
-		Params: struct {
-			Name      string                 `json:"name"`
-			Arguments map[string]interface{} `json:"arguments,omitempty"`
-			Meta      *struct {
-				ProgressToken mcp.ProgressToken `json:"progressToken,omitempty"`
-			} `json:"_meta,omitempty"`
-		}{
+		Params: mcp.CallToolParams{
 			Name: "write_tm_file",
 			Arguments: map[string]interface{}{
 				"filename": filename,
@@ -602,13 +542,7 @@ func TestMCPWriteTmFile(t *testing.T) {
 
 	// Second write should fail (file already exists)
 	_, err = cmd.handleWriteTmFile(context.Background(), mcp.CallToolRequest{
-		Params: struct {
-			Name      string                 `json:"name"`
-			Arguments map[string]interface{} `json:"arguments,omitempty"`
-			Meta      *struct {
-				ProgressToken mcp.ProgressToken `json:"progressToken,omitempty"`
-			} `json:"_meta,omitempty"`
-		}{
+		Params: mcp.CallToolParams{
 			Name: "write_tm_file",
 			Arguments: map[string]interface{}{
 				"filename": filename,
@@ -656,13 +590,7 @@ func TestMCPPngDfdViewFromTmString(t *testing.T) {
 }`
 
 	result, err := cmd.handlePngDfdViewFromTmString(context.Background(), mcp.CallToolRequest{
-		Params: struct {
-			Name      string                 `json:"name"`
-			Arguments map[string]interface{} `json:"arguments,omitempty"`
-			Meta      *struct {
-				ProgressToken mcp.ProgressToken `json:"progressToken,omitempty"`
-			} `json:"_meta,omitempty"`
-		}{
+		Params: mcp.CallToolParams{
 			Name: "png_dfd_view_from_tm_string",
 			Arguments: map[string]interface{}{
 				"hcl": hclString,
@@ -737,13 +665,7 @@ func TestMCPWriteDfdPngFile(t *testing.T) {
 
 	// First write should succeed
 	result, err := cmd.handleWriteDfdPngFile(context.Background(), mcp.CallToolRequest{
-		Params: struct {
-			Name      string                 `json:"name"`
-			Arguments map[string]interface{} `json:"arguments,omitempty"`
-			Meta      *struct {
-				ProgressToken mcp.ProgressToken `json:"progressToken,omitempty"`
-			} `json:"_meta,omitempty"`
-		}{
+		Params: mcp.CallToolParams{
 			Name: "write_dfd_png_file",
 			Arguments: map[string]interface{}{
 				"filename": filename,
@@ -780,13 +702,7 @@ func TestMCPWriteDfdPngFile(t *testing.T) {
 
 	// Second write should fail (file already exists)
 	_, err = cmd.handleWriteDfdPngFile(context.Background(), mcp.CallToolRequest{
-		Params: struct {
-			Name      string                 `json:"name"`
-			Arguments map[string]interface{} `json:"arguments,omitempty"`
-			Meta      *struct {
-				ProgressToken mcp.ProgressToken `json:"progressToken,omitempty"`
-			} `json:"_meta,omitempty"`
-		}{
+		Params: mcp.CallToolParams{
 			Name: "write_dfd_png_file",
 			Arguments: map[string]interface{}{
 				"filename": filename,
