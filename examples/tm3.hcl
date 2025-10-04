@@ -1,4 +1,4 @@
- spec_version = "0.1.10"
+ spec_version = "0.1.14"
 
  threatmodel "Modelly model" {
    imports = ["https://raw.githubusercontent.com/xntrik/hcltm/main/examples/aws-security-checklist.hcl", "https://raw.githubusercontent.com/xntrik/hcltm/main/examples/owasp-proactive-controls.hcl"]

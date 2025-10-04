@@ -294,8 +294,8 @@ github.com/stretchr/testify v1.11.1 h1:7s2iGBzp5EwR7/aIZr8ao5+dra3wiQyKjjFuvgVKu
 github.com/stretchr/testify v1.11.1/go.mod h1:wZwfW3scLgRK+23gO65QZefKpKQRnfz6sD981Nm4B6U=
 github.com/threatcl/go-otm v0.0.2 h1:zN/Wwiy6QVw0SRm+YiZA7lDf2yI0jVyxPmNW1k9kgpw=
 github.com/threatcl/go-otm v0.0.2/go.mod h1:U1CNSpdQQ8S0lqr5LNn3tFZxsLgBKOz27+5k+IzFho0=
-github.com/threatcl/spec v0.1.13 h1:QO5wAPOIsPzkODQ0Rm+y1mqGG8O2hjB6p1iQdd3VVVo=
-github.com/threatcl/spec v0.1.13/go.mod h1:afiVHQD/4suseJjqOF7HafYBVQ4+axiUq0l919nkgSk=
+github.com/threatcl/spec v0.1.14 h1:lMgtI3nxyQ243MAsgie9RWOQAcB/6MXmmwwBaeLT6to=
+github.com/threatcl/spec v0.1.14/go.mod h1:afiVHQD/4suseJjqOF7HafYBVQ4+axiUq0l919nkgSk=
 github.com/ulikunitz/xz v0.5.15 h1:9DNdB5s+SgV3bQ2ApL10xRc35ck0DuIX/isZvIk+ubY=
 github.com/ulikunitz/xz v0.5.15/go.mod h1:nbz6k7qbPmH4IRqmfOplQw/tblSgqTqBwxkY0oWt/14=
 github.com/vmihailenco/msgpack/v4 v4.3.12/go.mod h1:gborTTJjAo/GWTqqRjrLCn9pgNN+NXzzngzBKDPIqw4=

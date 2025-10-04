@@ -10,7 +10,6 @@ import (
 
 	shellquote "github.com/kballard/go-shellquote"
 	"github.com/threatcl/spec"
-	"github.com/threatcl/threatcl/version"
 )
 
 var (
@@ -31,7 +30,7 @@ threatmodel "threatmodel_name" {
     control = "Something to help"
   }
 }
-`, version.Version)
+`, spec.VERSION)
 )
 
 type GenerateInteractiveEditorCommand struct {
