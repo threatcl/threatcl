@@ -84,9 +84,7 @@ func (e *ExportCommand) Run(args []string) int {
 				return 1
 			}
 
-			for _, tm := range tmParser.GetWrapped().Threatmodels {
-				AllTms = append(AllTms, tm)
-			}
+			AllTms = append(AllTms, tmParser.GetWrapped().Threatmodels...)
 
 		}
 

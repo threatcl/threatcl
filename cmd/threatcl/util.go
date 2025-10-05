@@ -5,7 +5,6 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -515,7 +514,7 @@ func readTemplateFile(filename string) (string, error) {
 		return "", fmt.Errorf("template can't be set to a directory. '%s'", filename)
 	}
 
-	readTemplate, err := ioutil.ReadFile(filename)
+	readTemplate, err := os.ReadFile(filename)
 	if err != nil {
 		return "", fmt.Errorf("error opening template file: %s", err)
 	}

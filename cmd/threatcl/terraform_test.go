@@ -483,9 +483,7 @@ func TestTfRun(t *testing.T) {
 
 			input := []string{}
 			if tc.flags != nil {
-				for _, tcflag := range tc.flags {
-					input = append(input, tcflag)
-				}
+				input = append(input, tc.flags...)
 			}
 			if tc.in != "" {
 				input = append(input, tc.in)

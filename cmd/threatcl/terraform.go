@@ -320,7 +320,7 @@ func (c *TerraformCommand) out(asset *spec.InformationAsset, out *os.File) error
 	hclOut.Body().AppendBlock(block)
 	_, err := w.Write(hclOut.Bytes())
 	if err != nil {
-		return fmt.Errorf("Error writing out: %s\n", err)
+		return fmt.Errorf("error writing out: %s", err)
 	}
 	return nil
 }

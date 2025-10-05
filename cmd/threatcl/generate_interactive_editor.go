@@ -123,18 +123,21 @@ func (c *GenerateInteractiveEditorCommand) Run(args []string) int {
 	}
 	defer os.Remove(tmpfile.Name())
 
+	var fullBPError error
+
 	if c.flagFullBoilerplate {
-		outString, err := parseBoilerplateTemplate(c.specCfg)
-		if err != nil {
-			fmt.Printf("Error preparing boilerplate: %s\n", err)
+		var outString string
+		outString, fullBPError = parseBoilerplateTemplate(c.specCfg)
+		if fullBPError != nil {
+			fmt.Printf("Error preparing boilerplate: %s\n", fullBPError)
 			return 1
 		}
-		_, err = tmpfile.WriteString(outString)
+		_, fullBPError = tmpfile.WriteString(outString)
 	} else {
-		_, err = tmpfile.WriteString(InteractiveEditorDraft)
+		_, fullBPError = tmpfile.WriteString(InteractiveEditorDraft)
 	}
-	if err != nil {
-		fmt.Printf("Error writing to tempfile: %s\n", err)
+	if fullBPError != nil {
+		fmt.Printf("Error writing to tempfile: %s\n", fullBPError)
 		return 1
 	}
 
