@@ -1,7 +1,6 @@
 package main
 
 import (
-	"io/ioutil"
 	"os"
 	"strings"
 	"testing"
@@ -14,7 +13,7 @@ import (
 func testViewCommand(tb testing.TB) *ViewCommand {
 	tb.Helper()
 
-	d, err := ioutil.TempDir("", "")
+	d, err := os.MkdirTemp("", "")
 	if err != nil {
 		tb.Fatalf("Error creating tmp dir: %s", err)
 	}

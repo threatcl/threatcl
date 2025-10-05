@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"strings"
@@ -16,7 +15,7 @@ import (
 func testDfdCommand(tb testing.TB) *DfdCommand {
 	tb.Helper()
 
-	d, err := ioutil.TempDir("", "")
+	d, err := os.MkdirTemp("", "")
 	if err != nil {
 		tb.Fatalf("Error creating tmp dir: %s", err)
 	}
@@ -36,7 +35,7 @@ func testDfdCommand(tb testing.TB) *DfdCommand {
 }
 
 func TestDfd(t *testing.T) {
-	d, err := ioutil.TempDir("", "")
+	d, err := os.MkdirTemp("", "")
 	if err != nil {
 		t.Fatalf("Error creatig tmp dir: %s", err)
 	}
@@ -80,7 +79,7 @@ func TestDfd(t *testing.T) {
 }
 
 func TestDfdSvg(t *testing.T) {
-	d, err := ioutil.TempDir("", "")
+	d, err := os.MkdirTemp("", "")
 	if err != nil {
 		t.Fatalf("Error creatig tmp dir: %s", err)
 	}
@@ -125,7 +124,7 @@ func TestDfdSvg(t *testing.T) {
 }
 
 func TestDfdDot(t *testing.T) {
-	d, err := ioutil.TempDir("", "")
+	d, err := os.MkdirTemp("", "")
 	if err != nil {
 		t.Fatalf("Error creatig tmp dir: %s", err)
 	}
@@ -250,7 +249,7 @@ func TestDfdDotStdoutMutipleValidIndex(t *testing.T) {
 }
 
 func TestDfdOverwrite(t *testing.T) {
-	d, err := ioutil.TempDir("", "")
+	d, err := os.MkdirTemp("", "")
 	if err != nil {
 		t.Fatalf("Error creatig tmp dir: %s", err)
 	}
@@ -295,7 +294,7 @@ func TestDfdOverwrite(t *testing.T) {
 }
 
 func TestDfdExistingDir(t *testing.T) {
-	d, err := ioutil.TempDir("", "")
+	d, err := os.MkdirTemp("", "")
 	if err != nil {
 		t.Fatalf("Error creatig tmp dir: %s", err)
 	}
@@ -324,7 +323,7 @@ func TestDfdExistingDir(t *testing.T) {
 }
 
 func TestDfdNoFile(t *testing.T) {
-	d, err := ioutil.TempDir("", "")
+	d, err := os.MkdirTemp("", "")
 	if err != nil {
 		t.Fatalf("Error creatig tmp dir: %s", err)
 	}
@@ -352,7 +351,7 @@ func TestDfdNoFile(t *testing.T) {
 }
 
 func TestDfdNoDfd(t *testing.T) {
-	d, err := ioutil.TempDir("", "")
+	d, err := os.MkdirTemp("", "")
 	if err != nil {
 		t.Fatalf("Error creatig tmp dir: %s", err)
 	}
@@ -516,7 +515,7 @@ func TestDfdBothOut(t *testing.T) {
 // }
 
 func TestDfdFoundExisting(t *testing.T) {
-	d, err := ioutil.TempDir("", "")
+	d, err := os.MkdirTemp("", "")
 	if err != nil {
 		t.Fatalf("Error creatig tmp dir: %s", err)
 	}
@@ -550,7 +549,7 @@ func TestDfdFoundExisting(t *testing.T) {
 }
 
 func TestDfdSuccessfulOut(t *testing.T) {
-	d, err := ioutil.TempDir("", "")
+	d, err := os.MkdirTemp("", "")
 	if err != nil {
 		t.Fatalf("Error creatig tmp dir: %s", err)
 	}
@@ -579,7 +578,7 @@ func TestDfdSuccessfulOut(t *testing.T) {
 }
 
 func TestDfdUnSuccessfulOutMultiple(t *testing.T) {
-	d, err := ioutil.TempDir("", "")
+	d, err := os.MkdirTemp("", "")
 	if err != nil {
 		t.Fatalf("Error creatig tmp dir: %s", err)
 	}
@@ -607,7 +606,7 @@ func TestDfdUnSuccessfulOutMultiple(t *testing.T) {
 }
 
 func TestDfdUnSuccessfulOutMultipleInvalidIndex(t *testing.T) {
-	d, err := ioutil.TempDir("", "")
+	d, err := os.MkdirTemp("", "")
 	if err != nil {
 		t.Fatalf("Error creatig tmp dir: %s", err)
 	}
@@ -636,7 +635,7 @@ func TestDfdUnSuccessfulOutMultipleInvalidIndex(t *testing.T) {
 }
 
 func TestDfdSuccessfulOutMultiple(t *testing.T) {
-	d, err := ioutil.TempDir("", "")
+	d, err := os.MkdirTemp("", "")
 	if err != nil {
 		t.Fatalf("Error creatig tmp dir: %s", err)
 	}
@@ -666,7 +665,7 @@ func TestDfdSuccessfulOutMultiple(t *testing.T) {
 }
 
 func TestDfdSuccessfulOutDotMultiple(t *testing.T) {
-	d, err := ioutil.TempDir("", "")
+	d, err := os.MkdirTemp("", "")
 	if err != nil {
 		t.Fatalf("Error creatig tmp dir: %s", err)
 	}
@@ -697,7 +696,7 @@ func TestDfdSuccessfulOutDotMultiple(t *testing.T) {
 }
 
 func TestDfdSuccessfulOutSvgMultiple(t *testing.T) {
-	d, err := ioutil.TempDir("", "")
+	d, err := os.MkdirTemp("", "")
 	if err != nil {
 		t.Fatalf("Error creatig tmp dir: %s", err)
 	}
@@ -728,7 +727,7 @@ func TestDfdSuccessfulOutSvgMultiple(t *testing.T) {
 }
 
 func TestDfdSuccessfulOutSvg(t *testing.T) {
-	d, err := ioutil.TempDir("", "")
+	d, err := os.MkdirTemp("", "")
 	if err != nil {
 		t.Fatalf("Error creatig tmp dir: %s", err)
 	}
@@ -758,7 +757,7 @@ func TestDfdSuccessfulOutSvg(t *testing.T) {
 }
 
 func TestDfdSuccessfulOutDot(t *testing.T) {
-	d, err := ioutil.TempDir("", "")
+	d, err := os.MkdirTemp("", "")
 	if err != nil {
 		t.Fatalf("Error creatig tmp dir: %s", err)
 	}

@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"strings"
@@ -16,7 +15,7 @@ import (
 func testDashboardCommand(tb testing.TB) *DashboardCommand {
 	tb.Helper()
 
-	d, err := ioutil.TempDir("", "")
+	d, err := os.MkdirTemp("", "")
 	if err != nil {
 		tb.Fatalf("Error creating tmp dir: %s", err)
 	}
@@ -54,7 +53,7 @@ func TestDashboardMissingOutdir(t *testing.T) {
 }
 
 func TestDashboardMissingfiles(t *testing.T) {
-	d, err := ioutil.TempDir("", "")
+	d, err := os.MkdirTemp("", "")
 	if err != nil {
 		t.Fatalf("Error creating tmp dir: %s", err)
 	}
@@ -81,7 +80,7 @@ func TestDashboardMissingfiles(t *testing.T) {
 }
 
 func TestDashboard(t *testing.T) {
-	d, err := ioutil.TempDir("", "")
+	d, err := os.MkdirTemp("", "")
 	if err != nil {
 		t.Fatalf("Error creating tmp dir: %s", err)
 	}
@@ -107,7 +106,7 @@ func TestDashboard(t *testing.T) {
 		t.Errorf("%s did not contain %s", out, fmt.Sprintf("Created the '%s/out' directory", d))
 	}
 
-	dbfile, err := ioutil.ReadFile(fmt.Sprintf("%s/out/dashboard.md", d))
+	dbfile, err := os.ReadFile(fmt.Sprintf("%s/out/dashboard.md", d))
 	if err != nil {
 		t.Fatalf("Error opening dashboard file: %s", err)
 	}
@@ -119,7 +118,7 @@ func TestDashboard(t *testing.T) {
 }
 
 func TestDashboardWithDfd(t *testing.T) {
-	d, err := ioutil.TempDir("", "")
+	d, err := os.MkdirTemp("", "")
 	if err != nil {
 		t.Fatalf("Error creating tmp dir: %s", err)
 	}
@@ -145,7 +144,7 @@ func TestDashboardWithDfd(t *testing.T) {
 		t.Errorf("%s did not contain %s", out, fmt.Sprintf("Created the '%s/out' directory", d))
 	}
 
-	dbfile, err := ioutil.ReadFile(fmt.Sprintf("%s/out/dashboard.md", d))
+	dbfile, err := os.ReadFile(fmt.Sprintf("%s/out/dashboard.md", d))
 	if err != nil {
 		t.Fatalf("Error opening dashboard file: %s", err)
 	}
@@ -172,7 +171,7 @@ func TestDashboardWithDfd(t *testing.T) {
 }
 
 func TestDashboardOverwrite(t *testing.T) {
-	d, err := ioutil.TempDir("", "")
+	d, err := os.MkdirTemp("", "")
 	if err != nil {
 		t.Fatalf("Error creating tmp dir: %s", err)
 	}
@@ -199,7 +198,7 @@ func TestDashboardOverwrite(t *testing.T) {
 		t.Errorf("%s did not contain %s", out, fmt.Sprintf("Writing dashboard markdown files to '%s' and overwriting existing files", d))
 	}
 
-	dbfile, err := ioutil.ReadFile(fmt.Sprintf("%s/dashboard.md", d))
+	dbfile, err := os.ReadFile(fmt.Sprintf("%s/dashboard.md", d))
 	if err != nil {
 		t.Fatalf("Error opening dashboard file: %s", err)
 	}
@@ -211,7 +210,7 @@ func TestDashboardOverwrite(t *testing.T) {
 }
 
 func TestDashboardCustomExtension(t *testing.T) {
-	d, err := ioutil.TempDir("", "")
+	d, err := os.MkdirTemp("", "")
 	if err != nil {
 		t.Fatalf("Error creating tmp dir: %s", err)
 	}
@@ -238,7 +237,7 @@ func TestDashboardCustomExtension(t *testing.T) {
 		t.Errorf("%s did not contain %s", out, fmt.Sprintf("Created the '%s/out' directory", d))
 	}
 
-	dbfile, err := ioutil.ReadFile(fmt.Sprintf("%s/out/dashboard.rst", d))
+	dbfile, err := os.ReadFile(fmt.Sprintf("%s/out/dashboard.rst", d))
 	if err != nil {
 		t.Fatalf("Error opening dashboard file: %s", err)
 	}
@@ -249,7 +248,7 @@ func TestDashboardCustomExtension(t *testing.T) {
 }
 
 func TestDashboardExistingDir(t *testing.T) {
-	d, err := ioutil.TempDir("", "")
+	d, err := os.MkdirTemp("", "")
 	if err != nil {
 		t.Fatalf("Error creating tmp dir: %s", err)
 	}
@@ -278,7 +277,7 @@ func TestDashboardExistingDir(t *testing.T) {
 }
 
 func TestDashboardExistingFile(t *testing.T) {
-	d, err := ioutil.TempFile("", "")
+	d, err := os.CreateTemp("", "")
 	if err != nil {
 		t.Fatalf("Error creating tmp file: %s", err)
 	}
@@ -307,7 +306,7 @@ func TestDashboardExistingFile(t *testing.T) {
 }
 
 func TestDashboardDbTemplateNA(t *testing.T) {
-	d, err := ioutil.TempDir("", "")
+	d, err := os.MkdirTemp("", "")
 	if err != nil {
 		t.Fatalf("Error creating tmp dir: %s", err)
 	}
@@ -337,7 +336,7 @@ func TestDashboardDbTemplateNA(t *testing.T) {
 }
 
 func TestDashboardDbTemplateExistingDir(t *testing.T) {
-	d, err := ioutil.TempDir("", "")
+	d, err := os.MkdirTemp("", "")
 	if err != nil {
 		t.Fatalf("Error creating tmp dir: %s", err)
 	}
@@ -367,7 +366,7 @@ func TestDashboardDbTemplateExistingDir(t *testing.T) {
 }
 
 func TestDashboardDbTemplate(t *testing.T) {
-	d, err := ioutil.TempDir("", "")
+	d, err := os.MkdirTemp("", "")
 	if err != nil {
 		t.Fatalf("Error creating tmp dir: %s", err)
 	}
@@ -395,7 +394,7 @@ func TestDashboardDbTemplate(t *testing.T) {
 		t.Errorf("%s did not contains %s", out, fmt.Sprintf("Created the '%s'", d))
 	}
 
-	dbfile, err := ioutil.ReadFile(fmt.Sprintf("%s/dashboard.md", d))
+	dbfile, err := os.ReadFile(fmt.Sprintf("%s/dashboard.md", d))
 	if err != nil {
 		t.Fatalf("Error opening dashboard file: %s", err)
 	}
@@ -407,7 +406,7 @@ func TestDashboardDbTemplate(t *testing.T) {
 }
 
 func TestDashboardDbBrokenTemplate(t *testing.T) {
-	d, err := ioutil.TempDir("", "")
+	d, err := os.MkdirTemp("", "")
 	if err != nil {
 		t.Fatalf("Error creating tmp dir: %s", err)
 	}
@@ -437,7 +436,7 @@ func TestDashboardDbBrokenTemplate(t *testing.T) {
 }
 
 func TestDashboardTmTemplateNA(t *testing.T) {
-	d, err := ioutil.TempDir("", "")
+	d, err := os.MkdirTemp("", "")
 	if err != nil {
 		t.Fatalf("Error creating tmp dir: %s", err)
 	}
@@ -467,7 +466,7 @@ func TestDashboardTmTemplateNA(t *testing.T) {
 }
 
 func TestDashboardTmTemplateExistingDir(t *testing.T) {
-	d, err := ioutil.TempDir("", "")
+	d, err := os.MkdirTemp("", "")
 	if err != nil {
 		t.Fatalf("Error creating tmp dir: %s", err)
 	}
@@ -497,7 +496,7 @@ func TestDashboardTmTemplateExistingDir(t *testing.T) {
 }
 
 func TestDashboardTmTemplate(t *testing.T) {
-	d, err := ioutil.TempDir("", "")
+	d, err := os.MkdirTemp("", "")
 	if err != nil {
 		t.Fatalf("Error creating tmp dir: %s", err)
 	}
@@ -525,7 +524,7 @@ func TestDashboardTmTemplate(t *testing.T) {
 		t.Errorf("%s did not contains %s", out, fmt.Sprintf("Created the '%s'", d))
 	}
 
-	tmfile, err := ioutil.ReadFile(fmt.Sprintf("%s/tm1-tmtm1two.md", d))
+	tmfile, err := os.ReadFile(fmt.Sprintf("%s/tm1-tmtm1two.md", d))
 	if err != nil {
 		t.Fatalf("Error opening tm file: %s", err)
 	}
@@ -537,7 +536,7 @@ func TestDashboardTmTemplate(t *testing.T) {
 }
 
 func TestDashboardTmBrokenTemplate(t *testing.T) {
-	d, err := ioutil.TempDir("", "")
+	d, err := os.MkdirTemp("", "")
 	if err != nil {
 		t.Fatalf("Error creating tmp dir: %s", err)
 	}
@@ -567,7 +566,7 @@ func TestDashboardTmBrokenTemplate(t *testing.T) {
 }
 
 func TestDashboardInvalidDashboardfile(t *testing.T) {
-	d, err := ioutil.TempDir("", "")
+	d, err := os.MkdirTemp("", "")
 	if err != nil {
 		t.Fatalf("Error creating tmp dir: %s", err)
 	}
@@ -598,7 +597,7 @@ func TestDashboardInvalidDashboardfile(t *testing.T) {
 }
 
 func TestDashboardValidDashboardfile(t *testing.T) {
-	d, err := ioutil.TempDir("", "")
+	d, err := os.MkdirTemp("", "")
 	if err != nil {
 		t.Fatalf("Error creating tmp dir: %s", err)
 	}
@@ -626,7 +625,7 @@ func TestDashboardValidDashboardfile(t *testing.T) {
 		t.Errorf("%s did not contain %s", out, fmt.Sprintf("Created the '%s'", d))
 	}
 
-	dbfile, err := ioutil.ReadFile(fmt.Sprintf("%s/index.md", d))
+	dbfile, err := os.ReadFile(fmt.Sprintf("%s/index.md", d))
 	if err != nil {
 		t.Fatalf("Error opening dashboard file: %s", err)
 	}
@@ -638,7 +637,7 @@ func TestDashboardValidDashboardfile(t *testing.T) {
 }
 
 func TestDashboardValidHtmlfile(t *testing.T) {
-	d, err := ioutil.TempDir("", "")
+	d, err := os.MkdirTemp("", "")
 	if err != nil {
 		t.Fatalf("Error creating tmp dir: %s", err)
 	}
@@ -667,7 +666,7 @@ func TestDashboardValidHtmlfile(t *testing.T) {
 		t.Errorf("%s did not contain %s", out, fmt.Sprintf("Created the '%s'", d))
 	}
 
-	dbfile, err := ioutil.ReadFile(fmt.Sprintf("%s/index.html", d))
+	dbfile, err := os.ReadFile(fmt.Sprintf("%s/index.html", d))
 	if err != nil {
 		t.Fatalf("Error opening dashboard file: %s", err)
 	}

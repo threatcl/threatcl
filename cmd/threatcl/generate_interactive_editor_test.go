@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strings"
 	"testing"
@@ -15,7 +14,7 @@ import (
 func testGenInteractiveEditorCommand(tb testing.TB) *GenerateInteractiveEditorCommand {
 	tb.Helper()
 
-	d, err := ioutil.TempDir("", "")
+	d, err := os.MkdirTemp("", "")
 	if err != nil {
 		tb.Fatalf("Error creating tmp dir: %s", err)
 	}
@@ -98,7 +97,7 @@ func TestGenIntEditorFileoutExisting(t *testing.T) {
 
 	var code int
 
-	f, err := ioutil.TempFile("", "")
+	f, err := os.CreateTemp("", "")
 	if err != nil {
 		t.Fatalf("Error creating temp file: %s", err)
 	}
@@ -114,15 +113,6 @@ func TestGenIntEditorFileoutExisting(t *testing.T) {
 		t.Errorf("Code did not equal 1: %d", code)
 	}
 
-	// out, err := ioutil.ReadFile(f.Name())
-	// if err != nil {
-	// 	t.Fatalf("Error reading boilerplate file: %s", err)
-	// }
-
-	// if !strings.Contains(string(out), "There may be multiple threatmodel") {
-	// 	t.Errorf("Expected %s to contain %s", out, "There may be multiple threatmodel")
-	// }
-
 	if !strings.Contains(out, "which already exists") {
 		t.Errorf("Expected %s to contains %s", out, "which already exists")
 	}
@@ -133,7 +123,7 @@ func TestGenIntEditorFileout(t *testing.T) {
 
 	var code int
 
-	d, err := ioutil.TempDir("", "")
+	d, err := os.MkdirTemp("", "")
 	if err != nil {
 		t.Fatalf("Error creating temp dir: %s", err)
 	}
@@ -153,7 +143,7 @@ func TestGenIntEditorFileout(t *testing.T) {
 		t.Errorf("Expected %s to contains %s", out, fmt.Sprintf("Successfully wrote to '%s/out.hcl", d))
 	}
 
-	hclFile, err := ioutil.ReadFile(fmt.Sprintf("%s/out.hcl", d))
+	hclFile, err := os.ReadFile(fmt.Sprintf("%s/out.hcl", d))
 	if err != nil {
 		t.Fatalf("Error reading file: %s", err)
 	}

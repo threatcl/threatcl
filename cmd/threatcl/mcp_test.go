@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -17,7 +16,7 @@ import (
 func testMCPCommand(tb testing.TB) *MCPCommand {
 	tb.Helper()
 
-	d, err := ioutil.TempDir("", "")
+	d, err := os.MkdirTemp("", "")
 	if err != nil {
 		tb.Fatalf("Error creating tmp dir: %s", err)
 	}
@@ -74,12 +73,12 @@ func TestMCPRun(t *testing.T) {
 		},
 	}
 
-	tempDir, err := ioutil.TempDir("", "mcp_test_withdir")
+	tempDir, err := os.MkdirTemp("", "mcp_test_withdir")
 	if err != nil {
 		t.Fatalf("Error creating temp dir: %s", err)
 	}
 	defer os.RemoveAll(tempDir)
-	ioutil.WriteFile(filepath.Join(tempDir, "dummy.hcl"), []byte("threatmodel \"dummy\" { author = \"x\" }"), 0644)
+	os.WriteFile(filepath.Join(tempDir, "dummy.hcl"), []byte("threatmodel \"dummy\" { author = \"x\" }"), 0644)
 
 	for i, tc := range cases {
 		if tc.name == "with_directory" {
@@ -219,7 +218,7 @@ func TestMCPToolHandlers(t *testing.T) {
 }
 
 func TestMCPDirectoryTools(t *testing.T) {
-	d, err := ioutil.TempDir("", "")
+	d, err := os.MkdirTemp("", "")
 	if err != nil {
 		t.Fatalf("Error creating tmp dir: %s", err)
 	}
@@ -227,7 +226,7 @@ func TestMCPDirectoryTools(t *testing.T) {
 
 	// Create a test threat model file
 	testFile := filepath.Join(d, "test.hcl")
-	err = ioutil.WriteFile(testFile, []byte("threatmodel \"test\" {\n  author = \"test\"\n}\n"), 0644)
+	err = os.WriteFile(testFile, []byte("threatmodel \"test\" {\n  author = \"test\"\n}\n"), 0644)
 	if err != nil {
 		t.Fatalf("Error creating test file: %s", err)
 	}
@@ -310,7 +309,7 @@ func TestMCPDirectoryTools(t *testing.T) {
 }
 
 func TestMCPAdditionalTools(t *testing.T) {
-	d, err := ioutil.TempDir("", "")
+	d, err := os.MkdirTemp("", "")
 	if err != nil {
 		t.Fatalf("Error creating tmp dir: %s", err)
 	}
@@ -318,7 +317,7 @@ func TestMCPAdditionalTools(t *testing.T) {
 
 	// Create a test threat model file
 	testFile := filepath.Join(d, "test.hcl")
-	err = ioutil.WriteFile(testFile, []byte("threatmodel \"test\" {\n  author = \"test\"\n}\n"), 0644)
+	err = os.WriteFile(testFile, []byte("threatmodel \"test\" {\n  author = \"test\"\n}\n"), 0644)
 	if err != nil {
 		t.Fatalf("Error creating test file: %s", err)
 	}
@@ -495,7 +494,7 @@ func TestMCPViewSpecToolResource(t *testing.T) {
 }
 
 func TestMCPWriteTmFile(t *testing.T) {
-	d, err := ioutil.TempDir("", "")
+	d, err := os.MkdirTemp("", "")
 	if err != nil {
 		t.Fatalf("Error creating tmp dir: %s", err)
 	}
@@ -622,7 +621,7 @@ func TestMCPPngDfdViewFromTmString(t *testing.T) {
 }
 
 func TestMCPWriteDfdPngFile(t *testing.T) {
-	d, err := ioutil.TempDir("", "")
+	d, err := os.MkdirTemp("", "")
 	if err != nil {
 		t.Fatalf("Error creating tmp dir: %s", err)
 	}

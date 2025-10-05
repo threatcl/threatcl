@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"runtime"
@@ -117,7 +116,7 @@ func (c *GenerateInteractiveEditorCommand) Run(args []string) int {
 		defer f.Close()
 	}
 
-	tmpfile, err := ioutil.TempFile("", "tmp.*.hcl")
+	tmpfile, err := os.CreateTemp("", "tmp.*.hcl")
 	if err != nil {
 		fmt.Printf("Error creating temp file: %s\n", err)
 		return 1
@@ -164,7 +163,7 @@ func (c *GenerateInteractiveEditorCommand) Run(args []string) int {
 		return 1
 	}
 
-	tmpIn, err := ioutil.ReadFile(tmpfile.Name())
+	tmpIn, err := os.ReadFile(tmpfile.Name())
 	if err != nil {
 		fmt.Printf("Error reading tmp file back in: %s\n", err)
 		return 1
