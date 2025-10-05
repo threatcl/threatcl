@@ -331,8 +331,8 @@ func TestDashboardDbTemplateNA(t *testing.T) {
 		t.Errorf("Code did not equal 1: %d", code)
 	}
 
-	if !strings.Contains(out, "Could not find dashboard-template file") {
-		t.Errorf("%s did not contain %s", out, "Could not find dashboard-template file")
+	if !strings.Contains(out, "could not find template file") {
+		t.Errorf("%s did not contain %s", out, "could not find template file")
 	}
 }
 
@@ -361,8 +361,8 @@ func TestDashboardDbTemplateExistingDir(t *testing.T) {
 		t.Errorf("Code did not equal 1: %d", code)
 	}
 
-	if !strings.Contains(out, "dashboard-template can't be set to a directory") {
-		t.Errorf("%s did not contain %s", out, "dashboard-template can't be set to a directory")
+	if !strings.Contains(out, "template can't be set to a directory") {
+		t.Errorf("%s did not contain %s", out, "template can't be set to a directory")
 	}
 }
 
@@ -461,8 +461,8 @@ func TestDashboardTmTemplateNA(t *testing.T) {
 		t.Errorf("Code did not equal 1: %d", code)
 	}
 
-	if !strings.Contains(out, "Could not find threatmodel-template file") {
-		t.Errorf("%s did not contain %s", out, "Could not find threatmodel-template file")
+	if !strings.Contains(out, "could not find template file") {
+		t.Errorf("%s did not contain %s", out, "could not find template file")
 	}
 }
 
@@ -491,8 +491,8 @@ func TestDashboardTmTemplateExistingDir(t *testing.T) {
 		t.Errorf("Code did not equal 1: %d", code)
 	}
 
-	if !strings.Contains(out, "threatmodel-template can't be set to a directory") {
-		t.Errorf("%s did not contain %s", out, "threatmodel-template can't be set to a directory")
+	if !strings.Contains(out, "template can't be set to a directory") {
+		t.Errorf("%s did not contain %s", out, "template can't be set to a directory")
 	}
 }
 

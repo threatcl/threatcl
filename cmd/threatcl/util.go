@@ -5,6 +5,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -502,6 +503,24 @@ func parseBoilerplateTemplate(cfg *spec.ThreatmodelSpecConfig) (string, error) {
 		return "", err
 	}
 	return b.String(), nil
+}
+
+func readTemplateFile(filename string) (string, error) {
+	info, err := os.Stat(filename)
+	if os.IsNotExist(err) {
+		return "", fmt.Errorf("could not find template file. '%s'", filename)
+	}
+
+	if info.IsDir() {
+		return "", fmt.Errorf("template can't be set to a directory. '%s'", filename)
+	}
+
+	readTemplate, err := ioutil.ReadFile(filename)
+	if err != nil {
+		return "", fmt.Errorf("error opening template file: %s", err)
+	}
+
+	return string(readTemplate), nil
 }
 
 type GlobalCmdOptions struct {

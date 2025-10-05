@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"html/template"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sort"
@@ -126,24 +125,11 @@ func (c *DashboardCommand) Run(args []string) int {
 
 	if c.flagDashboardTemplate != "" {
 		// User has specified a replacement dashboard file
-		info, err := os.Stat(c.flagDashboardTemplate)
-		if os.IsNotExist(err) {
-			fmt.Printf("Could not find dashboard-template file. '%s'", c.flagDashboardTemplate)
-			return 1
-		}
-
-		if info.IsDir() {
-			fmt.Printf("dashboard-template can't be set to a directory. '%s'", c.flagDashboardTemplate)
-			return 1
-		}
-
-		readTemplate, err := ioutil.ReadFile(c.flagDashboardTemplate)
+		dashboardTemplate, err = readTemplateFile(c.flagDashboardTemplate)
 		if err != nil {
-			fmt.Printf("Error opening dashboard template file: %s\n", err)
+			fmt.Printf("Error reading dashboard template file: %s\n", err)
 			return 1
 		}
-
-		dashboardTemplate = string(readTemplate)
 	} else {
 		dashboardTemplate = spec.TmDashboardTemplate
 	}
@@ -160,24 +146,11 @@ func (c *DashboardCommand) Run(args []string) int {
 
 	if c.flagThreatmodelTemplate != "" {
 		// User has specified a replacement threatmodel file
-		info, err := os.Stat(c.flagThreatmodelTemplate)
-		if os.IsNotExist(err) {
-			fmt.Printf("Could not find threatmodel-template file. '%s'", c.flagThreatmodelTemplate)
-			return 1
-		}
-
-		if info.IsDir() {
-			fmt.Printf("threatmodel-template can't be set to a directory. '%s'", c.flagThreatmodelTemplate)
-			return 1
-		}
-
-		readTemplate, err := ioutil.ReadFile(c.flagThreatmodelTemplate)
+		tmTemplate, err = readTemplateFile(c.flagThreatmodelTemplate)
 		if err != nil {
-			fmt.Printf("Error opening threatmodel template file: %s\n", err)
+			fmt.Printf("Error reading threatmodel template file: %s\n", err)
 			return 1
 		}
-
-		tmTemplate = string(readTemplate)
 	} else {
 		tmTemplate = spec.TmMDTemplate
 	}
