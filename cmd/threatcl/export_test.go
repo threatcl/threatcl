@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strings"
 	"testing"
@@ -15,7 +14,7 @@ import (
 func testExportCommand(tb testing.TB) *ExportCommand {
 	tb.Helper()
 
-	d, err := ioutil.TempDir("", "")
+	d, err := os.MkdirTemp("", "")
 	if err != nil {
 		tb.Fatalf("Error creating tmp dir: %s", err)
 	}
@@ -35,7 +34,7 @@ func testExportCommand(tb testing.TB) *ExportCommand {
 }
 
 func TestExportNoArg(t *testing.T) {
-	d, err := ioutil.TempDir("", "")
+	d, err := os.MkdirTemp("", "")
 	if err != nil {
 		t.Fatalf("Error creating tmp dir: %s", err)
 	}
@@ -60,7 +59,7 @@ func TestExportNoArg(t *testing.T) {
 }
 
 func TestExportStdout(t *testing.T) {
-	d, err := ioutil.TempDir("", "")
+	d, err := os.MkdirTemp("", "")
 	if err != nil {
 		t.Fatalf("Error creating tmp dir: %s", err)
 	}
@@ -87,7 +86,7 @@ func TestExportStdout(t *testing.T) {
 }
 
 func TestExportBadFormat(t *testing.T) {
-	d, err := ioutil.TempDir("", "")
+	d, err := os.MkdirTemp("", "")
 	if err != nil {
 		t.Fatalf("Error creating tmp dir: %s", err)
 	}
@@ -115,7 +114,7 @@ func TestExportBadFormat(t *testing.T) {
 }
 
 func TestExportBadOverwrite(t *testing.T) {
-	d, err := ioutil.TempDir("", "")
+	d, err := os.MkdirTemp("", "")
 	if err != nil {
 		t.Fatalf("Error creating tmp dir: %s", err)
 	}
@@ -148,7 +147,7 @@ func TestExportBadOverwrite(t *testing.T) {
 }
 
 func TestExportOtm(t *testing.T) {
-	d, err := ioutil.TempDir("", "")
+	d, err := os.MkdirTemp("", "")
 	if err != nil {
 		t.Fatalf("Error creating tmp dir: %s", err)
 	}
@@ -177,7 +176,7 @@ func TestExportOtm(t *testing.T) {
 }
 
 func TestExportOtmSingle(t *testing.T) {
-	d, err := ioutil.TempDir("", "")
+	d, err := os.MkdirTemp("", "")
 	if err != nil {
 		t.Fatalf("Error creating tmp dir: %s", err)
 	}
@@ -206,7 +205,7 @@ func TestExportOtmSingle(t *testing.T) {
 }
 
 func TestExportHclSingle(t *testing.T) {
-	d, err := ioutil.TempDir("", "")
+	d, err := os.MkdirTemp("", "")
 	if err != nil {
 		t.Fatalf("Error creating tmp dir: %s", err)
 	}
@@ -233,8 +232,65 @@ func TestExportHclSingle(t *testing.T) {
 	}
 }
 
+func TestExportMd(t *testing.T) {
+	d, err := os.MkdirTemp("", "")
+	if err != nil {
+		t.Fatalf("Error creating tmp dir: %s", err)
+	}
+
+	defer os.RemoveAll(d)
+
+	cmd := testExportCommand(t)
+
+	var code int
+
+	out := capturer.CaptureStdout(func() {
+		code = cmd.Run([]string{
+			"-format=md",
+			"./testdata/tm1.hcl",
+		})
+	})
+
+	if code != 0 {
+		t.Errorf("Code did not equal 0: %d", code)
+	}
+
+	if !strings.Contains(out, "This is some arbitrary text") {
+		t.Errorf("%s did not contain %s", out, "This is some arbitrary text")
+	}
+}
+
+func TestExportMdTemplate(t *testing.T) {
+	d, err := os.MkdirTemp("", "")
+	if err != nil {
+		t.Fatalf("Error creating tmp dir: %s", err)
+	}
+
+	defer os.RemoveAll(d)
+
+	cmd := testExportCommand(t)
+
+	var code int
+
+	out := capturer.CaptureStdout(func() {
+		code = cmd.Run([]string{
+			"-format=md",
+			"-template=./testdata/tm.tpl",
+			"./testdata/tm1.hcl",
+		})
+	})
+
+	if code != 0 {
+		t.Errorf("Code did not equal 0: %d", code)
+	}
+
+	if !strings.Contains(out, "CUSTOM TM THEME") {
+		t.Errorf("%s did not contain %s", out, "CUSTOM TM THEME")
+	}
+}
+
 func TestExportGoodOverwrite(t *testing.T) {
-	d, err := ioutil.TempDir("", "")
+	d, err := os.MkdirTemp("", "")
 	if err != nil {
 		t.Fatalf("Error creating tmp dir: %s", err)
 	}
@@ -266,7 +322,7 @@ func TestExportGoodOverwrite(t *testing.T) {
 		t.Errorf("%s did not contain %s", out, "Successfully wrote")
 	}
 
-	fileIn, err := ioutil.ReadFile(fmt.Sprintf("%s/out.json", d))
+	fileIn, err := os.ReadFile(fmt.Sprintf("%s/out.json", d))
 	if err != nil {
 		t.Errorf("Error opening json file %s/out.json: %s", d, err)
 	}

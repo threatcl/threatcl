@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"strings"
 
@@ -98,7 +97,7 @@ func (c *TerraformCommand) Run(args []string) int {
 			return 1
 		}
 
-		readJson, err := ioutil.ReadFile(c.flagTfCollectionJson)
+		readJson, err := os.ReadFile(c.flagTfCollectionJson)
 		if err != nil {
 			fmt.Printf("Error opening tf-collection json file: %s\n", err)
 			return 1
@@ -166,7 +165,7 @@ func (c *TerraformCommand) Run(args []string) int {
 		} else {
 
 			var err error
-			in, err = ioutil.ReadFile(flagSet.Args()[0])
+			in, err = os.ReadFile(flagSet.Args()[0])
 			if err != nil {
 				fmt.Printf("Error reading file: %s\n", err)
 				return 1
@@ -321,7 +320,7 @@ func (c *TerraformCommand) out(asset *spec.InformationAsset, out *os.File) error
 	hclOut.Body().AppendBlock(block)
 	_, err := w.Write(hclOut.Bytes())
 	if err != nil {
-		return fmt.Errorf("Error writing out: %s\n", err)
+		return fmt.Errorf("error writing out: %s", err)
 	}
 	return nil
 }

@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 
@@ -16,6 +17,7 @@ type ExportCommand struct {
 	specCfg       *spec.ThreatmodelSpecConfig
 	flagFormat    string
 	flagOutput    string
+	flagTemplate  string
 	flagOverwrite bool
 }
 
@@ -33,6 +35,9 @@ Options:
 
  -format=<json|otm|hcl>
 
+ -template=<file>
+   Optional overridden template file to use for md output
+
  -output=<file>
    Optional filename to output to. 
 
@@ -47,6 +52,7 @@ func (e *ExportCommand) Run(args []string) int {
 	flagSet := e.GetFlagset("export")
 	flagSet.StringVar(&e.flagFormat, "format", "json", "Format of output. json, hcl, or otm. Defaults to json")
 	flagSet.StringVar(&e.flagOutput, "output", "", "Name of output file. If not set, will output to STDOUT")
+	flagSet.StringVar(&e.flagTemplate, "template", "", "Optional overridden template file to use for md output")
 	flagSet.BoolVar(&e.flagOverwrite, "overwrite", false, "Overwrite existing file. Defaults to false")
 	flagSet.Parse(args)
 
@@ -78,9 +84,7 @@ func (e *ExportCommand) Run(args []string) int {
 				return 1
 			}
 
-			for _, tm := range tmParser.GetWrapped().Threatmodels {
-				AllTms = append(AllTms, tm)
-			}
+			AllTms = append(AllTms, tmParser.GetWrapped().Threatmodels...)
 
 		}
 
@@ -137,6 +141,32 @@ func (e *ExportCommand) Run(args []string) int {
 			//
 			// outputString = strings.Join(allHclStrings, "\n\n")
 
+		case "md":
+			tmTemplate := ""
+			if e.flagTemplate != "" {
+				var errTemplate error
+				tmTemplate, errTemplate = readTemplateFile(e.flagTemplate)
+				if errTemplate != nil {
+					fmt.Printf("Error reading template file: %s\n", errTemplate)
+					return 1
+				}
+			}
+			if tmTemplate == "" {
+				tmTemplate = spec.TmMDTemplate
+			}
+			for _, tm := range AllTms {
+				tmReader, err := tm.RenderMarkdown(tmTemplate)
+				if err != nil {
+					fmt.Printf("Error parsing into md: %s\n", err)
+					return 1
+				}
+				tmBytes, err := io.ReadAll(tmReader)
+				if err != nil {
+					fmt.Printf("Error reading markdown: %s\n", err)
+					return 1
+				}
+				outputString = outputString + string(tmBytes)
+			}
 		default:
 
 			fmt.Printf("Incorrect -format option\n")

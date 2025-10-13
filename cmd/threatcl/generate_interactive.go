@@ -614,12 +614,12 @@ func (c *GenerateInteractiveCommand) out(tmParser *spec.ThreatmodelParser, tm sp
 	if c.flagOut == "" {
 		err := tmParser.AddTMAndWrite(tm, os.Stdout, c.flagDebug)
 		if err != nil {
-			return fmt.Errorf("Error writing to stdout: %s\n", err)
+			return fmt.Errorf("error writing to stdout: %s", err)
 		}
 	} else {
 		err := tmParser.AddTMAndWrite(tm, out, c.flagDebug)
 		if err != nil {
-			return fmt.Errorf("Error writing model to HCL file: %s\n", err)
+			return fmt.Errorf("error writing model to HCL file: %s", err)
 		}
 	}
 	return nil

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"io/ioutil"
 	"os"
 	"strings"
 	"testing"
@@ -98,12 +97,12 @@ func TestTfParsing(t *testing.T) {
 				var err error
 
 				if tc.in != "" {
-					content, err = ioutil.ReadFile(tc.in)
+					content, err = os.ReadFile(tc.in)
 					if err != nil {
 						t.Fatal(err)
 					}
 				}
-				tmpFile, err := ioutil.TempFile("", "example")
+				tmpFile, err := os.CreateTemp("", "example")
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -277,12 +276,12 @@ func TestTfRunStdin(t *testing.T) {
 				var err error
 
 				if tc.in != "" {
-					content, err = ioutil.ReadFile(tc.in)
+					content, err = os.ReadFile(tc.in)
 					if err != nil {
 						t.Fatal(err)
 					}
 				}
-				tmpFile, err := ioutil.TempFile("", "example")
+				tmpFile, err := os.CreateTemp("", "example")
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -484,9 +483,7 @@ func TestTfRun(t *testing.T) {
 
 			input := []string{}
 			if tc.flags != nil {
-				for _, tcflag := range tc.flags {
-					input = append(input, tcflag)
-				}
+				input = append(input, tc.flags...)
 			}
 			if tc.in != "" {
 				input = append(input, tc.in)
@@ -523,7 +520,7 @@ func TestTfRun(t *testing.T) {
 func testTfCommand(tb testing.TB) *TerraformCommand {
 	tb.Helper()
 
-	d, err := ioutil.TempDir("", "")
+	d, err := os.MkdirTemp("", "")
 	if err != nil {
 		tb.Fatalf("Error creating tmp dir: %s", err)
 	}

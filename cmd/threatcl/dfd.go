@@ -57,7 +57,7 @@ func (c *DfdCommand) extractDfd(allFiles []string, index int) (*spec.DataFlowDia
 		tmParser := spec.NewThreatmodelParser(c.specCfg)
 		err := tmParser.ParseFile(file, false)
 		if err != nil {
-			return nil, "", fmt.Errorf("Error parsing %s: %s\n", file, err)
+			return nil, "", fmt.Errorf("error parsing %s: %s", file, err)
 		}
 
 		for _, tm := range tmParser.GetWrapped().Threatmodels {
@@ -71,7 +71,7 @@ func (c *DfdCommand) extractDfd(allFiles []string, index int) (*spec.DataFlowDia
 			}
 		}
 	}
-	return nil, "", fmt.Errorf("No DFD found with that index")
+	return nil, "", fmt.Errorf("no DFD found with that index")
 }
 
 func (c *DfdCommand) genDfdPng(allFiles []string, index int, filepath string) error {
@@ -138,7 +138,7 @@ func (c *DfdCommand) Run(args []string) int {
 		}
 	}
 
-	if c.flagOutDir == "" && c.flagOutFile == "" && c.flagStdout == false && c.flagFormat != "dot" {
+	if c.flagOutDir == "" && c.flagOutFile == "" && !c.flagStdout && c.flagFormat != "dot" {
 		fmt.Printf("You must set an -outdir or -out. Or set the format to PNG and enable -stdout\n\n")
 		fmt.Println(c.Help())
 		return 1
@@ -221,7 +221,7 @@ func (c *DfdCommand) Run(args []string) int {
 	switch {
 
 	// We're going to print DOT output to the Stdout
-	case c.flagStdout == true && c.flagFormat == "dot":
+	case c.flagStdout && c.flagFormat == "dot":
 		switch {
 		case len(outfiles) != 1 && c.flagIndex == 0:
 			fmt.Printf("You're trying to print DOT to Stdout, but there's too many DFDs\n\n")

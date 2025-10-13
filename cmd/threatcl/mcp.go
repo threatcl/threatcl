@@ -124,6 +124,8 @@ func (c *MCPCommand) Run(args []string) int {
 			mcp.WithDescription("Get a detailed listing of all the threatcl threat models, and their files, located within the directory set by the -dir flag. This tool allows you to specify what columns are displayed, for instance: file, author, threatmodel, threatcount, internetfacing."),
 			mcp.WithString("columns",
 				mcp.Description("The columns you want to list against each threat model. Is expected to be a comma-separated list of values from this set: number, threatmodel, author, file, threatcount, internetfacing, assetcount, usecasecount, tpdcount, exclusioncount, size, newinitiative, dfd."),
+				mcp.Required(),
+				mcp.Enum("number", "threatmodel", "author", "file", "threatcount", "internetfacing", "assetcount", "usecasecount", "tpdcount", "exclusioncount", "size", "newinitiative", "dfd"),
 			),
 		), c.handleListTmsWithCustomCols)
 
@@ -132,6 +134,7 @@ func (c *MCPCommand) Run(args []string) int {
 			mcp.WithDescription("View the markdown of a threatcl threat model file, located within the directory set by the -dir flag. This tool requires you provide the threatcl file."),
 			mcp.WithString("file",
 				mcp.Description("The threatcl file to view"),
+				mcp.Required(),
 			),
 		), c.handleViewTmFile)
 
@@ -140,6 +143,7 @@ func (c *MCPCommand) Run(args []string) int {
 			mcp.WithDescription("View the raw hcl contents of a threatcl threat model file, located within the directory set by the -dir flag. This tool requires you provide the threatcl file."),
 			mcp.WithString("file",
 				mcp.Description("The threatcl file to view the raw version of"),
+				mcp.Required(),
 			),
 		), c.handleViewTmFileRaw)
 
@@ -148,6 +152,7 @@ func (c *MCPCommand) Run(args []string) int {
 			mcp.WithDescription("Validate a threatcl threat model file, located within the directory set by the -dir flag"),
 			mcp.WithString("file",
 				mcp.Description("The threatcl file to validate"),
+				mcp.Required(),
 			),
 		), c.handleValidateTmFile)
 
@@ -156,9 +161,11 @@ func (c *MCPCommand) Run(args []string) int {
 			mcp.WithDescription("Write a threatcl threat model to a file, located within the directory set by the -dir flag. If you want to write to a different location, you should leverage other MCP tools."),
 			mcp.WithString("filename",
 				mcp.Description("The filename to write the threatcl threat model to"),
+				mcp.Required(),
 			),
 			mcp.WithString("hcl",
 				mcp.Description("The threatcl string to write to the file"),
+				mcp.Required(),
 			),
 		), c.handleWriteTmFile)
 
@@ -167,9 +174,11 @@ func (c *MCPCommand) Run(args []string) int {
 			mcp.WithDescription("Write a DFD PNG to a file, located within the directory set by the -dir flag. If you want to write to a different location, you should leverage other MCP tools."),
 			mcp.WithString("filename",
 				mcp.Description("The filename to write the DFD PNG to"),
+				mcp.Required(),
 			),
 			mcp.WithString("hcl",
 				mcp.Description("The threatcl string to write to the file"),
+				mcp.Required(),
 			),
 		), c.handleWriteDfdPngFile)
 	} else {
@@ -211,12 +220,17 @@ func (c *MCPCommand) handleListTms(ctx context.Context, req mcp.CallToolRequest)
 func (c *MCPCommand) handleListTmsWithCustomCols(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	var result strings.Builder
 
-	cols, ok := req.Params.Arguments["columns"].(string)
-	if !ok {
-		cols = "number,file,threatmodel,author"
-		result.WriteString(fmt.Sprintf("Listing all threatcl models in %s using the default columns of file, threatmodel and author\n\n", c.flagDir))
-	} else {
-		result.WriteString(fmt.Sprintf("Listing all threatcl models in: %s with custom cols: %s\n\n", c.flagDir, cols))
+	// cols, ok := req.Params.Arguments["columns"].(string)
+	// if !ok {
+	// 	cols = "number,file,threatmodel,author"
+	// 	result.WriteString(fmt.Sprintf("Listing all threatcl models in %s using the default columns of file, threatmodel and author\n\n", c.flagDir))
+	// } else {
+	// 	result.WriteString(fmt.Sprintf("Listing all threatcl models in: %s with custom cols: %s\n\n", c.flagDir, cols))
+	// }
+
+	cols, err := req.RequireString("columns")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
 	}
 
 	// Build the ListCommand so we can execute it and handle the output
@@ -242,14 +256,18 @@ func (c *MCPCommand) handleListTmsWithCustomCols(ctx context.Context, req mcp.Ca
 }
 
 func (c *MCPCommand) handleViewTmString(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	tmString, ok := req.Params.Arguments["hcl"].(string)
-	if !ok {
-		return nil, fmt.Errorf("hcl must be a string")
+	// tmString, ok := req.Params.Arguments["hcl"].(string)
+	// if !ok {
+	// 	return nil, fmt.Errorf("hcl must be a string")
+	// }
+	tmString, err := req.RequireString("hcl")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
 	}
 
 	cfg, _ := spec.LoadSpecConfig()
 	tmParser := spec.NewThreatmodelParser(cfg)
-	err := tmParser.ParseHCLRaw([]byte(tmString))
+	err = tmParser.ParseHCLRaw([]byte(tmString))
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("error parsing string: %s", err)), nil
 	}
@@ -271,14 +289,18 @@ func (c *MCPCommand) handleViewTmString(ctx context.Context, req mcp.CallToolReq
 }
 
 func (c *MCPCommand) handlePngDfdViewFromTmString(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	tmString, ok := req.Params.Arguments["hcl"].(string)
-	if !ok {
-		return nil, fmt.Errorf("hcl must be a string")
+	// tmString, ok := req.Params.Arguments["hcl"].(string)
+	// if !ok {
+	// 	return nil, fmt.Errorf("hcl must be a string")
+	// }
+	tmString, err := req.RequireString("hcl")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
 	}
 
 	cfg, _ := spec.LoadSpecConfig()
 	tmParser := spec.NewThreatmodelParser(cfg)
-	err := tmParser.ParseHCLRaw([]byte(tmString))
+	err = tmParser.ParseHCLRaw([]byte(tmString))
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("error parsing string: %s", err)), nil
 	}
@@ -309,9 +331,13 @@ func (c *MCPCommand) handleViewTmFile(ctx context.Context, req mcp.CallToolReque
 
 	var result strings.Builder
 
-	file, ok := req.Params.Arguments["file"].(string)
-	if !ok {
-		return nil, fmt.Errorf("file must be a string")
+	// file, ok := req.Params.Arguments["file"].(string)
+	// if !ok {
+	// 	return nil, fmt.Errorf("file must be a string")
+	// }
+	file, err := req.RequireString("file")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
 	}
 
 	validFile, err := c.validateTmFilePath(file)
@@ -342,9 +368,13 @@ func (c *MCPCommand) handleViewTmFile(ctx context.Context, req mcp.CallToolReque
 func (c *MCPCommand) handleViewTmFileRaw(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	var result strings.Builder
 
-	file, ok := req.Params.Arguments["file"].(string)
-	if !ok {
-		return nil, fmt.Errorf("file must be a string")
+	// file, ok := req.Params.Arguments["file"].(string)
+	// if !ok {
+	// 	return nil, fmt.Errorf("file must be a string")
+	// }
+	file, err := req.RequireString("file")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
 	}
 
 	validFile, err := c.validateTmFilePath(file)
@@ -365,9 +395,13 @@ func (c *MCPCommand) handleViewTmFileRaw(ctx context.Context, req mcp.CallToolRe
 
 func (c *MCPCommand) handleValidateTmFile(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 
-	file, ok := req.Params.Arguments["file"].(string)
-	if !ok {
-		return nil, fmt.Errorf("file must be a string")
+	// file, ok := req.Params.Arguments["file"].(string)
+	// if !ok {
+	// 	return nil, fmt.Errorf("file must be a string")
+	// }
+	file, err := req.RequireString("file")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
 	}
 
 	validFile, err := c.validateTmFilePath(file)
@@ -391,14 +425,18 @@ func (c *MCPCommand) handleValidateTmFile(ctx context.Context, req mcp.CallToolR
 
 func (c *MCPCommand) handleValidateTmString(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 
-	hclstring, ok := req.Params.Arguments["hcl"].(string)
-	if !ok {
-		return nil, fmt.Errorf("file must be a string")
+	// hclstring, ok := req.Params.Arguments["hcl"].(string)
+	// if !ok {
+	// 	return nil, fmt.Errorf("file must be a string")
+	// }
+	hclstring, err := req.RequireString("hcl")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
 	}
 
 	cfg, _ := spec.LoadSpecConfig()
 	tmParser := spec.NewThreatmodelParser(cfg)
-	err := tmParser.ParseHCLRaw([]byte(hclstring))
+	err = tmParser.ParseHCLRaw([]byte(hclstring))
 	if err != nil {
 		// return nil, fmt.Errorf("error parsing string: %w", err)
 		return mcp.NewToolResultError(fmt.Sprintf("error parsing string: %s", err)), nil
@@ -514,14 +552,22 @@ func (c *MCPCommand) handleViewSpecToolResource(ctx context.Context, req mcp.Cal
 
 func (c *MCPCommand) handleWriteTmFile(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 
-	filename, ok := req.Params.Arguments["filename"].(string)
-	if !ok {
-		return nil, fmt.Errorf("filename must be a string")
+	// filename, ok := req.Params.Arguments["filename"].(string)
+	// if !ok {
+	// 	return nil, fmt.Errorf("filename must be a string")
+	// }
+	filename, err := req.RequireString("filename")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
 	}
 
-	hclString, ok := req.Params.Arguments["hcl"].(string)
-	if !ok {
-		return nil, fmt.Errorf("hcl must be a string")
+	// hclString, ok := req.Params.Arguments["hcl"].(string)
+	// if !ok {
+	// 	return nil, fmt.Errorf("hcl must be a string")
+	// }
+	hclString, err := req.RequireString("hcl")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
 	}
 
 	validFile, err := c.validateTmFilePath(filename)
@@ -543,14 +589,22 @@ func (c *MCPCommand) handleWriteTmFile(ctx context.Context, req mcp.CallToolRequ
 }
 
 func (c *MCPCommand) handleWriteDfdPngFile(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	filename, ok := req.Params.Arguments["filename"].(string)
-	if !ok {
-		return nil, fmt.Errorf("filename must be a string")
+	// filename, ok := req.Params.Arguments["filename"].(string)
+	// if !ok {
+	// 	return nil, fmt.Errorf("filename must be a string")
+	// }
+	filename, err := req.RequireString("filename")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
 	}
 
-	hclString, ok := req.Params.Arguments["hcl"].(string)
-	if !ok {
-		return nil, fmt.Errorf("hcl must be a string")
+	// hclString, ok := req.Params.Arguments["hcl"].(string)
+	// if !ok {
+	// 	return nil, fmt.Errorf("hcl must be a string")
+	// }
+	hclString, err := req.RequireString("hcl")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
 	}
 
 	validFile, err := c.validateTmFilePath(filename)

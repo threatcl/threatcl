@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"runtime"
@@ -10,7 +9,6 @@ import (
 
 	shellquote "github.com/kballard/go-shellquote"
 	"github.com/threatcl/spec"
-	"github.com/threatcl/threatcl/version"
 )
 
 var (
@@ -31,7 +29,7 @@ threatmodel "threatmodel_name" {
     control = "Something to help"
   }
 }
-`, version.Version)
+`, spec.VERSION)
 )
 
 type GenerateInteractiveEditorCommand struct {
@@ -118,25 +116,28 @@ func (c *GenerateInteractiveEditorCommand) Run(args []string) int {
 		defer f.Close()
 	}
 
-	tmpfile, err := ioutil.TempFile("", "tmp.*.hcl")
+	tmpfile, err := os.CreateTemp("", "tmp.*.hcl")
 	if err != nil {
 		fmt.Printf("Error creating temp file: %s\n", err)
 		return 1
 	}
 	defer os.Remove(tmpfile.Name())
 
+	var fullBPError error
+
 	if c.flagFullBoilerplate {
-		outString, err := parseBoilerplateTemplate(c.specCfg)
-		if err != nil {
-			fmt.Printf("Error preparing boilerplate: %s\n", err)
+		var outString string
+		outString, fullBPError = parseBoilerplateTemplate(c.specCfg)
+		if fullBPError != nil {
+			fmt.Printf("Error preparing boilerplate: %s\n", fullBPError)
 			return 1
 		}
-		_, err = tmpfile.WriteString(outString)
+		_, fullBPError = tmpfile.WriteString(outString)
 	} else {
-		_, err = tmpfile.WriteString(InteractiveEditorDraft)
+		_, fullBPError = tmpfile.WriteString(InteractiveEditorDraft)
 	}
-	if err != nil {
-		fmt.Printf("Error writing to tempfile: %s\n", err)
+	if fullBPError != nil {
+		fmt.Printf("Error writing to tempfile: %s\n", fullBPError)
 		return 1
 	}
 
@@ -165,7 +166,7 @@ func (c *GenerateInteractiveEditorCommand) Run(args []string) int {
 		return 1
 	}
 
-	tmpIn, err := ioutil.ReadFile(tmpfile.Name())
+	tmpIn, err := os.ReadFile(tmpfile.Name())
 	if err != nil {
 		fmt.Printf("Error reading tmp file back in: %s\n", err)
 		return 1

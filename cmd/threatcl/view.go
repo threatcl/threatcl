@@ -49,7 +49,7 @@ func (c *ViewCommand) Execute(args []string) (string, error) {
 		tmParser := spec.NewThreatmodelParser(c.specCfg)
 		err := tmParser.ParseFile(file, false)
 		if err != nil {
-			return "", fmt.Errorf("Error parsing %s: %s\n", file, err)
+			return "", fmt.Errorf("error parsing %s: %s", file, err)
 		}
 
 		for _, tm := range tmParser.GetWrapped().Threatmodels {
@@ -60,7 +60,7 @@ func (c *ViewCommand) Execute(args []string) (string, error) {
 
 			_, err = io.Copy(mdBuffer, tmBuffer)
 			if err != nil {
-				return "", fmt.Errorf("Failed to copy threatmodel buffer to markdown buffer: %s", err)
+				return "", fmt.Errorf("failed to copy threatmodel buffer to markdown buffer: %s", err)
 			}
 		}
 	}

@@ -1,3 +1,12 @@
+## 0.2.5
+
+### Oct 13, 2025
+
+CHANGES:
+
+* Minor updates to the `mcp` implementation
+* We can now define more attributes of a control in a separate file and pull the reference in with `control_imports`
+
 ## 0.2.4
 
 ### May 29, 2025
