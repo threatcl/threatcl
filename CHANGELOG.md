@@ -1,3 +1,11 @@
+## 0.2.6
+
+### Oct 14, 2025
+
+CHANGES:
+
+* None, version bump to fix ci/cd
+
 ## 0.2.5
 
 ### Oct 13, 2025
