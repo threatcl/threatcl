@@ -1,0 +1,176 @@
+# GraphQL Schema for threatcl
+# Exposes threat model data from HCL files
+
+# Root Query type
+type Query {
+  # List all threat models with optional filtering
+  threatModels(filter: ThreatModelFilter): [ThreatModel!]!
+
+  # Get single threat model by name
+  threatModel(name: String!): ThreatModel
+
+  # Search threats across all models with optional filtering
+  threats(filter: ThreatFilter): [Threat!]!
+
+  # Get all information assets with optional classification filter
+  informationAssets(classification: String): [InformationAsset!]!
+
+  # Get statistics across all threat models
+  stats: Statistics!
+}
+
+# Main threat model type
+type ThreatModel {
+  name: String!
+  author: String!
+  description: String
+  link: String
+  diagramLink: String
+  createdAt: Int
+  updatedAt: Int
+  attributes: Attributes
+  additionalAttributes: [AdditionalAttribute!]
+  informationAssets: [InformationAsset!]!
+  threats: [Threat!]!
+  useCases: [UseCase!]!
+  exclusions: [Exclusion!]!
+  thirdPartyDependencies: [ThirdPartyDependency!]!
+  dataFlowDiagrams: [DataFlowDiagram!]!
+  sourceFile: String!
+}
+
+# Threat model attributes
+type Attributes {
+  newInitiative: Boolean
+  internetFacing: Boolean
+  initiativeSize: String
+}
+
+# Additional custom attributes
+type AdditionalAttribute {
+  key: String!
+  value: String!
+}
+
+# Threat definition
+type Threat {
+  description: String!
+  impacts: [String!]
+  stride: [String!]
+  controls: [Control!]!
+  informationAssetRefs: [String!]
+  threatModel: ThreatModel!
+}
+
+# Control/mitigation for a threat
+type Control {
+  name: String!
+  description: String!
+  implemented: Boolean!
+  implementationNotes: String
+  riskReduction: Int
+  attributes: [ControlAttribute!]
+}
+
+# Control attributes
+type ControlAttribute {
+  name: String!
+  value: String!
+}
+
+# Information asset
+type InformationAsset {
+  name: String!
+  description: String
+  informationClassification: String!
+  source: String
+  threatModel: ThreatModel!
+}
+
+# Use case
+type UseCase {
+  description: String!
+}
+
+# Exclusion
+type Exclusion {
+  description: String!
+}
+
+# Third party dependency
+type ThirdPartyDependency {
+  name: String!
+  description: String!
+  saas: Boolean
+  payingCustomer: Boolean
+  openSource: Boolean
+  infrastructure: Boolean
+  uptimeDependency: String!
+  uptimeNotes: String
+}
+
+# Data Flow Diagram
+type DataFlowDiagram {
+  name: String!
+  processes: [Process!]!
+  dataStores: [DataStore!]!
+  externalElements: [ExternalElement!]!
+  flows: [Flow!]!
+  trustZones: [TrustZone!]!
+}
+
+# DFD Process
+type Process {
+  name: String!
+  trustZone: String
+}
+
+# DFD Data Store
+type DataStore {
+  name: String!
+  trustZone: String
+  informationAsset: String
+}
+
+# DFD External Element
+type ExternalElement {
+  name: String!
+  trustZone: String
+}
+
+# DFD Flow
+type Flow {
+  name: String!
+  from: String!
+  to: String!
+}
+
+# DFD Trust Zone
+type TrustZone {
+  name: String!
+}
+
+# Statistics across all threat models
+type Statistics {
+  totalThreatModels: Int!
+  totalThreats: Int!
+  totalInformationAssets: Int!
+  totalControls: Int!
+  implementedControls: Int!
+  averageRiskReduction: Float
+}
+
+# Input filter for threat models
+input ThreatModelFilter {
+  author: String
+  internetFacing: Boolean
+  newInitiative: Boolean
+  initiativeSize: String
+}
+
+# Input filter for threats
+input ThreatFilter {
+  impacts: [String!]
+  stride: [String!]
+  hasImplementedControls: Boolean
+}

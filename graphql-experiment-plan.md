@@ -502,3 +502,28 @@ Caching: Redis for distributed deployments
 Metrics: Prometheus metrics endpoint
 Export: Direct export to JSON/OTM via GraphQL mutations
 This plan provides a complete roadmap for implementing a production-ready GraphQL API server for threatcl, leveraging the existing architecture and following Go best practices.
+
+## 📝 Technical Debt
+
+### File Discovery Code Duplication
+**Issue:** File discovery logic (`findAllFiles`, `findHclFiles`, `findJsonFiles`) is duplicated between:
+- `cmd/threatcl/util.go` (original implementation)
+- `internal/cache/cache.go` (duplicated for cache)
+
+**Why it exists:**
+- Proper Go architecture: `internal/` packages should not import from `cmd/` packages
+- Kept PR #3 focused on cache implementation without refactoring existing commands
+
+**Recommended fix:**
+1. Create `internal/fileutil/discover.go` with file discovery functions
+2. Update `cmd/threatcl/util.go` to import and use `internal/fileutil`
+3. Update `internal/cache/cache.go` to import and use `internal/fileutil`
+4. Remove duplicated code from both locations
+
+**Benefits:**
+- Single source of truth for file discovery
+- Easier maintenance (changes only needed in one place)
+- Better testability
+- Follows DRY principle
+
+**Estimated effort:** 30 minutes - 1 hour
