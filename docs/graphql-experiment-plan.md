@@ -1,3 +1,5 @@
+> The following is the interactive plan I used with Claude to implement the Graphql `server` command in `threatcl`
+
 Implementation Plan: GraphQL API Server for threatcl
 Overview
 Based on my review of the codebase, I'll create a detailed plan to add a new threatcl server command that serves a GraphQL API exposing all data from HCL threat model files in memory.
