@@ -4,7 +4,7 @@ Based on my review of the codebase, I'll create a detailed plan to add a new thr
 
 ## ✅ Implementation Status
 
-**Status: Core Implementation + File Watching Complete (PRs #1-7)**
+**Status: Complete - All Features and Documentation (PRs #1-9)**
 
 ### Completed PRs
 
@@ -71,6 +71,37 @@ Based on my review of the codebase, I'll create a detailed plan to add a new thr
   - TestRemoveFileNonExistent: Safe handling of non-existent files
 - All 14 tests passing (113 total cmd tests, 11 total cache tests)
 
+**✅ PR #9: Documentation**
+- Updated README.md with server command in Available commands list
+- Added comprehensive Server (GraphQL API) section to README.md:
+  - Basic usage examples
+  - Command-line options documentation
+  - File watching feature explanation
+  - GraphQL Playground usage
+  - Example queries (4 examples)
+  - API endpoints list
+  - Use cases section
+- Created `docs/graphql-api.md` - Comprehensive API documentation:
+  - Getting started guide
+  - Complete schema overview
+  - All query reference documentation (5 root queries)
+  - Complete type reference (10+ types)
+  - Advanced query examples (12+ examples)
+  - Integration examples (cURL, JavaScript, Python, Go)
+  - File watching documentation
+  - Best practices section
+  - Troubleshooting guide
+- Created `examples/graphql-queries.md` - Query examples collection:
+  - 22 complete query examples
+  - Basic queries (3 examples)
+  - Filtering queries (6 examples)
+  - Detailed queries (4 examples)
+  - Analysis queries (4 examples)
+  - Multi-query examples (2 examples)
+  - Advanced patterns (fragments, variables)
+  - Client-side filtering examples
+  - Tips and next steps
+
 ### Verified Functionality
 - ✅ Server starts and loads threat models from directory
 - ✅ GraphQL queries work correctly (stats, threatModels, single threatModel)
@@ -82,8 +113,7 @@ Based on my review of the codebase, I'll create a detailed plan to add a new thr
 - ✅ All unit and integration tests passing (117 total tests)
 
 ### Remaining Optional PRs
-- **PR #8: Comprehensive Testing** - Additional integration and E2E tests
-- **PR #9: Documentation** - Update README, add examples and API docs
+- **PR #8: Comprehensive Testing** - Additional integration and E2E tests (optional)
 
 📋 Architecture Analysis
 Current State:
@@ -648,6 +678,12 @@ cmd/threatcl/
 ├── server.go                 # Server command implementation with file watching
 └── server_test.go            # Server test suite (13 tests)
 
+docs/
+└── graphql-api.md            # Comprehensive GraphQL API documentation
+
+examples/
+└── graphql-queries.md        # 22 example GraphQL queries
+
 Root:
 ├── gqlgen.yml                # GraphQL code generation config
 └── tools.go                  # Tool dependency management
@@ -660,6 +696,7 @@ go.sum                        # Dependency checksums
 cmd/threatcl/threatcl.go      # Registered server command
 cmd/threatcl/server.go        # Added file watching functionality
 internal/cache/cache.go       # Added RemoveFile() method
+README.md                     # Added server command documentation with examples
 ```
 
 ### Test Coverage
