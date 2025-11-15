@@ -1,0 +1,30 @@
+# GraphQL schema location
+schema:
+  - internal/graphql/schema.graphql
+
+# Where to write generated server code
+exec:
+  filename: internal/graphql/generated.go
+  package: graphql
+
+# Where to write the resolver stubs
+resolver:
+  layout: follow-schema
+  dir: internal/graphql
+  package: graphql
+  filename_template: "{name}.resolvers.go"
+
+# Where to write generated models
+model:
+  filename: internal/graphql/models_gen.go
+  package: graphql
+
+# Autobind tells gqlgen to search for Go types that match GraphQL schema types
+# and use them automatically instead of generating new types
+autobind:
+  - github.com/threatcl/spec
+
+# Optional: skip generating types that we'll define manually
+# models:
+#   ThreatModel:
+#     model: github.com/threatcl/spec.Threatmodel

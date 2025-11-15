@@ -143,6 +143,7 @@ Available commands are:
     generate     Generate an HCL Threat Model
     list         List Threatmodels found in HCL file(s)
     mcp          Model Context Protocol (MCP) server for threatcl
+    server       Start a GraphQL API server for threat models
     terraform    Parse output from 'terraform show -json'
     validate     Validate existing HCL Threatmodel file(s)
     view         View existing HCL Threatmodel file(s)
@@ -234,11 +235,59 @@ This will open your editor with a barebones HCL threat model. If you want to val
 
 ## MCP
 
-The `threatcl mcp` command exposes a local [MCP](https://modelcontextprotocol.io/introduction) server so that you can interact with threatcl hcl files via an MCP Host, for instance AI/LLM applications such as [Claude Desktop](https://claude.ai/download), [Cursor](https://www.cursor.com/), or any other applications that support MCP. 
+The `threatcl mcp` command exposes a local [MCP](https://modelcontextprotocol.io/introduction) server so that you can interact with threatcl hcl files via an MCP Host, for instance AI/LLM applications such as [Claude Desktop](https://claude.ai/download), [Cursor](https://www.cursor.com/), or any other applications that support MCP.
 
-The command takes a single, optional argument, `-dir=<path>` which allows additional MCP Tools to interact with files within that path. Without this setting, the MCP Tools can interact with strings, but will rely on other mechanisms within the MCP Host to interact with the underlying filesystem. 
+The command takes a single, optional argument, `-dir=<path>` which allows additional MCP Tools to interact with files within that path. Without this setting, the MCP Tools can interact with strings, but will rely on other mechanisms within the MCP Host to interact with the underlying filesystem.
 
 It's fair to say that this functionality is pretty beta at the moment.
+
+## Server (GraphQL API)
+
+The `threatcl server` command starts a GraphQL API server that exposes your threat models via HTTP for programmatic querying and integration.
+
+### Basic Usage
+
+```bash
+# Start the server
+$ threatcl server -dir ./examples
+
+# With file watching for auto-reload
+$ threatcl server -dir ./examples -watch
+
+# Custom port
+$ threatcl server -dir ./examples -port 3000
+```
+
+Navigate to `http://localhost:8080` to access the interactive GraphQL Playground.
+
+### Example Query
+
+```graphql
+query {
+  stats {
+    totalThreatModels
+    totalThreats
+    implementedControls
+  }
+
+  threatModels(filter: { internetFacing: true }) {
+    name
+    threats {
+      description
+      controls {
+        name
+        implemented
+      }
+    }
+  }
+}
+```
+
+### Documentation
+
+For complete API documentation, schema reference, advanced queries, and integration examples, see:
+- **Full API Documentation**: [docs/graphql-api.md](docs/graphql-api.md)
+- **Query Examples**: [examples/graphql-queries.md](examples/graphql-queries.md)
 
 ## Dashboard
 

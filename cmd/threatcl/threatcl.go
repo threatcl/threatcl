@@ -97,6 +97,12 @@ func Run(args []string) int {
 				specCfg:          cfg,
 			}, nil
 		},
+		"server": func() (cli.Command, error) {
+			return &ServerCommand{
+				GlobalCmdOptions: globalCmdOptions,
+				specCfg:          cfg,
+			}, nil
+		},
 	}
 
 	cli := &cli.CLI{
