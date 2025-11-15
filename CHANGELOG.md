@@ -1,3 +1,12 @@
+## 0.2.7
+
+### Nov 15, 2025
+
+CHANGES:
+
+* Added the `server` command to expose a GraphQL API endpoint.
+* Minor tweaks to the boilerplate generation too, now includes the `control_imports` examples
+
 ## 0.2.6
 
 ### Oct 14, 2025
