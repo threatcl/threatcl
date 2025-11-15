@@ -237,3 +237,132 @@ func TestConcurrentAccess(t *testing.T) {
 		<-done
 	}
 }
+
+func TestReload(t *testing.T) {
+	examplesDir := filepath.Join("..", "..", "examples")
+
+	if _, err := os.Stat(examplesDir); os.IsNotExist(err) {
+		t.Skip("Examples directory not found, skipping test")
+	}
+
+	cfg, err := spec.LoadSpecConfig()
+	if err != nil {
+		t.Fatalf("Failed to load default spec config: %v", err)
+	}
+
+	cache := NewThreatModelCache(cfg, examplesDir)
+	err = cache.LoadAll()
+	if err != nil {
+		t.Fatalf("Failed to load all files: %v", err)
+	}
+
+	initialCount := cache.Count()
+	if initialCount == 0 {
+		t.Fatal("Expected at least one threat model to be loaded")
+	}
+
+	// Get the first file to reload
+	mapping := cache.GetFileToModelMapping()
+	var testFile string
+	for file := range mapping {
+		testFile = file
+		break
+	}
+
+	if testFile == "" {
+		t.Fatal("No files found in mapping")
+	}
+
+	// Reload the file
+	err = cache.Reload(testFile)
+	if err != nil {
+		t.Fatalf("Failed to reload file %s: %v", testFile, err)
+	}
+
+	// Count should remain the same
+	newCount := cache.Count()
+	if newCount != initialCount {
+		t.Errorf("Expected count to remain %d after reload, got %d", initialCount, newCount)
+	}
+
+	t.Logf("Successfully reloaded file %s", testFile)
+}
+
+func TestRemoveFile(t *testing.T) {
+	examplesDir := filepath.Join("..", "..", "examples")
+
+	if _, err := os.Stat(examplesDir); os.IsNotExist(err) {
+		t.Skip("Examples directory not found, skipping test")
+	}
+
+	cfg, err := spec.LoadSpecConfig()
+	if err != nil {
+		t.Fatalf("Failed to load default spec config: %v", err)
+	}
+
+	cache := NewThreatModelCache(cfg, examplesDir)
+	err = cache.LoadAll()
+	if err != nil {
+		t.Fatalf("Failed to load all files: %v", err)
+	}
+
+	initialCount := cache.Count()
+	if initialCount == 0 {
+		t.Fatal("Expected at least one threat model to be loaded")
+	}
+
+	// Get the first file to remove
+	mapping := cache.GetFileToModelMapping()
+	var testFile string
+	var modelNames []string
+	for file, models := range mapping {
+		testFile = file
+		modelNames = models
+		break
+	}
+
+	if testFile == "" {
+		t.Fatal("No files found in mapping")
+	}
+
+	expectedNewCount := initialCount - len(modelNames)
+
+	// Remove the file
+	cache.RemoveFile(testFile)
+
+	// Count should decrease
+	newCount := cache.Count()
+	if newCount != expectedNewCount {
+		t.Errorf("Expected count to be %d after removing file with %d models, got %d",
+			expectedNewCount, len(modelNames), newCount)
+	}
+
+	// The models should no longer be accessible
+	for _, modelName := range modelNames {
+		_, err := cache.Get(modelName)
+		if err == nil {
+			t.Errorf("Expected model %s to be removed, but it still exists", modelName)
+		}
+	}
+
+	// The file should no longer be in the mapping
+	newMapping := cache.GetFileToModelMapping()
+	if _, exists := newMapping[testFile]; exists {
+		t.Errorf("Expected file %s to be removed from mapping", testFile)
+	}
+
+	t.Logf("Successfully removed file %s with %d models", testFile, len(modelNames))
+}
+
+func TestRemoveFileNonExistent(t *testing.T) {
+	cfg := &spec.ThreatmodelSpecConfig{}
+	cache := NewThreatModelCache(cfg, "/test/dir")
+
+	// Removing a non-existent file should not cause errors
+	cache.RemoveFile("/non/existent/file.hcl")
+
+	// Cache should still be empty
+	if cache.Count() != 0 {
+		t.Error("Expected cache to remain empty after removing non-existent file")
+	}
+}

@@ -6,6 +6,7 @@ require (
 	github.com/99designs/gqlgen v0.17.55
 	github.com/AlecAivazis/survey/v2 v2.3.2
 	github.com/charmbracelet/glamour v0.3.0
+	github.com/fsnotify/fsnotify v1.7.0
 	github.com/go-chi/chi/v5 v5.1.0
 	github.com/hashicorp/hcl/v2 v2.24.0
 	github.com/hashicorp/terraform-json v0.13.0

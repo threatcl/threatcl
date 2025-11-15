@@ -123,6 +123,21 @@ func (c *ThreatModelCache) Reload(filepath string) error {
 	return c.loadFile(filepath)
 }
 
+// RemoveFile removes all threat models associated with a file from the cache
+func (c *ThreatModelCache) RemoveFile(filepath string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	// Remove all models from this file
+	if modelNames, exists := c.fileToModel[filepath]; exists {
+		for _, name := range modelNames {
+			delete(c.models, name)
+			delete(c.modelToFile, name)
+		}
+		delete(c.fileToModel, filepath)
+	}
+}
+
 // GetSourceFile returns the source file path for a given threat model name
 func (c *ThreatModelCache) GetSourceFile(modelName string) (string, bool) {
 	c.mu.RLock()

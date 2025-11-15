@@ -6,12 +6,14 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strings"
 	"syscall"
 	"time"
 
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/playground"
+	"github.com/fsnotify/fsnotify"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/rs/cors"
@@ -50,7 +52,6 @@ Options:
 
  -watch
    Watch for file changes and reload automatically (default: false)
-   Note: File watching is not yet implemented
 
 Examples:
 
@@ -117,8 +118,16 @@ func (c *ServerCommand) Run(args []string) int {
 	count := tmCache.Count()
 	fmt.Printf("Loaded %d threat model(s)\n", count)
 
+	// Set up file watcher if requested
+	var watcher *fsnotify.Watcher
+	var err2 error
 	if c.flagWatch {
-		fmt.Println("Warning: File watching is not yet implemented")
+		watcher, err2 = c.setupFileWatcher(tmCache, c.flagDir)
+		if err2 != nil {
+			fmt.Printf("Error setting up file watcher: %s\n", err2)
+			return 1
+		}
+		fmt.Println("File watching enabled - changes will be automatically reloaded")
 	}
 
 	// Set up HTTP server
@@ -142,6 +151,11 @@ func (c *ServerCommand) Run(args []string) int {
 	<-quit
 
 	fmt.Println("\nShutting down server...")
+
+	// Close file watcher if it was created
+	if watcher != nil {
+		watcher.Close()
+	}
 
 	// Graceful shutdown with 5 second timeout
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -200,4 +214,87 @@ func (c *ServerCommand) setupServer(tmCache *cache.ThreatModelCache, port int) *
 		WriteTimeout: 15 * time.Second,
 		IdleTimeout:  60 * time.Second,
 	}
+}
+
+func (c *ServerCommand) setupFileWatcher(tmCache *cache.ThreatModelCache, rootDir string) (*fsnotify.Watcher, error) {
+	watcher, err := fsnotify.NewWatcher()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create file watcher: %w", err)
+	}
+
+	// Watch the root directory recursively
+	err = filepath.Walk(rootDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if info.IsDir() {
+			err = watcher.Add(path)
+			if err != nil {
+				return fmt.Errorf("failed to watch directory %s: %w", path, err)
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		watcher.Close()
+		return nil, err
+	}
+
+	// Start watching for events in a goroutine
+	go func() {
+		for {
+			select {
+			case event, ok := <-watcher.Events:
+				if !ok {
+					return
+				}
+
+				// Only process .hcl and .json files
+				ext := filepath.Ext(event.Name)
+				if ext != ".hcl" && ext != ".json" {
+					continue
+				}
+
+				switch {
+				case event.Op&fsnotify.Write == fsnotify.Write:
+					// File was modified
+					fmt.Printf("File modified: %s - reloading...\n", event.Name)
+					if err := tmCache.Reload(event.Name); err != nil {
+						fmt.Printf("Error reloading file %s: %s\n", event.Name, err)
+					} else {
+						fmt.Printf("Successfully reloaded %s (%d threat models loaded)\n", event.Name, tmCache.Count())
+					}
+
+				case event.Op&fsnotify.Create == fsnotify.Create:
+					// File was created
+					fmt.Printf("File created: %s - loading...\n", event.Name)
+					if err := tmCache.Reload(event.Name); err != nil {
+						fmt.Printf("Error loading file %s: %s\n", event.Name, err)
+					} else {
+						fmt.Printf("Successfully loaded %s (%d threat models loaded)\n", event.Name, tmCache.Count())
+					}
+
+				case event.Op&fsnotify.Remove == fsnotify.Remove:
+					// File was deleted
+					fmt.Printf("File removed: %s - removing from cache...\n", event.Name)
+					tmCache.RemoveFile(event.Name)
+					fmt.Printf("Successfully removed %s (%d threat models remaining)\n", event.Name, tmCache.Count())
+
+				case event.Op&fsnotify.Rename == fsnotify.Rename:
+					// File was renamed (treat as deletion of old name)
+					fmt.Printf("File renamed: %s - removing from cache...\n", event.Name)
+					tmCache.RemoveFile(event.Name)
+					fmt.Printf("Successfully removed %s (%d threat models remaining)\n", event.Name, tmCache.Count())
+				}
+
+			case err, ok := <-watcher.Errors:
+				if !ok {
+					return
+				}
+				fmt.Printf("File watcher error: %s\n", err)
+			}
+		}
+	}()
+
+	return watcher, nil
 }
