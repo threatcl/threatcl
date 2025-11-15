@@ -239,6 +239,43 @@ For example, this is still part of the threat description
 EOT
   }
 
+  // For more advanced importing of controls, you can also define
+  // "expanded_control" "components" in an external file. This allows you to 
+  // define all the attributes of an expanded_control, centrally, and import
+  // them.
+
+  // Importing an expanded_control is slightly different.
+
+  // An example of what may be in expanded_controls.hcl is below
+  // (note, a single external file can include both expanded_controls and
+  // regular controls.)
+
+  // spec_version = "{{.SpecVersion}}"
+  // component "expanded_control" "authentication_control" {
+  //  description = "Multi-factor authentication required"
+  //  implemented = true
+  //  implementation_notes = "Using TOTP for all admin accounts"
+  //  risk_reduction = 80
+  //
+  //  attribute "category" {
+  //    value = "Authentication"
+  //  }
+
+  imports = ["expanded_controls.hcl"]
+
+  threat {
+    description = "Authentication is bypassed"
+
+    control_imports = ["import.expanded_control.authentication_control"]
+
+  }
+
+  // When this threat model is viewed or exported, it will expand the
+  // referenced control into the "Authentication is bypassed" threat.
+
+  // The control_imports attribute is an array, so it can import multiple
+  // controls too.
+
   // Each threatmodel may contain a single data_flow_diagram
   // This format will be deprecated in the future ^
 
