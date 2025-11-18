@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/json"
 	"fmt"
@@ -37,6 +38,19 @@ Examples:
   # Query from file
   threatcl query -dir ./examples -file query.graphql
 
+  # Query from STDIN
+  echo '{ stats { totalThreats } }' | threatcl query -dir ./examples
+
+  # Query from STDIN with heredoc
+  threatcl query -dir ./examples <<EOF
+  {
+    stats {
+      totalThreats
+      totalControls
+    }
+  }
+  EOF
+
   # Query with variables
   threatcl query -dir ./examples \
     -query 'query($author: String) { threatModels(filter: {author: $author}) { name } }' \
@@ -48,13 +62,14 @@ Examples:
     -output compact
 
   # Pipe to jq for processing
-  threatcl query -dir ./examples \
-    -query '{ stats { totalThreats } }' | jq '.data.stats.totalThreats'
+  echo '{ stats { totalThreats } }' | \
+    threatcl query -dir ./examples | \
+    jq '.data.stats.totalThreats'
 
   # Use in shell script
-  THREAT_COUNT=$(threatcl query -dir ./examples \
-    -query '{ stats { totalThreats } }' \
-    -output compact | jq -r '.data.stats.totalThreats')
+  THREAT_COUNT=$(echo '{ stats { totalThreats } }' | \
+    threatcl query -dir ./examples -output compact | \
+    jq -r '.data.stats.totalThreats')
   echo "Found $THREAT_COUNT threats"
 `
 	return strings.TrimSpace(exampleText)
@@ -68,6 +83,11 @@ Usage: threatcl query [options]
 
   The command will load all HCL and JSON files from the specified directory
   into memory and execute the GraphQL query directly, outputting results to stdout.
+
+  Query Input (in order of precedence):
+    1. -query flag: Inline GraphQL query string
+    2. -file flag: Read query from file
+    3. STDIN: Read query from standard input (if neither -query nor -file is set)
 
 Options:
 
@@ -133,13 +153,6 @@ func (c *QueryCommand) Run(args []string) int {
 		return 1
 	}
 
-	if c.flagQuery == "" && c.flagFile == "" {
-		fmt.Fprintln(os.Stderr, "Error: either -query or -file must be provided")
-		fmt.Fprintln(os.Stderr)
-		fmt.Fprintln(os.Stderr, c.Help())
-		return 1
-	}
-
 	if c.flagQuery != "" && c.flagFile != "" {
 		fmt.Fprintln(os.Stderr, "Error: -query and -file are mutually exclusive")
 		fmt.Fprintln(os.Stderr)
@@ -158,9 +171,13 @@ func (c *QueryCommand) Run(args []string) int {
 		return 1
 	}
 
-	// 3. Read query from flag or file
+	// 3. Read query from flag, file, or stdin
 	var queryString string
-	if c.flagFile != "" {
+	if c.flagQuery != "" {
+		// Use inline query
+		queryString = c.flagQuery
+	} else if c.flagFile != "" {
+		// Read from file
 		content, err := os.ReadFile(c.flagFile)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error reading query file: %s\n", err)
@@ -168,7 +185,31 @@ func (c *QueryCommand) Run(args []string) int {
 		}
 		queryString = string(content)
 	} else {
-		queryString = c.flagQuery
+		// Try to read from stdin
+		info, err := os.Stdin.Stat()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error parsing STDIN: %s\n", err)
+			return 1
+		}
+
+		if info.Mode()&os.ModeCharDevice != 0 || info.Size() <= 0 {
+			fmt.Fprintln(os.Stderr, "Error: either -query, -file, or STDIN must be provided")
+			fmt.Fprintln(os.Stderr)
+			fmt.Fprintln(os.Stderr, c.Help())
+			return 1
+		}
+
+		reader := bufio.NewReader(os.Stdin)
+		var output []rune
+		for {
+			input, _, err := reader.ReadRune()
+			if err != nil && err == io.EOF {
+				break
+			}
+			output = append(output, input)
+		}
+
+		queryString = string(output)
 	}
 
 	// 4. Initialize cache and load threat models

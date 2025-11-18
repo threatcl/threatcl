@@ -703,7 +703,7 @@ The following items from the plan are deferred to future phases:
 - [ ] Phase 3: Query library with pre-defined queries
 - [ ] Phase 4: Watch mode for continuous query execution
 - [ ] Phase 5: Batch query execution
-- [ ] Alternative interface: stdin for query input
+- [x] Alternative interface: stdin for query input (completed November 2025)
 
 ## References
 
@@ -876,3 +876,90 @@ The command is ready for:
 - Shell scripting and automation
 - Quick data extraction and reporting
 - Testing queries before deploying to the GraphQL server
+
+---
+
+## STDIN Support Enhancement
+
+### Date Completed
+November 2025
+
+### What Was Implemented
+
+Enhanced the `query` command to support reading GraphQL queries from STDIN as a fallback when neither `-query` nor `-file` flags are provided. This makes the command more Unix-friendly and consistent with the existing `validate` command pattern.
+
+#### Implementation Details
+
+1. **Query Input Precedence**: The command now checks for query input in the following order:
+   - First: `-query` flag (inline query string)
+   - Second: `-file` flag (read from file)
+   - Third: STDIN (read from standard input if available)
+   - If none available: Show error message
+
+2. **Pattern Matching**: Used the same STDIN reading pattern as `cmd/threatcl/validate.go`:
+   - Check `os.Stdin.Stat()` for available data
+   - Use `bufio.NewReader` to read rune-by-rune
+   - Read until EOF
+
+3. **Error Handling**: Updated error message to reflect all three input options:
+   - Old: "Error: either -query or -file must be provided"
+   - New: "Error: either -query, -file, or STDIN must be provided"
+
+#### Files Modified
+
+1. **`cmd/threatcl/query.go`**:
+   - Added `bufio` import
+   - Removed validation that required `-query` or `-file`
+   - Added STDIN reading logic in query input section
+   - Updated Help() text to document STDIN support
+   - Updated Examples() with STDIN usage patterns
+
+2. **`cmd/threatcl/query_test.go`**:
+   - Updated "missing_query_and_file" test case to use correct directory and expect new error message
+
+3. **`docs/graphql-cli-query-plan.md`**:
+   - Marked STDIN support as completed in Future Enhancements section
+   - Added this implementation notes section
+
+#### Usage Examples
+
+```bash
+# Pipe query from echo
+echo '{ stats { totalThreats } }' | threatcl query -dir ./examples
+
+# Use heredoc for multi-line queries
+threatcl query -dir ./examples <<EOF
+{
+  stats {
+    totalThreats
+    totalControls
+  }
+}
+EOF
+
+# Pipe from file via cat
+cat query.graphql | threatcl query -dir ./examples
+
+# Chain with other commands
+echo '{ stats { totalThreats } }' | \
+  threatcl query -dir ./examples | \
+  jq '.data.stats.totalThreats'
+```
+
+#### Testing Results
+
+All existing tests pass, plus verified STDIN functionality:
+- ✅ STDIN from echo
+- ✅ STDIN from heredoc
+- ✅ STDIN from pipe
+- ✅ Error when no STDIN data available
+- ✅ `-query` flag still works (takes precedence)
+- ✅ `-file` flag still works (takes precedence over STDIN)
+
+#### Benefits
+
+- **Unix Philosophy**: Follows standard Unix patterns for command composition
+- **Pipeline Friendly**: Easy to integrate into shell pipelines
+- **Flexible Input**: Users can choose the most convenient input method
+- **Backward Compatible**: Existing `-query` and `-file` flags continue to work
+- **Consistent**: Matches the pattern used in `validate` command

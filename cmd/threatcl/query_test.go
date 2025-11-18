@@ -50,8 +50,8 @@ func TestQueryCommand_ValidateFlags(t *testing.T) {
 		},
 		{
 			name:     "missing_query_and_file",
-			args:     []string{"-dir", "./examples"},
-			expected: "Error: either -query or -file must be provided",
+			args:     []string{"-dir", "./testdata"},
+			expected: "Error: either -query, -file, or STDIN must be provided",
 			code:     1,
 		},
 		{
@@ -361,6 +361,74 @@ func TestQueryCommand_InvalidGraphQL(t *testing.T) {
 	// Errors should be an array with at least one error
 	if errArray, ok := errors.([]interface{}); !ok || len(errArray) == 0 {
 		t.Errorf("Expected 'errors' to be a non-empty array, got: %v", errors)
+	}
+}
+
+func TestQueryCommand_Stdin(t *testing.T) {
+	cmd := testQueryCommand(t)
+
+	var code int
+
+	out := capturer.CaptureStdout(func() {
+		// Create a temporary file with the GraphQL query
+		queryContent := []byte("{ stats { totalThreatModels } }")
+		tmpFile, err := os.CreateTemp("", "query-test-*.graphql")
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		defer os.Remove(tmpFile.Name())
+
+		if _, err := tmpFile.Write(queryContent); err != nil {
+			t.Fatal(err)
+		}
+
+		if _, err := tmpFile.Seek(0, 0); err != nil {
+			t.Fatal(err)
+		}
+
+		// Replace os.Stdin with our temp file
+		oldStdin := os.Stdin
+		defer func() { os.Stdin = oldStdin }()
+
+		os.Stdin = tmpFile
+
+		// Run the command with STDIN (no -query or -file flags)
+		code = cmd.Run([]string{
+			"-dir", "./testdata",
+			"-output", "compact",
+		})
+	})
+
+	if code != 0 {
+		t.Errorf("Expected code 0, got: %d\nOutput: %s", code, out)
+	}
+
+	// Parse JSON output
+	var result map[string]interface{}
+	err := json.Unmarshal([]byte(out), &result)
+	if err != nil {
+		t.Fatalf("Failed to parse JSON output: %s\nOutput: %s", err, out)
+	}
+
+	// Verify we got valid GraphQL response
+	if _, ok := result["data"]; !ok {
+		t.Errorf("Expected 'data' field in response, got: %v", result)
+	}
+
+	// Verify stats are present
+	data, ok := result["data"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("Expected 'data' to be an object, got: %v", result["data"])
+	}
+
+	stats, ok := data["stats"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("Expected 'stats' to be an object, got: %v", data["stats"])
+	}
+
+	if _, ok := stats["totalThreatModels"]; !ok {
+		t.Errorf("Expected 'totalThreatModels' field in stats, got: %v", stats)
 	}
 }
 
