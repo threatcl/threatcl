@@ -25,6 +25,55 @@ threatcl server -dir ./examples -watch
 - **GraphQL Endpoint**: `http://localhost:8080/graphql`
 - **Health Check**: `http://localhost:8080/health`
 
+## CLI Query Execution
+
+In addition to the GraphQL server, you can execute queries directly from the CLI using the `threatcl query` command. This is useful for:
+
+- Automation and CI/CD pipelines
+- Quick data extraction
+- Shell scripting
+- Testing queries before using with server
+
+### Basic Usage
+
+```bash
+# Execute a simple query
+threatcl query -dir ./examples -query '{ stats { totalThreats } }'
+
+# Query from a file
+threatcl query -dir ./examples -file query.graphql
+
+# With variables
+threatcl query -dir ./examples \
+  -query 'query($name: String!) { threatModel(name: $name) { author } }' \
+  -vars '{"name": "Tower of London"}'
+
+# Compact output for scripting
+threatcl query -dir ./examples \
+  -query '{ stats { totalThreats } }' \
+  -output compact | jq '.data.stats.totalThreats'
+```
+
+### Output Formats
+
+- `pretty` (default): Formatted JSON with indentation for human readability
+- `json`: Same as pretty
+- `compact`: Single-line JSON for scripting and piping to tools like `jq`
+
+### CLI vs Server
+
+| Feature | `server` | `query` |
+|---------|----------|---------|
+| Interactive Playground | ✅ | ❌ |
+| Long-running process | ✅ | ❌ (one-shot) |
+| CI/CD friendly | ❌ | ✅ |
+| Scriptable output | ❌ | ✅ |
+| Startup time | ~1s | <100ms |
+| Network required | ✅ | ❌ |
+| Use case | Development, exploration, API integration | Automation, scripting, CI/CD |
+
+See `threatcl query --help` for full options.
+
 ## Schema Overview
 
 The GraphQL schema is organized around the following main types:
