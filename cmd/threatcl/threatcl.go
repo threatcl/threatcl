@@ -103,6 +103,12 @@ func Run(args []string) int {
 				specCfg:          cfg,
 			}, nil
 		},
+		"query": func() (cli.Command, error) {
+			return &QueryCommand{
+				GlobalCmdOptions: globalCmdOptions,
+				specCfg:          cfg,
+			}, nil
+		},
 	}
 
 	cli := &cli.CLI{

@@ -1,3 +1,11 @@
+## 0.2.8
+
+### Nov 18, 2025
+
+CHANGES:
+
+* Added the `query` command to allow GraphQL queries from the Checklist
+
 ## 0.2.7
 
 ### Nov 15, 2025

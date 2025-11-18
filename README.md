@@ -143,6 +143,7 @@ Available commands are:
     generate     Generate an HCL Threat Model
     list         List Threatmodels found in HCL file(s)
     mcp          Model Context Protocol (MCP) server for threatcl
+    query        Execute GraphQL queries against threat model data
     server       Start a GraphQL API server for threat models
     terraform    Parse output from 'terraform show -json'
     validate     Validate existing HCL Threatmodel file(s)
@@ -288,6 +289,60 @@ query {
 For complete API documentation, schema reference, advanced queries, and integration examples, see:
 - **Full API Documentation**: [docs/graphql-api.md](docs/graphql-api.md)
 - **Query Examples**: [examples/graphql-queries.md](examples/graphql-queries.md)
+
+## Query (GraphQL CLI)
+
+The `threatcl query` command executes GraphQL queries directly from the command line without starting a server. This is ideal for automation, CI/CD pipelines, and shell scripting.
+
+### Basic Usage
+
+```bash
+# Get statistics
+$ threatcl query -dir ./examples -query '{ stats { totalThreats } }'
+
+# Query from file
+$ threatcl query -dir ./examples -file queries/get-stats.graphql
+
+# Use in scripts
+$ THREATS=$(threatcl query -dir ./examples \
+    -query '{ stats { totalThreats } }' \
+    -output compact | jq -r '.data.stats.totalThreats')
+$ echo "Found $THREATS threats"
+```
+
+### Output Formats
+
+- `pretty` (default): Formatted JSON with indentation
+- `json`: Same as pretty
+- `compact`: Single-line JSON for scripting
+
+### Query with Variables
+
+```bash
+$ threatcl query -dir ./examples \
+    -query 'query($author: String) { threatModels(filter: {author: $author}) { name } }' \
+    -vars '{"author": "John Doe"}'
+```
+
+### CI/CD Example
+
+```bash
+#!/bin/bash
+# Check if all controls are implemented before deployment
+
+UNIMPLEMENTED=$(threatcl query -dir ./threatmodels \
+  -query '{ stats { totalControls implementedControls } }' \
+  -output compact | jq -r '.data.stats.totalControls - .data.stats.implementedControls')
+
+if [ "$UNIMPLEMENTED" -gt 0 ]; then
+  echo "ERROR: $UNIMPLEMENTED controls are not yet implemented"
+  exit 1
+fi
+
+echo "All controls implemented, proceeding with deployment"
+```
+
+See [docs/graphql-api.md](docs/graphql-api.md) for available queries and the GraphQL schema.
 
 ## Dashboard
 
