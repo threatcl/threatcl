@@ -1,0 +1,1 @@
+query($author: String) { threatModels(filter: {author: $author}) { name } }

@@ -109,6 +109,19 @@ func Run(args []string) int {
 				specCfg:          cfg,
 			}, nil
 		},
+		"cloud": func() (cli.Command, error) {
+			return &CloudCommand{}, nil
+		},
+		"cloud login": func() (cli.Command, error) {
+			return &CloudLoginCommand{
+				GlobalCmdOptions: globalCmdOptions,
+			}, nil
+		},
+		"cloud whoami": func() (cli.Command, error) {
+			return &CloudWhoamiCommand{
+				GlobalCmdOptions: globalCmdOptions,
+			}, nil
+		},
 	}
 
 	cli := &cli.CLI{
