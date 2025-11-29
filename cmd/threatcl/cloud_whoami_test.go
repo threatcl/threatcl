@@ -211,6 +211,7 @@ func TestCloudWhoamiDisplayUserInfo(t *testing.T) {
 		"test@example.com",
 		"Test User",
 		"Test Org",
+		"org123",
 		"test-org",
 		"admin",
 		"pro",

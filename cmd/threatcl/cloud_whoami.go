@@ -149,6 +149,7 @@ func (c *CloudWhoamiCommand) displayUserInfo(resp *whoamiResponse) {
 				fmt.Println()
 			}
 			fmt.Printf("  Name:              %s\n", org.Organization.Name)
+			fmt.Printf("  ID:                %s\n", org.Organization.ID)
 			fmt.Printf("  Slug:              %s\n", org.Organization.Slug)
 			fmt.Printf("  Role:              %s\n", org.Role)
 			fmt.Printf("  Subscription Tier: %s\n", org.Organization.SubscriptionTier)
