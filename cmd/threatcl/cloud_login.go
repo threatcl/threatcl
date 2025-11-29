@@ -10,12 +10,13 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
-
-	"github.com/99designs/keyring"
 )
 
 type CloudLoginCommand struct {
 	*GlobalCmdOptions
+	httpClient HTTPClient
+	keyringSvc KeyringService
+	fsSvc      FileSystemService
 }
 
 func (c *CloudLoginCommand) Help() string {
@@ -58,11 +59,29 @@ func (c *CloudLoginCommand) Run(args []string) int {
 	flagSet := c.GetFlagset("cloud login")
 	flagSet.Parse(args)
 
+	// Use injected dependencies or defaults
+	httpClient := c.httpClient
+	if httpClient == nil {
+		httpClient = &defaultHTTPClient{
+			client: &http.Client{
+				Timeout: 5 * time.Second,
+			},
+		}
+	}
+	keyringSvc := c.keyringSvc
+	if keyringSvc == nil {
+		keyringSvc = &defaultKeyringService{}
+	}
+	fsSvc := c.fsSvc
+	if fsSvc == nil {
+		fsSvc = &defaultFileSystemService{}
+	}
+
 	// Check if user is already authenticated
-	token, err := getToken()
+	token, err := getToken(keyringSvc, fsSvc)
 	if err == nil {
 		// Token exists, validate it
-		isValid, validateErr := validateToken(token)
+		isValid, validateErr := validateToken(token, httpClient, fsSvc)
 		if validateErr != nil {
 			// Network error - unable to validate, but allow login to proceed with warning
 			fmt.Fprintf(os.Stderr, "Warning: Could not validate existing token (%s). Proceeding with login...\n\n", validateErr)
@@ -75,7 +94,7 @@ func (c *CloudLoginCommand) Run(args []string) int {
 	}
 
 	// Step 1: Request device code
-	deviceResp, err := c.requestDeviceCode()
+	deviceResp, err := c.requestDeviceCode(httpClient, fsSvc)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error requesting device code: %s\n", err)
 		return 1
@@ -85,14 +104,14 @@ func (c *CloudLoginCommand) Run(args []string) int {
 	c.displayVerificationInstructions(deviceResp)
 
 	// Step 3: Poll for token
-	tokenResp, err := c.pollForToken(deviceResp)
+	tokenResp, err := c.pollForToken(deviceResp, httpClient, fsSvc)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error during authentication: %s\n", err)
 		return 1
 	}
 
 	// Step 4: Save token
-	err = c.saveToken(tokenResp)
+	err = c.saveToken(tokenResp, keyringSvc, fsSvc)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error saving token: %s\n", err)
 		return 1
@@ -102,10 +121,10 @@ func (c *CloudLoginCommand) Run(args []string) int {
 	return 0
 }
 
-func (c *CloudLoginCommand) requestDeviceCode() (*deviceCodeResponse, error) {
-	url := fmt.Sprintf("%s/api/v1/auth/device", getAPIBaseURL())
+func (c *CloudLoginCommand) requestDeviceCode(httpClient HTTPClient, fsSvc FileSystemService) (*deviceCodeResponse, error) {
+	url := fmt.Sprintf("%s/api/v1/auth/device", getAPIBaseURL(fsSvc))
 
-	resp, err := http.Post(url, "application/json", nil)
+	resp, err := httpClient.Post(url, "application/json", nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to API: %w", err)
 	}
@@ -139,8 +158,8 @@ func (c *CloudLoginCommand) displayVerificationInstructions(deviceResp *deviceCo
 	fmt.Println()
 }
 
-func (c *CloudLoginCommand) pollForToken(deviceResp *deviceCodeResponse) (*tokenResponse, error) {
-	url := fmt.Sprintf("%s/api/v1/auth/device/poll", getAPIBaseURL())
+func (c *CloudLoginCommand) pollForToken(deviceResp *deviceCodeResponse, httpClient HTTPClient, fsSvc FileSystemService) (*tokenResponse, error) {
+	url := fmt.Sprintf("%s/api/v1/auth/device/poll", getAPIBaseURL(fsSvc))
 
 	expiresAt := time.Now().Add(time.Duration(deviceResp.ExpiresIn) * time.Second)
 	interval := time.Duration(deviceResp.Interval) * time.Second
@@ -170,7 +189,7 @@ func (c *CloudLoginCommand) pollForToken(deviceResp *deviceCodeResponse) (*token
 		}
 
 		// Make polling request
-		resp, err := http.Post(url, "application/json", bytes.NewBuffer(jsonBody))
+		resp, err := httpClient.Post(url, "application/json", bytes.NewBuffer(jsonBody))
 		if err != nil {
 			// Network error - continue polling
 			fmt.Print(".")
@@ -215,26 +234,19 @@ func (c *CloudLoginCommand) pollForToken(deviceResp *deviceCodeResponse) (*token
 	}
 }
 
-func (c *CloudLoginCommand) saveToken(tokenResp *tokenResponse) error {
+func (c *CloudLoginCommand) saveToken(tokenResp *tokenResponse, keyringSvc KeyringService, fsSvc FileSystemService) error {
 	// Try to save to keyring first
-	err := c.saveTokenToKeyring(tokenResp)
+	err := c.saveTokenToKeyring(tokenResp, keyringSvc)
 	if err == nil {
 		return nil
 	}
 
 	// If keyring fails, fall back to file
 	fmt.Fprintf(os.Stderr, "Warning: Could not save to keyring (%s), falling back to file storage\n", err)
-	return c.saveTokenToFile(tokenResp)
+	return c.saveTokenToFile(tokenResp, fsSvc)
 }
 
-func (c *CloudLoginCommand) saveTokenToKeyring(tokenResp *tokenResponse) error {
-	ring, err := keyring.Open(keyring.Config{
-		ServiceName: "threatcl",
-	})
-	if err != nil {
-		return fmt.Errorf("failed to open keyring: %w", err)
-	}
-
+func (c *CloudLoginCommand) saveTokenToKeyring(tokenResp *tokenResponse, keyringSvc KeyringService) error {
 	// Create token data structure
 	tokenData := map[string]interface{}{
 		"access_token": tokenResp.AccessToken,
@@ -245,28 +257,14 @@ func (c *CloudLoginCommand) saveTokenToKeyring(tokenResp *tokenResponse) error {
 		tokenData["expires_at"] = time.Now().Add(time.Duration(*tokenResp.ExpiresIn) * time.Second).Unix()
 	}
 
-	// Marshal to JSON for storage
-	tokenJSON, err := json.Marshal(tokenData)
-	if err != nil {
-		return fmt.Errorf("failed to marshal token: %w", err)
-	}
-
-	err = ring.Set(keyring.Item{
-		Key:  "access_token",
-		Data: tokenJSON,
-	})
-	if err != nil {
-		return fmt.Errorf("failed to save to keyring: %w", err)
-	}
-
-	return nil
+	return keyringSvc.Set("access_token", tokenData)
 }
 
-func (c *CloudLoginCommand) saveTokenToFile(tokenResp *tokenResponse) error {
+func (c *CloudLoginCommand) saveTokenToFile(tokenResp *tokenResponse, fsSvc FileSystemService) error {
 	// Determine config directory
-	configDir := os.Getenv("XDG_CONFIG_HOME")
+	configDir := fsSvc.Getenv("XDG_CONFIG_HOME")
 	if configDir == "" {
-		homeDir := os.Getenv("HOME")
+		homeDir := fsSvc.Getenv("HOME")
 		if homeDir == "" {
 			return fmt.Errorf("could not determine home directory")
 		}
@@ -276,7 +274,7 @@ func (c *CloudLoginCommand) saveTokenToFile(tokenResp *tokenResponse) error {
 	threatclDir := filepath.Join(configDir, "threatcl")
 
 	// Create directory if it doesn't exist
-	if err := os.MkdirAll(threatclDir, 0755); err != nil {
+	if err := fsSvc.MkdirAll(threatclDir, 0755); err != nil {
 		return fmt.Errorf("failed to create config directory: %w", err)
 	}
 
@@ -298,7 +296,7 @@ func (c *CloudLoginCommand) saveTokenToFile(tokenResp *tokenResponse) error {
 
 	// Write to file
 	settingsPath := filepath.Join(threatclDir, "settings.json")
-	if err := os.WriteFile(settingsPath, settingsJSON, 0600); err != nil {
+	if err := fsSvc.WriteFile(settingsPath, settingsJSON, 0600); err != nil {
 		return fmt.Errorf("failed to write settings file: %w", err)
 	}
 

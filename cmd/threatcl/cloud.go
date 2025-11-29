@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -118,11 +119,129 @@ type threatModel struct {
 	UpdatedAt      string   `json:"updated_at"`
 }
 
+// Interfaces for dependency injection (testing)
+
+// HTTPClient interface for HTTP operations
+type HTTPClient interface {
+	Do(req *http.Request) (*http.Response, error)
+	Post(url, contentType string, body io.Reader) (*http.Response, error)
+}
+
+// KeyringService interface for keyring operations
+type KeyringService interface {
+	Get(key string) (string, error)
+	Set(key string, data map[string]interface{}) error
+}
+
+// FileSystemService interface for file system operations
+type FileSystemService interface {
+	ReadFile(path string) ([]byte, error)
+	WriteFile(path string, data []byte, perm os.FileMode) error
+	MkdirAll(path string, perm os.FileMode) error
+	Stat(path string) (os.FileInfo, error)
+	Getenv(key string) string
+}
+
+// Default implementations
+
+// defaultHTTPClient wraps http.Client to implement HTTPClient interface
+type defaultHTTPClient struct {
+	client *http.Client
+}
+
+func (d *defaultHTTPClient) Do(req *http.Request) (*http.Response, error) {
+	return d.client.Do(req)
+}
+
+func (d *defaultHTTPClient) Post(url, contentType string, body io.Reader) (*http.Response, error) {
+	return http.Post(url, contentType, body)
+}
+
+// defaultKeyringService wraps keyring to implement KeyringService interface
+type defaultKeyringService struct{}
+
+func (d *defaultKeyringService) Get(key string) (string, error) {
+	ring, err := keyring.Open(keyring.Config{
+		ServiceName: "threatcl",
+	})
+	if err != nil {
+		return "", fmt.Errorf("failed to open keyring: %w", err)
+	}
+
+	item, err := ring.Get(key)
+	if err != nil {
+		return "", fmt.Errorf("failed to get token from keyring: %w", err)
+	}
+
+	var tokenData map[string]interface{}
+	if err := json.Unmarshal(item.Data, &tokenData); err != nil {
+		return "", fmt.Errorf("failed to parse token data: %w", err)
+	}
+
+	accessToken, ok := tokenData["access_token"].(string)
+	if !ok {
+		return "", fmt.Errorf("invalid token format in keyring")
+	}
+
+	return accessToken, nil
+}
+
+func (d *defaultKeyringService) Set(key string, data map[string]interface{}) error {
+	ring, err := keyring.Open(keyring.Config{
+		ServiceName: "threatcl",
+	})
+	if err != nil {
+		return fmt.Errorf("failed to open keyring: %w", err)
+	}
+
+	tokenJSON, err := json.Marshal(data)
+	if err != nil {
+		return fmt.Errorf("failed to marshal token: %w", err)
+	}
+
+	err = ring.Set(keyring.Item{
+		Key:  key,
+		Data: tokenJSON,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to save to keyring: %w", err)
+	}
+
+	return nil
+}
+
+// defaultFileSystemService wraps os operations to implement FileSystemService interface
+type defaultFileSystemService struct{}
+
+func (d *defaultFileSystemService) ReadFile(path string) ([]byte, error) {
+	return os.ReadFile(path)
+}
+
+func (d *defaultFileSystemService) WriteFile(path string, data []byte, perm os.FileMode) error {
+	return os.WriteFile(path, data, perm)
+}
+
+func (d *defaultFileSystemService) MkdirAll(path string, perm os.FileMode) error {
+	return os.MkdirAll(path, perm)
+}
+
+func (d *defaultFileSystemService) Stat(path string) (os.FileInfo, error) {
+	return os.Stat(path)
+}
+
+func (d *defaultFileSystemService) Getenv(key string) string {
+	return os.Getenv(key)
+}
+
 // Helper functions
 
 // getAPIBaseURL returns the API base URL from environment variable or default
-func getAPIBaseURL() string {
-	apiURL := os.Getenv("THREATCL_API_URL")
+// If fsSvc is nil, uses default implementation for backward compatibility
+func getAPIBaseURL(fsSvc FileSystemService) string {
+	if fsSvc == nil {
+		fsSvc = &defaultFileSystemService{}
+	}
+	apiURL := fsSvc.Getenv("THREATCL_API_URL")
 	if apiURL != "" {
 		// Remove trailing slash if present
 		return strings.TrimSuffix(apiURL, "/")
@@ -131,21 +250,43 @@ func getAPIBaseURL() string {
 }
 
 // getToken retrieves the access token from keyring or file
-func getToken() (string, error) {
+// If services are nil, uses default implementations for backward compatibility
+func getToken(keyringSvc KeyringService, fsSvc FileSystemService) (string, error) {
+	// Use default implementations if not provided
+	if keyringSvc == nil {
+		keyringSvc = &defaultKeyringService{}
+	}
+	if fsSvc == nil {
+		fsSvc = &defaultFileSystemService{}
+	}
+
 	// Try keyring first
-	token, err := getTokenFromKeyring()
+	token, err := getTokenFromKeyring(keyringSvc)
 	if err == nil {
 		return token, nil
 	}
 
 	// Fall back to file
-	return getTokenFromFile()
+	return getTokenFromFile(fsSvc)
 }
 
 // validateToken checks if a token is valid by making a lightweight API call
 // Returns true if token is valid, false if invalid/expired, and error for network issues
-func validateToken(token string) (bool, error) {
-	url := fmt.Sprintf("%s/api/v1/users/me", getAPIBaseURL())
+// If httpClient is nil, uses default implementation for backward compatibility
+func validateToken(token string, httpClient HTTPClient, fsSvc FileSystemService) (bool, error) {
+	// Use default implementations if not provided
+	if httpClient == nil {
+		httpClient = &defaultHTTPClient{
+			client: &http.Client{
+				Timeout: 5 * time.Second,
+			},
+		}
+	}
+	if fsSvc == nil {
+		fsSvc = &defaultFileSystemService{}
+	}
+
+	url := fmt.Sprintf("%s/api/v1/users/me", getAPIBaseURL(fsSvc))
 
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
@@ -155,11 +296,7 @@ func validateToken(token string) (bool, error) {
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
 	req.Header.Set("Content-Type", "application/json")
 
-	client := &http.Client{
-		Timeout: 5 * time.Second,
-	}
-
-	resp, err := client.Do(req)
+	resp, err := httpClient.Do(req)
 	if err != nil {
 		// Network error - unable to validate, not necessarily invalid
 		return false, fmt.Errorf("network error: %w", err)
@@ -179,37 +316,15 @@ func validateToken(token string) (bool, error) {
 	return false, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
 }
 
-func getTokenFromKeyring() (string, error) {
-	ring, err := keyring.Open(keyring.Config{
-		ServiceName: "threatcl",
-	})
-	if err != nil {
-		return "", fmt.Errorf("failed to open keyring: %w", err)
-	}
-
-	item, err := ring.Get("access_token")
-	if err != nil {
-		return "", fmt.Errorf("failed to get token from keyring: %w", err)
-	}
-
-	var tokenData map[string]interface{}
-	if err := json.Unmarshal(item.Data, &tokenData); err != nil {
-		return "", fmt.Errorf("failed to parse token data: %w", err)
-	}
-
-	accessToken, ok := tokenData["access_token"].(string)
-	if !ok {
-		return "", fmt.Errorf("invalid token format in keyring")
-	}
-
-	return accessToken, nil
+func getTokenFromKeyring(keyringSvc KeyringService) (string, error) {
+	return keyringSvc.Get("access_token")
 }
 
-func getTokenFromFile() (string, error) {
+func getTokenFromFile(fsSvc FileSystemService) (string, error) {
 	// Determine config directory
-	configDir := os.Getenv("XDG_CONFIG_HOME")
+	configDir := fsSvc.Getenv("XDG_CONFIG_HOME")
 	if configDir == "" {
-		homeDir := os.Getenv("HOME")
+		homeDir := fsSvc.Getenv("HOME")
 		if homeDir == "" {
 			return "", fmt.Errorf("could not determine home directory")
 		}
@@ -219,12 +334,12 @@ func getTokenFromFile() (string, error) {
 	settingsPath := filepath.Join(configDir, "threatcl", "settings.json")
 
 	// Check if file exists
-	if _, err := os.Stat(settingsPath); os.IsNotExist(err) {
+	if _, err := fsSvc.Stat(settingsPath); os.IsNotExist(err) {
 		return "", fmt.Errorf("no token found - please run 'threatcl cloud login' first")
 	}
 
 	// Read file
-	settingsJSON, err := os.ReadFile(settingsPath)
+	settingsJSON, err := fsSvc.ReadFile(settingsPath)
 	if err != nil {
 		return "", fmt.Errorf("failed to read settings file: %w", err)
 	}

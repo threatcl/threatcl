@@ -12,7 +12,10 @@ import (
 
 type CloudThreatmodelsCommand struct {
 	*GlobalCmdOptions
-	flagOrgId string
+	flagOrgId  string
+	httpClient HTTPClient
+	keyringSvc KeyringService
+	fsSvc      FileSystemService
 }
 
 func (c *CloudThreatmodelsCommand) Help() string {
@@ -52,8 +55,26 @@ func (c *CloudThreatmodelsCommand) Run(args []string) int {
 	flagSet.StringVar(&c.flagOrgId, "orgId", "", "Organization ID (optional)")
 	flagSet.Parse(args)
 
+	// Use injected dependencies or defaults
+	httpClient := c.httpClient
+	if httpClient == nil {
+		httpClient = &defaultHTTPClient{
+			client: &http.Client{
+				Timeout: 10 * time.Second,
+			},
+		}
+	}
+	keyringSvc := c.keyringSvc
+	if keyringSvc == nil {
+		keyringSvc = &defaultKeyringService{}
+	}
+	fsSvc := c.fsSvc
+	if fsSvc == nil {
+		fsSvc = &defaultFileSystemService{}
+	}
+
 	// Step 1: Retrieve token
-	token, err := getToken()
+	token, err := getToken(keyringSvc, fsSvc)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error retrieving token: %s\n", err)
 		fmt.Fprintf(os.Stderr, "Please run 'threatcl cloud login' to authenticate.\n")
@@ -64,7 +85,7 @@ func (c *CloudThreatmodelsCommand) Run(args []string) int {
 	orgId := c.flagOrgId
 	if orgId == "" {
 		// Fetch user info to get first organization
-		whoamiResp, err := c.fetchUserInfo(token)
+		whoamiResp, err := c.fetchUserInfo(token, httpClient, fsSvc)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error fetching user information: %s\n", err)
 			return 1
@@ -79,7 +100,7 @@ func (c *CloudThreatmodelsCommand) Run(args []string) int {
 	}
 
 	// Step 3: Fetch threat models
-	threatModels, err := c.fetchThreatModels(token, orgId)
+	threatModels, err := c.fetchThreatModels(token, orgId, httpClient, fsSvc)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error fetching threat models: %s\n", err)
 		return 1
@@ -91,8 +112,8 @@ func (c *CloudThreatmodelsCommand) Run(args []string) int {
 	return 0
 }
 
-func (c *CloudThreatmodelsCommand) fetchUserInfo(token string) (*whoamiResponse, error) {
-	url := fmt.Sprintf("%s/api/v1/users/me", getAPIBaseURL())
+func (c *CloudThreatmodelsCommand) fetchUserInfo(token string, httpClient HTTPClient, fsSvc FileSystemService) (*whoamiResponse, error) {
+	url := fmt.Sprintf("%s/api/v1/users/me", getAPIBaseURL(fsSvc))
 
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
@@ -102,11 +123,7 @@ func (c *CloudThreatmodelsCommand) fetchUserInfo(token string) (*whoamiResponse,
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
 	req.Header.Set("Content-Type", "application/json")
 
-	client := &http.Client{
-		Timeout: 10 * time.Second,
-	}
-
-	resp, err := client.Do(req)
+	resp, err := httpClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to API: %w", err)
 	}
@@ -128,8 +145,8 @@ func (c *CloudThreatmodelsCommand) fetchUserInfo(token string) (*whoamiResponse,
 	return &whoamiResp, nil
 }
 
-func (c *CloudThreatmodelsCommand) fetchThreatModels(token string, orgId string) ([]threatModel, error) {
-	url := fmt.Sprintf("%s/api/v1/org/%s/models", getAPIBaseURL(), orgId)
+func (c *CloudThreatmodelsCommand) fetchThreatModels(token string, orgId string, httpClient HTTPClient, fsSvc FileSystemService) ([]threatModel, error) {
+	url := fmt.Sprintf("%s/api/v1/org/%s/models", getAPIBaseURL(fsSvc), orgId)
 
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
@@ -139,11 +156,7 @@ func (c *CloudThreatmodelsCommand) fetchThreatModels(token string, orgId string)
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
 	req.Header.Set("Content-Type", "application/json")
 
-	client := &http.Client{
-		Timeout: 10 * time.Second,
-	}
-
-	resp, err := client.Do(req)
+	resp, err := httpClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to API: %w", err)
 	}
