@@ -48,7 +48,7 @@ func TestCloudThreatmodelsRunWithOrgId(t *testing.T) {
 
 	var code int
 	out := capturer.CaptureOutput(func() {
-		code = cmd.Run([]string{"-orgId", "org123"})
+		code = cmd.Run([]string{"-org-id", "org123"})
 	})
 
 	if code != 0 {
@@ -165,7 +165,7 @@ func TestCloudThreatmodelsRunEmptyList(t *testing.T) {
 
 	var code int
 	out := capturer.CaptureOutput(func() {
-		code = cmd.Run([]string{"-orgId", "org123"})
+		code = cmd.Run([]string{"-org-id", "org123"})
 	})
 
 	if code != 0 {
@@ -179,27 +179,27 @@ func TestCloudThreatmodelsRunEmptyList(t *testing.T) {
 
 func TestCloudThreatmodelsRunAPIErrors(t *testing.T) {
 	tests := []struct {
-		name        string
-		statusCode  int
-		httpErr     error
+		name         string
+		statusCode   int
+		httpErr      error
 		expectedCode int
 		expectedOut  string
 	}{
 		{
-			name:        "unauthorized",
-			statusCode:  http.StatusUnauthorized,
+			name:         "unauthorized",
+			statusCode:   http.StatusUnauthorized,
 			expectedCode: 1,
 			expectedOut:  "authentication failed",
 		},
 		{
-			name:        "server error",
-			statusCode:  http.StatusInternalServerError,
+			name:         "server error",
+			statusCode:   http.StatusInternalServerError,
 			expectedCode: 1,
 			expectedOut:  "Error fetching threat models",
 		},
 		{
-			name:        "network error",
-			httpErr:     fmt.Errorf("network error"),
+			name:         "network error",
+			httpErr:      fmt.Errorf("network error"),
 			expectedCode: 1,
 			expectedOut:  "Error fetching threat models",
 		},
@@ -227,7 +227,7 @@ func TestCloudThreatmodelsRunAPIErrors(t *testing.T) {
 
 			var code int
 			out := capturer.CaptureOutput(func() {
-				code = cmd.Run([]string{"-orgId", "org123"})
+				code = cmd.Run([]string{"-org-id", "org123"})
 			})
 
 			if code != tt.expectedCode {
@@ -377,4 +377,3 @@ func TestCloudThreatmodelsDisplayThreatModelsEmpty(t *testing.T) {
 		t.Errorf("expected 'No threat models found' message, got %q", out)
 	}
 }
-
