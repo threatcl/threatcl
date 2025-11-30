@@ -20,16 +20,16 @@ type CloudThreatmodelsCommand struct {
 
 func (c *CloudThreatmodelsCommand) Help() string {
 	helpText := `
-Usage: threatcl cloud threatmodels [-orgId=<orgId>]
+Usage: threatcl cloud threatmodels [-org-id=<orgId>]
 
 	List threat models for an organization.
 
-	If -orgId is not provided, the command will automatically use the
+	If -org-id is not provided, the command will automatically use the
 	first organization from your user profile.
 
 Options:
 
- -orgId=<orgId>
+ -org-id=<orgId>
    Optional organization ID. If not provided, uses the first organization
    from your user profile.
 
@@ -52,7 +52,7 @@ func (c *CloudThreatmodelsCommand) Synopsis() string {
 
 func (c *CloudThreatmodelsCommand) Run(args []string) int {
 	flagSet := c.GetFlagset("cloud threatmodels")
-	flagSet.StringVar(&c.flagOrgId, "orgId", "", "Organization ID (optional)")
+	flagSet.StringVar(&c.flagOrgId, "org-id", "", "Organization ID (optional)")
 	flagSet.Parse(args)
 
 	// Use injected dependencies or defaults
@@ -92,7 +92,7 @@ func (c *CloudThreatmodelsCommand) Run(args []string) int {
 		}
 
 		if len(whoamiResp.Organizations) == 0 {
-			fmt.Fprintf(os.Stderr, "Error: No organizations found. Please specify an organization ID with -orgId\n")
+			fmt.Fprintf(os.Stderr, "Error: No organizations found. Please specify an organization ID with -org-id\n")
 			return 1
 		}
 

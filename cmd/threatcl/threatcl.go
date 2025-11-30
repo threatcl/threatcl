@@ -127,6 +127,11 @@ func Run(args []string) int {
 				GlobalCmdOptions: globalCmdOptions,
 			}, nil
 		},
+		"cloud threatmodel": func() (cli.Command, error) {
+			return &CloudThreatmodelCommand{
+				GlobalCmdOptions: globalCmdOptions,
+			}, nil
+		},
 	}
 
 	cli := &cli.CLI{

@@ -27,6 +27,7 @@ Subcommands:
 	login        Authenticate with ThreatCL Cloud
 	whoami       Display current authenticated user information
 	threatmodels List threat models for an organization
+	threatmodel  Display information about a single threat model
 
 `
 	return strings.TrimSpace(helpText)
