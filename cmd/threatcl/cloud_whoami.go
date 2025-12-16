@@ -153,9 +153,9 @@ func (c *CloudWhoamiCommand) displayUserInfo(resp *whoamiResponse) {
 			fmt.Printf("  Slug:              %s\n", org.Organization.Slug)
 			fmt.Printf("  Role:              %s\n", org.Role)
 			fmt.Printf("  Subscription Tier: %s\n", org.Organization.SubscriptionTier)
-			fmt.Printf("  Max Users:         %d\n", org.Organization.MaxUsers)
-			fmt.Printf("  Max Threat Models: %d\n", org.Organization.MaxThreatModels)
-			fmt.Printf("  Max Storage:       %d MB\n", org.Organization.MaxStorageMB)
+			fmt.Printf("  Users:             %d/%d\n", org.Organization.CurUsers, org.Organization.MaxUsers)
+			fmt.Printf("  Threat Models:     %d/%d\n", org.Organization.CurThreatModels, org.Organization.MaxThreatModels)
+			fmt.Printf("  Storage:           %d KB/%d KB\n", org.Organization.CurStorageKB, org.Organization.MaxStorageKB)
 		}
 		fmt.Println()
 	}

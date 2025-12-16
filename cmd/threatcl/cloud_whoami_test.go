@@ -191,8 +191,11 @@ func TestCloudWhoamiDisplayUserInfo(t *testing.T) {
 					Slug:             "test-org",
 					SubscriptionTier: "pro",
 					MaxUsers:         10,
+					CurUsers:         5,
 					MaxThreatModels:  100,
-					MaxStorageMB:     1000,
+					CurThreatModels:  42,
+					MaxStorageKB:     1000,
+					CurStorageKB:     750,
 				},
 				Role:     "admin",
 				JoinedAt: "2024-01-01T00:00:00Z",
@@ -215,6 +218,9 @@ func TestCloudWhoamiDisplayUserInfo(t *testing.T) {
 		"test-org",
 		"admin",
 		"pro",
+		"5/10",           // Current/Max Users
+		"42/100",         // Current/Max Threat Models
+		"750 KB/1000 KB", // Current/Max Storage in KB
 	}
 
 	for _, field := range expectedFields {

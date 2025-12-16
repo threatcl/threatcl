@@ -23,12 +23,6 @@ Usage: threatcl cloud <subcommand>
 
 	This command is used to interact with ThreatCL Cloud services
 
-Subcommands:
-	login        Authenticate with ThreatCL Cloud
-	whoami       Display current authenticated user information
-	threatmodels List threat models for an organization
-	threatmodel  Display information about a single threat model
-
 `
 	return strings.TrimSpace(helpText)
 }
@@ -96,28 +90,59 @@ type orgInfo struct {
 	SubscriptionTier string                 `json:"subscription_tier"`
 	MaxUsers         int                    `json:"max_users"`
 	MaxThreatModels  int                    `json:"max_threat_models"`
-	MaxStorageMB     int                    `json:"max_storage_mb"`
+	MaxStorageKB     int                    `json:"max_storage_kb"`
+	CurUsers         int                    `json:"cur_users"`
+	CurThreatModels  int                    `json:"cur_threat_models"`
+	CurStorageKB     int                    `json:"cur_storage_kb"`
 	Settings         map[string]interface{} `json:"settings"`
 	CreatedAt        string                 `json:"created_at"`
 	UpdatedAt        string                 `json:"updated_at"`
 }
 
 type threatModel struct {
-	ID             string   `json:"id"`
-	OrganizationID string   `json:"organization_id"`
-	Name           string   `json:"name"`
-	Slug           string   `json:"slug"`
-	Description    string   `json:"description"`
-	Status         string   `json:"status"`
-	Version        string   `json:"version"`
-	SpecFilePath   string   `json:"spec_file_path"`
-	ThreatCount    int      `json:"threat_count"`
-	ControlCount   int      `json:"control_count"`
-	DataFlowCount  int      `json:"data_flow_count"`
-	Tags           []string `json:"tags"`
-	CreatedBy      string   `json:"created_by"`
-	CreatedAt      string   `json:"created_at"`
-	UpdatedAt      string   `json:"updated_at"`
+	ID                        string   `json:"id"`
+	OrganizationID            string   `json:"organization_id"`
+	Name                      string   `json:"name"`
+	Slug                      string   `json:"slug"`
+	Description               string   `json:"description"`
+	Status                    string   `json:"status"`
+	Version                   string   `json:"version"`
+	SpecFilePath              string   `json:"spec_file_path"`
+	AssetCount                int      `json:"asset_count"`
+	ThreatCount               int      `json:"threat_count"`
+	ControlCount              int      `json:"control_count"`
+	DataFlowCount             int      `json:"data_flow_count"`
+	UseCaseCount              int      `json:"use_case_count"`
+	ExclusionCount            int      `json:"exclusion_count"`
+	ThirdPartyDependencyCount int      `json:"tpd_count"`
+	Tags                      []string `json:"tags"`
+	CreatedBy                 string   `json:"created_by"`
+	CreatedAt                 string   `json:"created_at"`
+	UpdatedAt                 string   `json:"updated_at"`
+}
+
+type threatModelVersion struct {
+	ID                        string `json:"id"`
+	IsCurrent                 bool   `json:"is_current"`
+	ThreatModelID             string `json:"threat_model_id"`
+	Version                   string `json:"version"`
+	SpecFilePath              string `json:"spec_file_path"`
+	SpecFileSizeBytes         int    `json:"spec_file_size_bytes"`
+	SpecFileHash              string `json:"spec_file_hash"`
+	AssetCount                int    `json:"asset_count"`
+	ThreatCount               int    `json:"threat_count"`
+	ControlCount              int    `json:"control_count"`
+	DataFlowCount             int    `json:"data_flow_count"`
+	UseCaseCount              int    `json:"use_case_count"`
+	ExclusionCount            int    `json:"exclusion_count"`
+	ThirdPartyDependencyCount int    `json:"tpd_count"`
+	CreatedAt                 string `json:"created_at"`
+	ChangedBy                 string `json:"changed_by"`
+}
+
+type threatModelVersionsResponse struct {
+	Versions []threatModelVersion `json:"versions"`
+	Total    int                  `json:"total"`
 }
 
 // Interfaces for dependency injection (testing)

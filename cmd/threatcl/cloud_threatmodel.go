@@ -12,16 +12,18 @@ import (
 
 type CloudThreatmodelCommand struct {
 	*GlobalCmdOptions
-	flagOrgId   string
-	flagModelId string
-	httpClient  HTTPClient
-	keyringSvc  KeyringService
-	fsSvc       FileSystemService
+	flagOrgId     string
+	flagModelId   string
+	flagDownload  string
+	flagOverwrite bool
+	httpClient    HTTPClient
+	keyringSvc    KeyringService
+	fsSvc         FileSystemService
 }
 
 func (c *CloudThreatmodelCommand) Help() string {
 	helpText := `
-Usage: threatcl cloud threatmodel -model-id=<modelId_or_slug> [-org-id=<orgId>]
+Usage: threatcl cloud threatmodel -model-id=<modelId_or_slug> [-org-id=<orgId>] [-download=<file>] [-overwrite]
 
 	Display information about a single threat model.
 
@@ -38,6 +40,12 @@ Options:
  -org-id=<orgId>
    Optional organization ID. If not provided, uses the first organization
    from your user profile.
+
+ -download=<file>
+   Optionally, download the threat model file to the specified file.
+
+ -overwrite
+   When downloading, overwrite the file if it already exists. Default is false.
 
  -config=<file>
    Optional config file
@@ -60,6 +68,8 @@ func (c *CloudThreatmodelCommand) Run(args []string) int {
 	flagSet := c.GetFlagset("cloud threatmodel")
 	flagSet.StringVar(&c.flagOrgId, "org-id", "", "Organization ID (optional)")
 	flagSet.StringVar(&c.flagModelId, "model-id", "", "Threat model ID or slug (required)")
+	flagSet.StringVar(&c.flagDownload, "download", "", "Download the threat model file to the specified file")
+	flagSet.BoolVar(&c.flagOverwrite, "overwrite", false, "Overwrite the file if it already exists when downloading")
 	flagSet.Parse(args)
 
 	if c.flagModelId == "" {
@@ -119,10 +129,63 @@ func (c *CloudThreatmodelCommand) Run(args []string) int {
 		return 1
 	}
 
-	// Step 4: Display result
+	// Step 4: Download threat model file
+	if c.flagDownload != "" {
+		err = c.downloadThreatModel(token, orgId, c.flagModelId, c.flagDownload, c.flagOverwrite, httpClient, fsSvc)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error downloading threat model file: %s\n", err)
+			return 1
+		} else {
+			fmt.Printf("Successfully downloaded threat model file to %s\n", c.flagDownload)
+			return 0
+		}
+	}
+
+	// Step 5: Display result
 	c.displayThreatModel(threatModel)
 
 	return 0
+}
+
+func (c *CloudThreatmodelCommand) downloadThreatModel(token string, orgId string, modelId string, downloadFilePath string, overwrite bool, httpClient HTTPClient, fsSvc FileSystemService) error {
+	// Check if file exists and overwrite flag is not set
+	if !overwrite {
+		if _, err := fsSvc.Stat(downloadFilePath); err == nil {
+			return fmt.Errorf("file %s already exists. Use -overwrite flag to overwrite", downloadFilePath)
+		}
+	}
+
+	url := fmt.Sprintf("%s/api/v1/org/%s/models/%s/download", getAPIBaseURL(fsSvc), orgId, modelId)
+
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("failed to connect to API: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("API returned status %d", resp.StatusCode)
+	}
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("failed to read response body: %w", err)
+	}
+
+	// Write the response body to the file
+	err = fsSvc.WriteFile(downloadFilePath, body, 0644)
+	if err != nil {
+		return fmt.Errorf("failed to write file: %w", err)
+	}
+
+	return nil
 }
 
 func (c *CloudThreatmodelCommand) fetchUserInfo(token string, httpClient HTTPClient, fsSvc FileSystemService) (*whoamiResponse, error) {
@@ -212,9 +275,13 @@ func (c *CloudThreatmodelCommand) displayThreatModel(tm *threatModel) {
 		fmt.Printf("Spec File Path:  %s\n", tm.SpecFilePath)
 	}
 	fmt.Printf("Organization ID: %s\n", tm.OrganizationID)
+	fmt.Printf("Asset Count:     %d\n", tm.AssetCount)
 	fmt.Printf("Threat Count:    %d\n", tm.ThreatCount)
 	fmt.Printf("Control Count:   %d\n", tm.ControlCount)
 	fmt.Printf("Data Flow Count: %d\n", tm.DataFlowCount)
+	fmt.Printf("Use Case Count:  %d\n", tm.UseCaseCount)
+	fmt.Printf("Exclusion Count: %d\n", tm.ExclusionCount)
+	fmt.Printf("Third Party Dependency Count: %d\n", tm.ThirdPartyDependencyCount)
 	if len(tm.Tags) > 0 {
 		fmt.Printf("Tags:            %s\n", strings.Join(tm.Tags, ", "))
 	}
