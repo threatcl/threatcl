@@ -11,6 +11,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/threatcl/spec"
 )
 
 // Mock implementations for testing
@@ -27,7 +29,7 @@ func newMockRoundTripper() *mockRoundTripper {
 	return &mockRoundTripper{
 		responses:  make(map[string]*http.Response),
 		errors:     make(map[string]error),
-		callCounts:  make(map[string]int),
+		callCounts: make(map[string]int),
 	}
 }
 
@@ -200,6 +202,13 @@ func newMockFileSystemService() *mockFileSystemService {
 	}
 }
 
+// SetFileContent is a test helper to add file content to the mock
+func (m *mockFileSystemService) SetFileContent(path string, data []byte) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.files[path] = data
+}
+
 func (m *mockFileSystemService) ReadFile(path string) ([]byte, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -315,7 +324,7 @@ type mockFileInfo struct {
 
 func (m *mockFileInfo) Name() string       { return m.name }
 func (m *mockFileInfo) Size() int64        { return 0 }
-func (m *mockFileInfo) Mode() os.FileMode { return 0644 }
+func (m *mockFileInfo) Mode() os.FileMode  { return 0644 }
 func (m *mockFileInfo) ModTime() time.Time { return time.Now() }
 func (m *mockFileInfo) IsDir() bool        { return m.isDir }
 func (m *mockFileInfo) Sys() interface{}   { return nil }
@@ -358,6 +367,24 @@ func testCloudThreatmodelsCommand(t testing.TB, httpClient HTTPClient, keyringSv
 		httpClient:       httpClient,
 		keyringSvc:       keyringSvc,
 		fsSvc:            fsSvc,
+	}
+}
+
+func testCloudCreateCommand(t testing.TB, httpClient HTTPClient, keyringSvc KeyringService, fsSvc FileSystemService) *CloudCreateCommand {
+	t.Helper()
+
+	global := &GlobalCmdOptions{}
+	specCfg, err := spec.LoadSpecConfig()
+	if err != nil {
+		t.Fatalf("failed to load spec config: %v", err)
+	}
+
+	return &CloudCreateCommand{
+		GlobalCmdOptions: global,
+		httpClient:       httpClient,
+		keyringSvc:       keyringSvc,
+		fsSvc:            fsSvc,
+		specCfg:          specCfg,
 	}
 }
 
@@ -545,4 +572,3 @@ func TestValidateToken(t *testing.T) {
 		})
 	}
 }
-

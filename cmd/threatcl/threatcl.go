@@ -143,6 +143,12 @@ func Run(args []string) int {
 				specCfg:          cfg,
 			}, nil
 		},
+		"cloud create": func() (cli.Command, error) {
+			return &CloudCreateCommand{
+				GlobalCmdOptions: globalCmdOptions,
+				specCfg:          cfg,
+			}, nil
+		},
 	}
 
 	cli := &cli.CLI{
