@@ -15,10 +15,12 @@ func testCloudThreatmodelVersionsCommand(t testing.TB, httpClient HTTPClient, ke
 	global := &GlobalCmdOptions{}
 
 	return &CloudThreatmodelVersionsCommand{
-		GlobalCmdOptions: global,
-		httpClient:       httpClient,
-		keyringSvc:       keyringSvc,
-		fsSvc:            fsSvc,
+		CloudCommandBase: CloudCommandBase{
+			GlobalCmdOptions: global,
+			httpClient:       httpClient,
+			keyringSvc:       keyringSvc,
+			fsSvc:            fsSvc,
+		},
 	}
 }
 
@@ -291,9 +293,9 @@ func TestCloudThreatmodelVersionsFetchUserInfo(t *testing.T) {
 	}
 	httpClient.transport.setResponse("GET", "/api/v1/users/me", http.StatusOK, jsonResponse(whoamiResp))
 
-	cmd := testCloudThreatmodelVersionsCommand(t, httpClient, nil, fsSvc)
+	_ = testCloudThreatmodelVersionsCommand(t, httpClient, nil, fsSvc)
 
-	resp, err := cmd.fetchUserInfo("token", httpClient, fsSvc)
+	resp, err := fetchUserInfo("token", httpClient, fsSvc)
 
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
@@ -337,9 +339,9 @@ func TestCloudThreatmodelVersionsFetchThreatModelVersions(t *testing.T) {
 	}
 	httpClient.transport.setResponse("GET", "/api/v1/org/org123/models/tm1/versions", http.StatusOK, jsonResponse(versionsResp))
 
-	cmd := testCloudThreatmodelVersionsCommand(t, httpClient, nil, fsSvc)
+	_ = testCloudThreatmodelVersionsCommand(t, httpClient, nil, fsSvc)
 
-	versions, err := cmd.fetchThreatModelVersions("token", "org123", "tm1", httpClient, fsSvc)
+	versions, err := fetchThreatModelVersions("token", "org123", "tm1", httpClient, fsSvc)
 
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
@@ -384,9 +386,9 @@ func TestCloudThreatmodelVersionsFetchThreatModelVersionsWithSlug(t *testing.T) 
 	}
 	httpClient.transport.setResponse("GET", "/api/v1/org/org123/models/my-model-slug/versions", http.StatusOK, jsonResponse(versionsResp))
 
-	cmd := testCloudThreatmodelVersionsCommand(t, httpClient, nil, fsSvc)
+	_ = testCloudThreatmodelVersionsCommand(t, httpClient, nil, fsSvc)
 
-	versions, err := cmd.fetchThreatModelVersions("token", "org123", "my-model-slug", httpClient, fsSvc)
+	versions, err := fetchThreatModelVersions("token", "org123", "my-model-slug", httpClient, fsSvc)
 
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
@@ -712,9 +714,10 @@ func TestCloudThreatmodelVersionsDownloadThreatModelVersion(t *testing.T) {
 	fileContent := "threatmodel \"test\" {\n  version = \"1.0.0\"\n  description = \"test model\"\n}"
 	httpClient.transport.setResponse("GET", "/api/v1/org/org123/models/tm1/versions/1.0.0/download", http.StatusOK, fileContent)
 
-	cmd := testCloudThreatmodelVersionsCommand(t, httpClient, nil, fsSvc)
+	_ = testCloudThreatmodelVersionsCommand(t, httpClient, nil, fsSvc)
 
-	err := cmd.downloadThreatModelVersion("token", "org123", "tm1", "1.0.0", "test.hcl", false, httpClient, fsSvc)
+	url := fmt.Sprintf("%s/api/v1/org/%s/models/%s/versions/%s/download", getAPIBaseURL(fsSvc), "org123", "tm1", "1.0.0")
+	err := downloadFile(url, "token", "test.hcl", false, httpClient, fsSvc)
 
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
@@ -738,9 +741,10 @@ func TestCloudThreatmodelVersionsDownloadThreatModelVersionWithSlug(t *testing.T
 	fileContent := "threatmodel \"my-model\" {\n  version = \"2.5.0\"\n}"
 	httpClient.transport.setResponse("GET", "/api/v1/org/org123/models/my-model-slug/versions/2.5.0/download", http.StatusOK, fileContent)
 
-	cmd := testCloudThreatmodelVersionsCommand(t, httpClient, nil, fsSvc)
+	_ = testCloudThreatmodelVersionsCommand(t, httpClient, nil, fsSvc)
 
-	err := cmd.downloadThreatModelVersion("token", "org123", "my-model-slug", "2.5.0", "test.hcl", false, httpClient, fsSvc)
+	url := fmt.Sprintf("%s/api/v1/org/%s/models/%s/versions/%s/download", getAPIBaseURL(fsSvc), "org123", "my-model-slug", "2.5.0")
+	err := downloadFile(url, "token", "test.hcl", false, httpClient, fsSvc)
 
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
@@ -763,10 +767,11 @@ func TestCloudThreatmodelVersionsDownloadThreatModelVersionFileExists(t *testing
 	// Simulate existing file
 	fsSvc.files["existing.hcl"] = []byte("old content")
 
-	cmd := testCloudThreatmodelVersionsCommand(t, httpClient, nil, fsSvc)
+	_ = testCloudThreatmodelVersionsCommand(t, httpClient, nil, fsSvc)
 
 	// Try to download without overwrite flag - should fail
-	err := cmd.downloadThreatModelVersion("token", "org123", "tm1", "1.0.0", "existing.hcl", false, httpClient, fsSvc)
+	url := fmt.Sprintf("%s/api/v1/org/%s/models/%s/versions/%s/download", getAPIBaseURL(fsSvc), "org123", "tm1", "1.0.0")
+	err := downloadFile(url, "token", "existing.hcl", false, httpClient, fsSvc)
 
 	if err == nil {
 		t.Errorf("expected error when file exists without overwrite flag")
@@ -793,10 +798,11 @@ func TestCloudThreatmodelVersionsDownloadThreatModelVersionFileExistsWithOverwri
 	fileContent := "threatmodel \"new\" {\n  version = \"3.0.0\"\n  description = \"new model\"\n}"
 	httpClient.transport.setResponse("GET", "/api/v1/org/org123/models/tm1/versions/3.0.0/download", http.StatusOK, fileContent)
 
-	cmd := testCloudThreatmodelVersionsCommand(t, httpClient, nil, fsSvc)
+	_ = testCloudThreatmodelVersionsCommand(t, httpClient, nil, fsSvc)
 
 	// Try to download with overwrite flag - should succeed
-	err := cmd.downloadThreatModelVersion("token", "org123", "tm1", "3.0.0", "existing.hcl", true, httpClient, fsSvc)
+	url := fmt.Sprintf("%s/api/v1/org/%s/models/%s/versions/%s/download", getAPIBaseURL(fsSvc), "org123", "tm1", "3.0.0")
+	err := downloadFile(url, "token", "existing.hcl", true, httpClient, fsSvc)
 
 	if err != nil {
 		t.Errorf("unexpected error with overwrite flag: %v", err)
@@ -893,19 +899,16 @@ func TestCloudThreatmodelVersionsDownloadNotFoundError(t *testing.T) {
 
 	httpClient.transport.setResponse("GET", "/api/v1/org/org123/models/tm1/versions/9.9.9/download", http.StatusNotFound, `{"error":"version not found"}`)
 
-	cmd := testCloudThreatmodelVersionsCommand(t, httpClient, nil, fsSvc)
+	_ = testCloudThreatmodelVersionsCommand(t, httpClient, nil, fsSvc)
 
-	err := cmd.downloadThreatModelVersion("token", "org123", "tm1", "9.9.9", "test.hcl", false, httpClient, fsSvc)
+	url := fmt.Sprintf("%s/api/v1/org/%s/models/%s/versions/%s/download", getAPIBaseURL(fsSvc), "org123", "tm1", "9.9.9")
+	err := downloadFile(url, "token", "test.hcl", false, httpClient, fsSvc)
 
 	if err == nil {
 		t.Errorf("expected error for not found version")
 	}
 
-	if !strings.Contains(err.Error(), "threat model version not found") {
-		t.Errorf("expected 'threat model version not found' error, got %v", err)
-	}
-
-	if !strings.Contains(err.Error(), "9.9.9") {
-		t.Errorf("expected version '9.9.9' in error message, got %v", err)
+	if !strings.Contains(err.Error(), "not found") {
+		t.Errorf("expected 'not found' error, got %v", err)
 	}
 }

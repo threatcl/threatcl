@@ -1,25 +1,19 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
 	"os"
 	"strings"
 	"time"
 )
 
 type CloudThreatmodelVersionsCommand struct {
-	*GlobalCmdOptions
+	CloudCommandBase
 	flagOrgId     string
 	flagModelId   string
 	flagDownload  string
 	flagOverwrite bool
 	flagVersion   string
-	httpClient    HTTPClient
-	keyringSvc    KeyringService
-	fsSvc         FileSystemService
 }
 
 func (c *CloudThreatmodelVersionsCommand) Help() string {
@@ -90,64 +84,36 @@ func (c *CloudThreatmodelVersionsCommand) Run(args []string) int {
 		return 1
 	}
 
-	// Use injected dependencies or defaults
-	httpClient := c.httpClient
-	if httpClient == nil {
-		httpClient = &defaultHTTPClient{
-			client: &http.Client{
-				Timeout: 10 * time.Second,
-			},
-		}
-	}
-	keyringSvc := c.keyringSvc
-	if keyringSvc == nil {
-		keyringSvc = &defaultKeyringService{}
-	}
-	fsSvc := c.fsSvc
-	if fsSvc == nil {
-		fsSvc = &defaultFileSystemService{}
-	}
+	// Initialize dependencies
+	httpClient, keyringSvc, fsSvc := c.initDependencies(10 * time.Second)
 
 	// Step 1: Retrieve token
-	token, err := getToken(keyringSvc, fsSvc)
+	token, err := c.getTokenWithDeps(keyringSvc, fsSvc)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error retrieving token: %s\n", err)
-		fmt.Fprintf(os.Stderr, "Please run 'threatcl cloud login' to authenticate.\n")
-		return 1
+		return c.handleTokenError(err)
 	}
 
 	// Step 2: Get organization ID
-	orgId := c.flagOrgId
-	if orgId == "" {
-		// Fetch user info to get first organization
-		whoamiResp, err := c.fetchUserInfo(token, httpClient, fsSvc)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error fetching user information: %s\n", err)
-			return 1
-		}
-
-		if len(whoamiResp.Organizations) == 0 {
-			fmt.Fprintf(os.Stderr, "Error: No organizations found. Please specify an organization ID with -org-id\n")
-			return 1
-		}
-
-		orgId = whoamiResp.Organizations[0].Organization.ID
+	orgId, err := c.resolveOrgId(token, c.flagOrgId, httpClient, fsSvc)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%s\n", err)
+		return 1
 	}
 
 	// Step 3: Download threat model version file (if requested)
 	if c.flagDownload != "" {
-		err = c.downloadThreatModelVersion(token, orgId, c.flagModelId, c.flagVersion, c.flagDownload, c.flagOverwrite, httpClient, fsSvc)
+		url := fmt.Sprintf("%s/api/v1/org/%s/models/%s/versions/%s/download", getAPIBaseURL(fsSvc), orgId, c.flagModelId, c.flagVersion)
+		err = downloadFile(url, token, c.flagDownload, c.flagOverwrite, httpClient, fsSvc)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error downloading threat model version file: %s\n", err)
 			return 1
-		} else {
-			fmt.Printf("Successfully downloaded threat model version %s to %s\n", c.flagVersion, c.flagDownload)
-			return 0
 		}
+		fmt.Printf("Successfully downloaded threat model version %s to %s\n", c.flagVersion, c.flagDownload)
+		return 0
 	}
 
 	// Step 4: Fetch threat model versions
-	threatModelVersionsResponse, err := c.fetchThreatModelVersions(token, orgId, c.flagModelId, httpClient, fsSvc)
+	threatModelVersionsResponse, err := fetchThreatModelVersions(token, orgId, c.flagModelId, httpClient, fsSvc)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error fetching threat model versions: %s\n", err)
 		return 1
@@ -157,54 +123,6 @@ func (c *CloudThreatmodelVersionsCommand) Run(args []string) int {
 	c.displayThreatModelVersions(threatModelVersionsResponse)
 
 	return 0
-}
-
-func (c *CloudThreatmodelVersionsCommand) downloadThreatModelVersion(token string, orgId string, modelId string, version string, downloadFilePath string, overwrite bool, httpClient HTTPClient, fsSvc FileSystemService) error {
-	// Check if file exists and overwrite flag is not set
-	if !overwrite {
-		if _, err := fsSvc.Stat(downloadFilePath); err == nil {
-			return fmt.Errorf("file %s already exists. Use -overwrite flag to overwrite", downloadFilePath)
-		}
-	}
-
-	url := fmt.Sprintf("%s/api/v1/org/%s/models/%s/versions/%s/download", getAPIBaseURL(fsSvc), orgId, modelId, version)
-
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		return fmt.Errorf("failed to create request: %w", err)
-	}
-
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
-	req.Header.Set("Content-Type", "application/json")
-
-	resp, err := httpClient.Do(req)
-	if err != nil {
-		return fmt.Errorf("failed to connect to API: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		if resp.StatusCode == http.StatusUnauthorized {
-			return fmt.Errorf("authentication failed - token may be invalid or expired. Please run 'threatcl cloud login' again")
-		}
-		if resp.StatusCode == http.StatusNotFound {
-			return fmt.Errorf("threat model version not found: %s for model %s", version, modelId)
-		}
-		return fmt.Errorf("API returned status %d: %s", resp.StatusCode, string(body))
-	}
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return fmt.Errorf("failed to read response body: %w", err)
-	}
-
-	// Write the response body to the file
-	err = fsSvc.WriteFile(downloadFilePath, body, 0644)
-	if err != nil {
-		return fmt.Errorf("failed to write file: %w", err)
-	}
-
-	return nil
 }
 
 func (c *CloudThreatmodelVersionsCommand) displayThreatModelVersions(threatModelVersionsResponse *threatModelVersionsResponse) {
@@ -248,75 +166,6 @@ func formatTimestamp(timestamp string) string {
 	}
 	// Format as: "2006-01-02 15:04:05"
 	return t.Format("2006-01-02 15:04:05")
-}
-
-func (c *CloudThreatmodelVersionsCommand) fetchThreatModelVersions(token string, orgId string, modelId string, httpClient HTTPClient, fsSvc FileSystemService) (*threatModelVersionsResponse, error) {
-	url := fmt.Sprintf("%s/api/v1/org/%s/models/%s/versions", getAPIBaseURL(fsSvc), orgId, modelId)
-
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %w", err)
-	}
-
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
-	req.Header.Set("Content-Type", "application/json")
-
-	resp, err := httpClient.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("failed to connect to API: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		if resp.StatusCode == http.StatusUnauthorized {
-			return nil, fmt.Errorf("authentication failed - token may be invalid or expired. Please run 'threatcl cloud login' again")
-		}
-		if resp.StatusCode == http.StatusNotFound {
-			return nil, fmt.Errorf("threat model not found: %s", modelId)
-		}
-		return nil, fmt.Errorf("API returned status %d: %s", resp.StatusCode, string(body))
-	}
-
-	var threatModelVersionsResponse threatModelVersionsResponse
-	if err := json.NewDecoder(resp.Body).Decode(&threatModelVersionsResponse); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-
-	return &threatModelVersionsResponse, nil
-}
-
-func (c *CloudThreatmodelVersionsCommand) fetchUserInfo(token string, httpClient HTTPClient, fsSvc FileSystemService) (*whoamiResponse, error) {
-	url := fmt.Sprintf("%s/api/v1/users/me", getAPIBaseURL(fsSvc))
-
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %w", err)
-	}
-
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
-	req.Header.Set("Content-Type", "application/json")
-
-	resp, err := httpClient.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("failed to connect to API: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		if resp.StatusCode == http.StatusUnauthorized {
-			return nil, fmt.Errorf("authentication failed - token may be invalid or expired. Please run 'threatcl cloud login' again")
-		}
-		return nil, fmt.Errorf("API returned status %d: %s", resp.StatusCode, string(body))
-	}
-
-	var whoamiResp whoamiResponse
-	if err := json.NewDecoder(resp.Body).Decode(&whoamiResp); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-
-	return &whoamiResp, nil
 }
 
 // func (c *CloudThreatmodelVersionsCommand) fetchThreatModel(token string, orgId string, modelIdOrSlug string, httpClient HTTPClient, fsSvc FileSystemService) (*threatModel, error) {

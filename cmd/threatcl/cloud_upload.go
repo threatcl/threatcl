@@ -1,14 +1,8 @@
 package main
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
-	"io"
-	"mime/multipart"
-	"net/http"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -16,12 +10,9 @@ import (
 )
 
 type CloudUploadCommand struct {
-	*GlobalCmdOptions
+	CloudCommandBase
 	flagOrgId   string
 	flagModelId string
-	httpClient  HTTPClient
-	keyringSvc  KeyringService
-	fsSvc       FileSystemService
 	specCfg     *spec.ThreatmodelSpecConfig
 }
 
@@ -100,23 +91,8 @@ func (c *CloudUploadCommand) Run(args []string) int {
 		}
 	}
 
-	// Use injected dependencies or defaults
-	httpClient := c.httpClient
-	if httpClient == nil {
-		httpClient = &defaultHTTPClient{
-			client: &http.Client{
-				Timeout: 30 * time.Second, // Longer timeout for file uploads
-			},
-		}
-	}
-	keyringSvc := c.keyringSvc
-	if keyringSvc == nil {
-		keyringSvc = &defaultKeyringService{}
-	}
-	fsSvc := c.fsSvc
-	if fsSvc == nil {
-		fsSvc = &defaultFileSystemService{}
-	}
+	// Initialize dependencies - use longer timeout for file uploads
+	httpClient, keyringSvc, fsSvc := c.initDependencies(30 * time.Second)
 
 	// Step 1: Validate and parse the HCL file
 	tmParser := spec.NewThreatmodelParser(c.specCfg)
@@ -144,33 +120,20 @@ func (c *CloudUploadCommand) Run(args []string) int {
 	}
 
 	// Step 2: Retrieve token
-	token, err := getToken(keyringSvc, fsSvc)
+	token, err := c.getTokenWithDeps(keyringSvc, fsSvc)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error retrieving token: %s\n", err)
-		fmt.Fprintf(os.Stderr, "Please run 'threatcl cloud login' to authenticate.\n")
-		return 1
+		return c.handleTokenError(err)
 	}
 
 	// Step 3: Get organization ID
-	orgId := c.flagOrgId
-	if orgId == "" {
-		// Fetch user info to get first organization
-		whoamiResp, err := c.fetchUserInfo(token, httpClient, fsSvc)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error fetching user information: %s\n", err)
-			return 1
-		}
-
-		if len(whoamiResp.Organizations) == 0 {
-			fmt.Fprintf(os.Stderr, "Error: No organizations found. Please specify an organization ID with -org-id\n")
-			return 1
-		}
-
-		orgId = whoamiResp.Organizations[0].Organization.ID
+	orgId, err := c.resolveOrgId(token, c.flagOrgId, httpClient, fsSvc)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%s\n", err)
+		return 1
 	}
 
 	// Step 4: Upload the file
-	err = c.uploadFile(token, orgId, c.flagModelId, filePath, httpClient, fsSvc)
+	err = uploadFile(token, orgId, c.flagModelId, filePath, httpClient, fsSvc)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error uploading file: %s\n", err)
 		return 1
@@ -178,97 +141,4 @@ func (c *CloudUploadCommand) Run(args []string) int {
 
 	fmt.Printf("Successfully uploaded threat model from %s\n", filePath)
 	return 0
-}
-
-func (c *CloudUploadCommand) fetchUserInfo(token string, httpClient HTTPClient, fsSvc FileSystemService) (*whoamiResponse, error) {
-	url := fmt.Sprintf("%s/api/v1/users/me", getAPIBaseURL(fsSvc))
-
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %w", err)
-	}
-
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
-	req.Header.Set("Content-Type", "application/json")
-
-	resp, err := httpClient.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("failed to connect to API: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		if resp.StatusCode == http.StatusUnauthorized {
-			return nil, fmt.Errorf("authentication failed - token may be invalid or expired. Please run 'threatcl cloud login' again")
-		}
-		return nil, fmt.Errorf("API returned status %d: %s", resp.StatusCode, string(body))
-	}
-
-	var whoamiResp whoamiResponse
-	if err := json.NewDecoder(resp.Body).Decode(&whoamiResp); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-
-	return &whoamiResp, nil
-}
-
-func (c *CloudUploadCommand) uploadFile(token string, orgId string, modelIdOrSlug string, filePath string, httpClient HTTPClient, fsSvc FileSystemService) error {
-	url := fmt.Sprintf("%s/api/v1/org/%s/models/%s/upload", getAPIBaseURL(fsSvc), orgId, modelIdOrSlug)
-
-	// Read the file
-	fileData, err := fsSvc.ReadFile(filePath)
-	if err != nil {
-		return fmt.Errorf("failed to read file: %w", err)
-	}
-
-	// Create multipart form
-	var requestBody bytes.Buffer
-	writer := multipart.NewWriter(&requestBody)
-
-	// Add file field
-	fileWriter, err := writer.CreateFormFile("file", filepath.Base(filePath))
-	if err != nil {
-		return fmt.Errorf("failed to create form file: %w", err)
-	}
-
-	_, err = fileWriter.Write(fileData)
-	if err != nil {
-		return fmt.Errorf("failed to write file data: %w", err)
-	}
-
-	// Close the multipart writer
-	err = writer.Close()
-	if err != nil {
-		return fmt.Errorf("failed to close multipart writer: %w", err)
-	}
-
-	// Create request
-	req, err := http.NewRequest("POST", url, &requestBody)
-	if err != nil {
-		return fmt.Errorf("failed to create request: %w", err)
-	}
-
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
-	req.Header.Set("Content-Type", writer.FormDataContentType())
-
-	// Send request
-	resp, err := httpClient.Do(req)
-	if err != nil {
-		return fmt.Errorf("failed to connect to API: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		if resp.StatusCode == http.StatusUnauthorized {
-			return fmt.Errorf("authentication failed - token may be invalid or expired. Please run 'threatcl cloud login' again")
-		}
-		if resp.StatusCode == http.StatusNotFound {
-			return fmt.Errorf("threat model not found: %s", modelIdOrSlug)
-		}
-		return fmt.Errorf("API returned status %d: %s", resp.StatusCode, string(body))
-	}
-
-	return nil
 }

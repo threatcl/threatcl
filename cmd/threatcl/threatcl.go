@@ -114,39 +114,67 @@ func Run(args []string) int {
 		},
 		"cloud login": func() (cli.Command, error) {
 			return &CloudLoginCommand{
-				GlobalCmdOptions: globalCmdOptions,
+				CloudCommandBase: CloudCommandBase{
+					GlobalCmdOptions: globalCmdOptions,
+				},
 			}, nil
 		},
 		"cloud whoami": func() (cli.Command, error) {
 			return &CloudWhoamiCommand{
-				GlobalCmdOptions: globalCmdOptions,
+				CloudCommandBase: CloudCommandBase{
+					GlobalCmdOptions: globalCmdOptions,
+				},
 			}, nil
 		},
 		"cloud threatmodels": func() (cli.Command, error) {
 			return &CloudThreatmodelsCommand{
-				GlobalCmdOptions: globalCmdOptions,
+				CloudCommandBase: CloudCommandBase{
+					GlobalCmdOptions: globalCmdOptions,
+				},
 			}, nil
 		},
 		"cloud threatmodel": func() (cli.Command, error) {
 			return &CloudThreatmodelCommand{
-				GlobalCmdOptions: globalCmdOptions,
+				CloudCommandBase: CloudCommandBase{
+					GlobalCmdOptions: globalCmdOptions,
+				},
 			}, nil
 		},
 		"cloud threatmodel versions": func() (cli.Command, error) {
 			return &CloudThreatmodelVersionsCommand{
-				GlobalCmdOptions: globalCmdOptions,
+				CloudCommandBase: CloudCommandBase{
+					GlobalCmdOptions: globalCmdOptions,
+				},
+			}, nil
+		},
+		"cloud threatmodel delete": func() (cli.Command, error) {
+			return &CloudThreatmodelDeleteCommand{
+				CloudCommandBase: CloudCommandBase{
+					GlobalCmdOptions: globalCmdOptions,
+				},
+			}, nil
+		},
+		"cloud threatmodel update-status": func() (cli.Command, error) {
+			return &CloudThreatmodelUpdateStatusCommand{
+				CloudCommandBase: CloudCommandBase{
+					GlobalCmdOptions: globalCmdOptions,
+				},
 			}, nil
 		},
 		"cloud upload": func() (cli.Command, error) {
 			return &CloudUploadCommand{
-				GlobalCmdOptions: globalCmdOptions,
-				specCfg:          cfg,
+				CloudCommandBase: CloudCommandBase{
+					GlobalCmdOptions: globalCmdOptions,
+				},
+				specCfg: cfg,
 			}, nil
 		},
 		"cloud create": func() (cli.Command, error) {
 			return &CloudCreateCommand{
-				GlobalCmdOptions: globalCmdOptions,
-				specCfg:          cfg,
+				CloudCommandBase: CloudCommandBase{
+					GlobalCmdOptions: globalCmdOptions,
+				},
+				specCfg: cfg,
 			}, nil
 		},
 	}

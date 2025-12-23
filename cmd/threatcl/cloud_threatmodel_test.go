@@ -15,10 +15,12 @@ func testCloudThreatmodelCommand(t testing.TB, httpClient HTTPClient, keyringSvc
 	global := &GlobalCmdOptions{}
 
 	return &CloudThreatmodelCommand{
-		GlobalCmdOptions: global,
-		httpClient:       httpClient,
-		keyringSvc:       keyringSvc,
-		fsSvc:            fsSvc,
+		CloudCommandBase: CloudCommandBase{
+			GlobalCmdOptions: global,
+			httpClient:       httpClient,
+			keyringSvc:       keyringSvc,
+			fsSvc:            fsSvc,
+		},
 	}
 }
 
@@ -272,9 +274,9 @@ func TestCloudThreatmodelFetchUserInfo(t *testing.T) {
 	}
 	httpClient.transport.setResponse("GET", "/api/v1/users/me", http.StatusOK, jsonResponse(whoamiResp))
 
-	cmd := testCloudThreatmodelCommand(t, httpClient, nil, fsSvc)
+	_ = testCloudThreatmodelCommand(t, httpClient, nil, fsSvc)
 
-	resp, err := cmd.fetchUserInfo("token", httpClient, fsSvc)
+	resp, err := fetchUserInfo("token", httpClient, fsSvc)
 
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
@@ -305,9 +307,9 @@ func TestCloudThreatmodelFetchThreatModel(t *testing.T) {
 	}
 	httpClient.transport.setResponse("GET", "/api/v1/org/org123/models/tm1", http.StatusOK, jsonResponse(threatModel))
 
-	cmd := testCloudThreatmodelCommand(t, httpClient, nil, fsSvc)
+	_ = testCloudThreatmodelCommand(t, httpClient, nil, fsSvc)
 
-	model, err := cmd.fetchThreatModel("token", "org123", "tm1", httpClient, fsSvc)
+	model, err := fetchThreatModel("token", "org123", "tm1", httpClient, fsSvc)
 
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
@@ -338,9 +340,9 @@ func TestCloudThreatmodelFetchThreatModelWithSlug(t *testing.T) {
 	}
 	httpClient.transport.setResponse("GET", "/api/v1/org/org123/models/threat-model-1", http.StatusOK, jsonResponse(threatModel))
 
-	cmd := testCloudThreatmodelCommand(t, httpClient, nil, fsSvc)
+	_ = testCloudThreatmodelCommand(t, httpClient, nil, fsSvc)
 
-	model, err := cmd.fetchThreatModel("token", "org123", "threat-model-1", httpClient, fsSvc)
+	model, err := fetchThreatModel("token", "org123", "threat-model-1", httpClient, fsSvc)
 
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
@@ -644,9 +646,10 @@ func TestCloudThreatmodelDownloadThreatModel(t *testing.T) {
 	fileContent := "threatmodel \"test\" {\n  description = \"test model\"\n}"
 	httpClient.transport.setResponse("GET", "/api/v1/org/org123/models/tm1/download", http.StatusOK, fileContent)
 
-	cmd := testCloudThreatmodelCommand(t, httpClient, nil, fsSvc)
+	_ = testCloudThreatmodelCommand(t, httpClient, nil, fsSvc)
 
-	err := cmd.downloadThreatModel("token", "org123", "tm1", "test.hcl", false, httpClient, fsSvc)
+	url := fmt.Sprintf("%s/api/v1/org/%s/models/%s/download", getAPIBaseURL(fsSvc), "org123", "tm1")
+	err := downloadFile(url, "token", "test.hcl", false, httpClient, fsSvc)
 
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
@@ -670,9 +673,10 @@ func TestCloudThreatmodelDownloadThreatModelWithSlug(t *testing.T) {
 	fileContent := "threatmodel \"my-model\" {}"
 	httpClient.transport.setResponse("GET", "/api/v1/org/org123/models/my-model-slug/download", http.StatusOK, fileContent)
 
-	cmd := testCloudThreatmodelCommand(t, httpClient, nil, fsSvc)
+	_ = testCloudThreatmodelCommand(t, httpClient, nil, fsSvc)
 
-	err := cmd.downloadThreatModel("token", "org123", "my-model-slug", "test.hcl", false, httpClient, fsSvc)
+	url := fmt.Sprintf("%s/api/v1/org/%s/models/%s/download", getAPIBaseURL(fsSvc), "org123", "my-model-slug")
+	err := downloadFile(url, "token", "test.hcl", false, httpClient, fsSvc)
 
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
@@ -695,10 +699,11 @@ func TestCloudThreatmodelDownloadThreatModelFileExists(t *testing.T) {
 	// Simulate existing file
 	fsSvc.files["existing.hcl"] = []byte("old content")
 
-	cmd := testCloudThreatmodelCommand(t, httpClient, nil, fsSvc)
+	_ = testCloudThreatmodelCommand(t, httpClient, nil, fsSvc)
 
 	// Try to download without overwrite flag - should fail
-	err := cmd.downloadThreatModel("token", "org123", "tm1", "existing.hcl", false, httpClient, fsSvc)
+	url := fmt.Sprintf("%s/api/v1/org/%s/models/%s/download", getAPIBaseURL(fsSvc), "org123", "tm1")
+	err := downloadFile(url, "token", "existing.hcl", false, httpClient, fsSvc)
 
 	if err == nil {
 		t.Errorf("expected error when file exists without overwrite flag")
@@ -725,10 +730,11 @@ func TestCloudThreatmodelDownloadThreatModelFileExistsWithOverwrite(t *testing.T
 	fileContent := "threatmodel \"new\" {\n  description = \"new model\"\n}"
 	httpClient.transport.setResponse("GET", "/api/v1/org/org123/models/tm1/download", http.StatusOK, fileContent)
 
-	cmd := testCloudThreatmodelCommand(t, httpClient, nil, fsSvc)
+	_ = testCloudThreatmodelCommand(t, httpClient, nil, fsSvc)
 
 	// Try to download with overwrite flag - should succeed
-	err := cmd.downloadThreatModel("token", "org123", "tm1", "existing.hcl", true, httpClient, fsSvc)
+	url := fmt.Sprintf("%s/api/v1/org/%s/models/%s/download", getAPIBaseURL(fsSvc), "org123", "tm1")
+	err := downloadFile(url, "token", "existing.hcl", true, httpClient, fsSvc)
 
 	if err != nil {
 		t.Errorf("unexpected error with overwrite flag: %v", err)

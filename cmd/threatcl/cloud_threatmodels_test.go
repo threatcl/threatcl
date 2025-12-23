@@ -261,9 +261,9 @@ func TestCloudThreatmodelsFetchUserInfo(t *testing.T) {
 	}
 	httpClient.transport.setResponse("GET", "/api/v1/users/me", http.StatusOK, jsonResponse(whoamiResp))
 
-	cmd := testCloudThreatmodelsCommand(t, httpClient, nil, fsSvc)
+	_ = testCloudThreatmodelsCommand(t, httpClient, nil, fsSvc)
 
-	resp, err := cmd.fetchUserInfo("token", httpClient, fsSvc)
+	resp, err := fetchUserInfo("token", httpClient, fsSvc)
 
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
@@ -300,9 +300,9 @@ func TestCloudThreatmodelsFetchThreatModels(t *testing.T) {
 	}
 	httpClient.transport.setResponse("GET", "/api/v1/org/org123/models", http.StatusOK, jsonResponse(threatModels))
 
-	cmd := testCloudThreatmodelsCommand(t, httpClient, nil, fsSvc)
+	_ = testCloudThreatmodelsCommand(t, httpClient, nil, fsSvc)
 
-	models, err := cmd.fetchThreatModels("token", "org123", httpClient, fsSvc)
+	models, err := fetchThreatModels("token", "org123", httpClient, fsSvc)
 
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)

@@ -13,10 +13,7 @@ import (
 )
 
 type CloudLoginCommand struct {
-	*GlobalCmdOptions
-	httpClient HTTPClient
-	keyringSvc KeyringService
-	fsSvc      FileSystemService
+	CloudCommandBase
 }
 
 func (c *CloudLoginCommand) Help() string {
@@ -59,23 +56,8 @@ func (c *CloudLoginCommand) Run(args []string) int {
 	flagSet := c.GetFlagset("cloud login")
 	flagSet.Parse(args)
 
-	// Use injected dependencies or defaults
-	httpClient := c.httpClient
-	if httpClient == nil {
-		httpClient = &defaultHTTPClient{
-			client: &http.Client{
-				Timeout: 5 * time.Second,
-			},
-		}
-	}
-	keyringSvc := c.keyringSvc
-	if keyringSvc == nil {
-		keyringSvc = &defaultKeyringService{}
-	}
-	fsSvc := c.fsSvc
-	if fsSvc == nil {
-		fsSvc = &defaultFileSystemService{}
-	}
+	// Initialize dependencies
+	httpClient, keyringSvc, fsSvc := c.initDependencies(5 * time.Second)
 
 	// Check if user is already authenticated
 	token, err := getToken(keyringSvc, fsSvc)

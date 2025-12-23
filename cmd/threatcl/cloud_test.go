@@ -337,10 +337,12 @@ func testCloudLoginCommand(t testing.TB, httpClient HTTPClient, keyringSvc Keyri
 	global := &GlobalCmdOptions{}
 
 	return &CloudLoginCommand{
-		GlobalCmdOptions: global,
-		httpClient:       httpClient,
-		keyringSvc:       keyringSvc,
-		fsSvc:            fsSvc,
+		CloudCommandBase: CloudCommandBase{
+			GlobalCmdOptions: global,
+			httpClient:       httpClient,
+			keyringSvc:       keyringSvc,
+			fsSvc:            fsSvc,
+		},
 	}
 }
 
@@ -350,10 +352,12 @@ func testCloudWhoamiCommand(t testing.TB, httpClient HTTPClient, keyringSvc Keyr
 	global := &GlobalCmdOptions{}
 
 	return &CloudWhoamiCommand{
-		GlobalCmdOptions: global,
-		httpClient:       httpClient,
-		keyringSvc:       keyringSvc,
-		fsSvc:            fsSvc,
+		CloudCommandBase: CloudCommandBase{
+			GlobalCmdOptions: global,
+			httpClient:       httpClient,
+			keyringSvc:       keyringSvc,
+			fsSvc:            fsSvc,
+		},
 	}
 }
 
@@ -363,10 +367,12 @@ func testCloudThreatmodelsCommand(t testing.TB, httpClient HTTPClient, keyringSv
 	global := &GlobalCmdOptions{}
 
 	return &CloudThreatmodelsCommand{
-		GlobalCmdOptions: global,
-		httpClient:       httpClient,
-		keyringSvc:       keyringSvc,
-		fsSvc:            fsSvc,
+		CloudCommandBase: CloudCommandBase{
+			GlobalCmdOptions: global,
+			httpClient:       httpClient,
+			keyringSvc:       keyringSvc,
+			fsSvc:            fsSvc,
+		},
 	}
 }
 
@@ -380,11 +386,13 @@ func testCloudCreateCommand(t testing.TB, httpClient HTTPClient, keyringSvc Keyr
 	}
 
 	return &CloudCreateCommand{
-		GlobalCmdOptions: global,
-		httpClient:       httpClient,
-		keyringSvc:       keyringSvc,
-		fsSvc:            fsSvc,
-		specCfg:          specCfg,
+		CloudCommandBase: CloudCommandBase{
+			GlobalCmdOptions: global,
+			httpClient:       httpClient,
+			keyringSvc:       keyringSvc,
+			fsSvc:            fsSvc,
+		},
+		specCfg: specCfg,
 	}
 }
 

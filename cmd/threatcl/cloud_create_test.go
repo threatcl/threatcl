@@ -275,9 +275,9 @@ func TestCloudCreateFetchUserInfo(t *testing.T) {
 				httpClient.transport.setResponse("GET", "/api/v1/users/me", tt.statusCode, tt.response)
 			}
 
-			cmd := testCloudCreateCommand(t, httpClient, nil, fsSvc)
+			_ = testCloudCreateCommand(t, httpClient, nil, fsSvc)
 
-			resp, err := cmd.fetchUserInfo(tt.token, httpClient, fsSvc)
+			resp, err := fetchUserInfo(tt.token, httpClient, fsSvc)
 
 			if tt.expectError {
 				if err == nil {
@@ -786,9 +786,9 @@ func TestCloudCreateUploadFile(t *testing.T) {
 				httpClient.transport.setResponse("POST", "/api/v1/org/org123/models/test-model/upload", tt.statusCode, tt.response)
 			}
 
-			cmd := testCloudCreateCommand(t, httpClient, nil, fsSvc)
+			_ = testCloudCreateCommand(t, httpClient, nil, fsSvc)
 
-			err := cmd.uploadFile("token", "org123", "test-model", tt.filePath, httpClient, fsSvc)
+			err := uploadFile("token", "org123", "test-model", tt.filePath, httpClient, fsSvc)
 
 			if tt.expectError {
 				if err == nil {

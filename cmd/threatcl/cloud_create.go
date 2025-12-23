@@ -5,10 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"mime/multipart"
 	"net/http"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -16,14 +14,11 @@ import (
 )
 
 type CloudCreateCommand struct {
-	*GlobalCmdOptions
+	CloudCommandBase
 	flagOrgId       string
 	flagName        string
 	flagDescription string
 	flagUpload      string
-	httpClient      HTTPClient
-	keyringSvc      KeyringService
-	fsSvc           FileSystemService
 	specCfg         *spec.ThreatmodelSpecConfig
 }
 
@@ -127,53 +122,24 @@ func (c *CloudCreateCommand) Run(args []string) int {
 		}
 	}
 
-	// Use injected dependencies or defaults
-	httpClient := c.httpClient
-	if httpClient == nil {
-		timeout := 10 * time.Second
-		// Use longer timeout if we're uploading a file
-		if c.flagUpload != "" {
-			timeout = 30 * time.Second
-		}
-		httpClient = &defaultHTTPClient{
-			client: &http.Client{
-				Timeout: timeout,
-			},
-		}
+	// Initialize dependencies - use longer timeout if uploading
+	timeout := 10 * time.Second
+	if c.flagUpload != "" {
+		timeout = 30 * time.Second
 	}
-	keyringSvc := c.keyringSvc
-	if keyringSvc == nil {
-		keyringSvc = &defaultKeyringService{}
-	}
-	fsSvc := c.fsSvc
-	if fsSvc == nil {
-		fsSvc = &defaultFileSystemService{}
-	}
+	httpClient, keyringSvc, fsSvc := c.initDependencies(timeout)
 
 	// Step 1: Retrieve token
-	token, err := getToken(keyringSvc, fsSvc)
+	token, err := c.getTokenWithDeps(keyringSvc, fsSvc)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error retrieving token: %s\n", err)
-		fmt.Fprintf(os.Stderr, "Please run 'threatcl cloud login' to authenticate.\n")
-		return 1
+		return c.handleTokenError(err)
 	}
 
 	// Step 2: Get organization ID
-	orgId := c.flagOrgId
-	if orgId == "" {
-		// Fetch user info to get first organization
-		whoamiResp, err := c.fetchUserInfo(token, httpClient, fsSvc)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error fetching user information: %s\n", err)
-			return 1
-		}
-
-		if len(whoamiResp.Organizations) == 0 {
-			fmt.Fprintf(os.Stderr, "Error: No organizations found. Please specify an organization ID with -org-id\n")
-			return 1
-		}
-
-		orgId = whoamiResp.Organizations[0].Organization.ID
+	orgId, err := c.resolveOrgId(token, c.flagOrgId, httpClient, fsSvc)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%s\n", err)
+		return 1
 	}
 
 	// Step 3: Create the threat model
@@ -193,7 +159,7 @@ func (c *CloudCreateCommand) Run(args []string) int {
 	// Step 4: Upload file if provided
 	if c.flagUpload != "" {
 		fmt.Printf("\nUploading file %s...\n", c.flagUpload)
-		err := c.uploadFile(token, orgId, threatModel.Slug, c.flagUpload, httpClient, fsSvc)
+		err := uploadFile(token, orgId, threatModel.Slug, c.flagUpload, httpClient, fsSvc)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error uploading file: %s\n", err)
 			fmt.Fprintf(os.Stderr, "Note: The threat model was created successfully, but the upload failed.\n")
@@ -203,39 +169,6 @@ func (c *CloudCreateCommand) Run(args []string) int {
 	}
 
 	return 0
-}
-
-func (c *CloudCreateCommand) fetchUserInfo(token string, httpClient HTTPClient, fsSvc FileSystemService) (*whoamiResponse, error) {
-	url := fmt.Sprintf("%s/api/v1/users/me", getAPIBaseURL(fsSvc))
-
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %w", err)
-	}
-
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
-	req.Header.Set("Content-Type", "application/json")
-
-	resp, err := httpClient.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("failed to connect to API: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		if resp.StatusCode == http.StatusUnauthorized {
-			return nil, fmt.Errorf("authentication failed - token may be invalid or expired. Please run 'threatcl cloud login' again")
-		}
-		return nil, fmt.Errorf("API returned status %d: %s", resp.StatusCode, string(body))
-	}
-
-	var whoamiResp whoamiResponse
-	if err := json.NewDecoder(resp.Body).Decode(&whoamiResp); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-
-	return &whoamiResp, nil
 }
 
 func (c *CloudCreateCommand) createThreatModel(token string, orgId string, name string, description string, httpClient HTTPClient, fsSvc FileSystemService) (*threatModel, error) {
@@ -284,64 +217,4 @@ func (c *CloudCreateCommand) createThreatModel(token string, orgId string, name 
 	}
 
 	return &tm, nil
-}
-
-func (c *CloudCreateCommand) uploadFile(token string, orgId string, modelIdOrSlug string, filePath string, httpClient HTTPClient, fsSvc FileSystemService) error {
-	url := fmt.Sprintf("%s/api/v1/org/%s/models/%s/upload", getAPIBaseURL(fsSvc), orgId, modelIdOrSlug)
-
-	// Read the file
-	fileData, err := fsSvc.ReadFile(filePath)
-	if err != nil {
-		return fmt.Errorf("failed to read file: %w", err)
-	}
-
-	// Create multipart form
-	var requestBody bytes.Buffer
-	writer := multipart.NewWriter(&requestBody)
-
-	// Add file field
-	fileWriter, err := writer.CreateFormFile("file", filepath.Base(filePath))
-	if err != nil {
-		return fmt.Errorf("failed to create form file: %w", err)
-	}
-
-	_, err = fileWriter.Write(fileData)
-	if err != nil {
-		return fmt.Errorf("failed to write file data: %w", err)
-	}
-
-	// Close the multipart writer
-	err = writer.Close()
-	if err != nil {
-		return fmt.Errorf("failed to close multipart writer: %w", err)
-	}
-
-	// Create request
-	req, err := http.NewRequest("POST", url, &requestBody)
-	if err != nil {
-		return fmt.Errorf("failed to create request: %w", err)
-	}
-
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
-	req.Header.Set("Content-Type", writer.FormDataContentType())
-
-	// Send request
-	resp, err := httpClient.Do(req)
-	if err != nil {
-		return fmt.Errorf("failed to connect to API: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		if resp.StatusCode == http.StatusUnauthorized {
-			return fmt.Errorf("authentication failed - token may be invalid or expired. Please run 'threatcl cloud login' again")
-		}
-		if resp.StatusCode == http.StatusNotFound {
-			return fmt.Errorf("threat model not found: %s", modelIdOrSlug)
-		}
-		return fmt.Errorf("API returned status %d: %s", resp.StatusCode, string(body))
-	}
-
-	return nil
 }

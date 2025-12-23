@@ -148,9 +148,9 @@ func TestCloudWhoamiFetchUserInfo(t *testing.T) {
 				httpClient.transport.setResponse("GET", "/api/v1/users/me", tt.statusCode, tt.response)
 			}
 
-			cmd := testCloudWhoamiCommand(t, httpClient, nil, fsSvc)
+			_ = testCloudWhoamiCommand(t, httpClient, nil, fsSvc)
 
-			resp, err := cmd.fetchUserInfo(tt.token, httpClient, fsSvc)
+			resp, err := fetchUserInfo(tt.token, httpClient, fsSvc)
 
 			if tt.expectError {
 				if err == nil {
