@@ -1,5 +1,5 @@
 // To cater for multiple spec versions we specify this in our HCL files
-spec_version = "0.1.15"
+spec_version = "0.2.3"
 
 // You can include variables outside your threatmodel blocks
 
@@ -126,9 +126,9 @@ threatmodel "threatmodel name" {
     uptime_notes = "If this dependency goes down users can't login"
   }
 
-  // Each threatmodel may contain a number of threats
+  // Each threatmodel may contain a number of threats, these must be uniquely named
 
-  threat {
+  threat "threat name" {
     // The description is required
     description = "System is compromised by hackers"
 
@@ -136,11 +136,9 @@ threatmodel "threatmodel name" {
     // The available values are 'Confidentiality, Integrity, Availability'
     impacts = ["Confidentiality", "Integrity", "Availability"]
 
-    // A threat may contain multiple expanded_control blocks
-    // These blocks will be replacing the older "control" string or
-    // "proposed_control" blocks
+    // A threat may contain multiple control blocks
 
-    expanded_control "control name" {
+    control "control name" {
       description = "The control must have a description"
 
       // implemented is optional, but defaults to false
@@ -164,13 +162,6 @@ threatmodel "threatmodel name" {
       }
     }
 
-    // WARNING: The "control" string value is going to be deprecated in
-    // favor of expanded_control block!
-
-    // The control is optional, and allows the author to capture controls
-    // or circumstances that may reduce the likelihood of impact of the threat
-    // control = "We require 2FA for access"
-
     // The stride is an optional array of STRIDE elements that apply to this threat
     // The available values are:
     // Spoofing
@@ -184,19 +175,6 @@ threatmodel "threatmodel name" {
     // The information_asset_refs are an optional array of information_assets
     // the elements must much existing information_assets - as above
     information_asset_refs = ["cred store"]
-
-    // WARNING: The "proposed_control" blocks are going to be deprecated in
-    // favor of expanded_control blocks!
-
-    // The proposed_control blocks are optional, and are used to track 
-    // proposed controls
-    // proposed_control {
-      // The Description is required
-      // description = "This is a proposed control"
-
-      // The implemented boolean is optional, and defaults to false
-      // implemented = true
-    // }
   } // End of threat block
 
   // You can import an external .hcl file that includes control descriptions
@@ -205,7 +183,7 @@ threatmodel "threatmodel name" {
 
   // An example of what may be in controls.hcl:
   //
-  // spec_version = "0.1.15"
+  // spec_version = "0.2.3"
   // component "control" "control_name" {
   //   description = "A control that can be used in multiple places"
   // }
@@ -215,7 +193,7 @@ threatmodel "threatmodel name" {
   threat {
 
     // To reference the above component
-    expanded_control "Control Name" {
+    control "Control Name" {
       description = import.control.control_name.description
       risk_reduction = 50
     }
@@ -228,18 +206,18 @@ EOT
   }
 
   // For more advanced importing of controls, you can also define
-  // "expanded_control" "components" in an external file. This allows you to 
-  // define all the attributes of an expanded_control, centrally, and import
+  // expanded "control" "components" in an external file. This allows you to 
+  // define all the attributes of a control, centrally, and import
   // them.
 
-  // Importing an expanded_control is slightly different.
+  // Importing an expanded control is slightly different.
 
   // An example of what may be in expanded_controls.hcl is below
-  // (note, a single external file can include both expanded_controls and
+  // (note, a single external file can include both expanded controls and
   // regular controls.)
 
-  // spec_version = "0.1.15"
-  // component "expanded_control" "authentication_control" {
+  // spec_version = "0.2.3"
+  // component "control" "authentication_control" {
   //  description = "Multi-factor authentication required"
   //  implemented = true
   //  implementation_notes = "Using TOTP for all admin accounts"
@@ -254,7 +232,7 @@ EOT
   threat {
     description = "Authentication is bypassed"
 
-    control_imports = ["import.expanded_control.authentication_control"]
+    control_imports = ["import.control.authentication_control"]
 
   }
 
@@ -263,9 +241,6 @@ EOT
 
   // The control_imports attribute is an array, so it can import multiple
   // controls too.
-
-  // Each threatmodel may contain a single data_flow_diagram
-  // This format will be deprecated in the future ^
 
   // As of 0.1.6 threatmodels may contain multiple data_flow_diagram_v2 blocks
   // The data_flow_diagram_v2 is a HCL representation of a data flow diagram

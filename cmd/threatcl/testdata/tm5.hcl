@@ -1,11 +1,11 @@
- spec_version = "0.1.15"
+ spec_version = "0.2.3"
 
  threatmodel "tm2 one" {
    description = "This is some arbitrary text"
    link = "https://"
    author = "@cfrichot"
 
-   threat {
+   threat "threaty threat" {
      description = "threaty threat"
      control = "controlly control"
      stride = ["Spoofing", "Elevation of privilege"]

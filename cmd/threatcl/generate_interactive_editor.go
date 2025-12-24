@@ -15,7 +15,7 @@ var (
 	InteractiveEditorDraft = fmt.Sprintf(`spec_version = "%s"
 
 threatmodel "threatmodel_name" {
-  description = "Describe your threat model. Refer to https://github.com/xntrik/hcltm/blob/main/spec.hcl for the full spec"
+  description = "Describe your threat model. Refer to https://threatcl.github.io/ for the full spec"
 
   author = "your_name"
 
@@ -23,13 +23,13 @@ threatmodel "threatmodel_name" {
     description = "Use cases here"
   }
 
-  threat {
+  threat "threat name" {
     description = "Something bad here"
     impacts = ["Confidentiality"]
     control = "Something to help"
   }
 }
-`, spec.VERSION)
+`, spec.Version)
 )
 
 type GenerateInteractiveEditorCommand struct {
