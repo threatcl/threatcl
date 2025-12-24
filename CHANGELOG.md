@@ -1,3 +1,13 @@
+## 0.3.0
+
+### Dec 24, 2025
+
+CHANGES:
+
+* Bumped threatcl spec to a new minor version, 0.2.3, this brings a bunch of new features
+    * You can now use `control` blocks instead of `expanded_control` blocks (this is recommended)
+    * `threat` blocks now need a name, such as `threat "threat name" {`
+
 ## 0.2.8
 
 ### Nov 18, 2025

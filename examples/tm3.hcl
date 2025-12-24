@@ -1,4 +1,4 @@
- spec_version = "0.1.15"
+ spec_version = "0.2.3"
 
  threatmodel "Modelly model" {
    imports = ["https://raw.githubusercontent.com/xntrik/hcltm/main/examples/aws-security-checklist.hcl", "https://raw.githubusercontent.com/xntrik/hcltm/main/examples/owasp-proactive-controls.hcl"]
@@ -6,7 +6,7 @@
 
    diagram_link = "https://link.to.somewhere/diagram"
 
-   threat {
+   threat "threaty threat" {
      description = "threaty threat"
 #      control = <<EOT
 # * ${import.control.aws-iam-awsorgs.description}
@@ -14,20 +14,20 @@
 # EOT
      stride = ["Spoofing", "Elevation of privilege"]
 
-     expanded_control "AWS Orgs" {
+     control "AWS Orgs" {
        description = import.control.aws-iam-awsorgs.description
        implemented = true
        risk_reduction = 40
      }
 
-     expanded_control "Root Account Lockdown" {
+     control "Root Account Lockdown" {
        description = import.control.aws-iam-root.description
        implemented = true
        risk_reduction = 50
      }
    }
 
-   threat {
+   threat "Something else" {
      description = "Something else" 
      # control = import.control.owasp-errors-infoleak.description
 
@@ -35,12 +35,12 @@
      #   implemented = false
      #   description = "Do the thing"
      # }
-     expanded_control "Prevent Leakage" {
+     control "Prevent Leakage" {
        description = import.control.owasp-errors-infoleak.description
        risk_reduction = 10
      }
 
-     expanded_control "Do the thing" {
+     control "Do the thing" {
        description = "Yep do it"
        risk_reduction = 30
      }
@@ -50,21 +50,21 @@
      #   description = "Do another thing"
      # }
 
-     expanded_control "Do another thing" {
+     control "Do another thing" {
        description = "Also do this other thing"
        risk_reduction = 30
      }
 
-     expanded_control "thing" {
+     control "thing" {
        description = "This is the new type of control"
        risk_reduction = 40
      }
    }
 
-   threat {
+   threat "Bad threat" {
      description = "Something else that is also equally as bad"
 
-     expanded_control "trusted libraries" {
+     control "trusted libraries" {
        implemented = false
        description = import.control.owasp-secframework-trustedlibs.description
        risk_reduction = 50

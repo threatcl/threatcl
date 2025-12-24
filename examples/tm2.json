@@ -1,5 +1,5 @@
 {
-  "spec_version": "0.1.15",
+  "spec_version": "0.2.3",
 
  "threatmodel": {
    "Modelly model": {
@@ -7,20 +7,26 @@
      "author": "@xntrik",
 
      "threat": [{
-       "description": "threaty threat",
-       "control": "CAN'T IMPORT IN JSON",
-       "stride": ["Spoofing", "Elevation of privilege"],
-       "proposed_control": {
-         "description": "This is a proposed control"
-       },
-       "proposed_control": {
-         "implemented": true,
-         "description": "And this is a proposed control that has been implemented"
-       }
+      "threaty threat": {
+        "description": "threaty threat",
+        "stride": ["Spoofing", "Elevation of privilege"],
+        "expanded_control": [{
+          "Proposed Control": {
+            "description": "This is a proposed control"
+          }
+        },{
+          "Implemented Control": {
+            "implemented": true,
+            "description": "And this is a proposed control that has been implemented"
+          }
+        }]
+      }
      },{
-       "description": "threaty threat two",
+      "threaty threat two": {
+        "description": "threaty threat two",
        "control": "CAN'T IMPORT IN JSON",
        "stride": ["Spoofing", "Elevation of privilege"]
+      }
      }],
 
      "data_flow_diagram": {

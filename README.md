@@ -46,11 +46,11 @@ threatmodel "Tower of London" {
     uptime_dependency = "degraded"
   }
 
-  threat {
+  threat "Crown theft" {
     description = "Someone who isn't the Queen steals the crown"
     impacts = ["Confidentiality"]
 
-    expanded_control "Guards" {
+    control "Guards" {
       description = "Trained guards patrol tower"
       risk_reduction = 75
     }
