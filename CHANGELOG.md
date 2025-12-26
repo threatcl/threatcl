@@ -1,3 +1,11 @@
+## 0.3.1
+
+### Dec 26, 2025
+
+CHANGES:
+
+* Adjusted GraphQL to support unique `threat` names
+
 ## 0.3.0
 
 ### Dec 24, 2025

@@ -152,6 +152,7 @@ type ComplexityRoot struct {
 		Description          func(childComplexity int) int
 		Impacts              func(childComplexity int) int
 		InformationAssetRefs func(childComplexity int) int
+		Name                 func(childComplexity int) int
 		Stride               func(childComplexity int) int
 		ThreatModel          func(childComplexity int) int
 	}
@@ -657,6 +658,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Threat.InformationAssetRefs(childComplexity), true
+
+	case "Threat.name":
+		if e.complexity.Threat.Name == nil {
+			break
+		}
+
+		return e.complexity.Threat.Name(childComplexity), true
 
 	case "Threat.stride":
 		if e.complexity.Threat.Stride == nil {
@@ -2931,6 +2939,8 @@ func (ec *executionContext) fieldContext_Query_threats(ctx context.Context, fiel
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
+			case "name":
+				return ec.fieldContext_Threat_name(ctx, field)
 			case "description":
 				return ec.fieldContext_Threat_description(ctx, field)
 			case "impacts":
@@ -3813,6 +3823,50 @@ func (ec *executionContext) fieldContext_ThirdPartyDependency_uptimeNotes(_ cont
 	return fc, nil
 }
 
+func (ec *executionContext) _Threat_name(ctx context.Context, field graphql.CollectedField, obj *spec.Threat) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Threat_name(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Name, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Threat_name(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Threat",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Threat_description(ctx context.Context, field graphql.CollectedField, obj *spec.Threat) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Threat_description(ctx, field)
 	if err != nil {
@@ -4600,6 +4654,8 @@ func (ec *executionContext) fieldContext_ThreatModel_threats(_ context.Context, 
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
+			case "name":
+				return ec.fieldContext_Threat_name(ctx, field)
 			case "description":
 				return ec.fieldContext_Threat_description(ctx, field)
 			case "impacts":
@@ -6747,13 +6803,20 @@ func (ec *executionContext) unmarshalInputThreatFilter(ctx context.Context, obj 
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"impacts", "stride", "hasImplementedControls"}
+	fieldsInOrder := [...]string{"name", "impacts", "stride", "hasImplementedControls"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
 			continue
 		}
 		switch k {
+		case "name":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Name = data
 		case "impacts":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("impacts"))
 			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
@@ -7886,6 +7949,11 @@ func (ec *executionContext) _Threat(ctx context.Context, sel ast.SelectionSet, o
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("Threat")
+		case "name":
+			out.Values[i] = ec._Threat_name(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
 		case "description":
 			out.Values[i] = ec._Threat_description(ctx, field, obj)
 			if out.Values[i] == graphql.Null {

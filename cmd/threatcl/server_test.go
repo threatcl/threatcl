@@ -149,13 +149,22 @@ func TestServerIntegration(t *testing.T) {
 		done <- code
 	}()
 
-	// Give server time to start
-	time.Sleep(2 * time.Second)
+	// Wait for server to be ready with retry logic
+	var resp *http.Response
+	var err error
+	maxRetries := 300 // 30 retries * 100ms = 30 seconds max
+	client := &http.Client{Timeout: 1 * time.Second}
 
-	// Test health endpoint
-	resp, err := http.Get(fmt.Sprintf("http://localhost:%d/health", port))
+	for range maxRetries {
+		resp, err = client.Get(fmt.Sprintf("http://127.0.0.1:%d/health", port))
+		if err == nil {
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+
 	if err != nil {
-		t.Fatalf("Failed to connect to server: %s", err)
+		t.Fatalf("Failed to connect to server after %d retries: %s", maxRetries, err)
 	}
 	defer resp.Body.Close()
 
@@ -169,10 +178,9 @@ func TestServerIntegration(t *testing.T) {
 	}
 
 	// Test GraphQL endpoint with a simple query
-	client := &http.Client{Timeout: 5 * time.Second}
 	graphqlReq := strings.NewReader(`{"query": "{ stats { totalThreatModels } }"}`)
 	resp, err = client.Post(
-		fmt.Sprintf("http://localhost:%d/graphql", port),
+		fmt.Sprintf("http://127.0.0.1:%d/graphql", port),
 		"application/json",
 		graphqlReq,
 	)
@@ -541,4 +549,3 @@ func TestServerHelpNoLongerMentionsNotImplemented(t *testing.T) {
 		t.Error("Help text should still mention -watch flag")
 	}
 }
-
