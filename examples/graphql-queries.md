@@ -122,6 +122,7 @@ Find all threats categorized as "Spoofing":
 ```graphql
 query SpoofingThreats {
   threats(filter: { stride: ["Spoofing"] }) {
+    name
     description
     stride
     impacts
@@ -139,6 +140,7 @@ Find threats that impact confidentiality:
 ```graphql
 query ConfidentialityThreats {
   threats(filter: { impacts: ["Confidentiality"] }) {
+    name
     description
     impacts
     stride
@@ -149,7 +151,25 @@ query ConfidentialityThreats {
 }
 ```
 
-### 9. Confidential Information Assets
+### 9. Threats by Name
+
+Search for threats by name (supports partial, case-insensitive matching):
+
+```graphql
+query ThreatsByName {
+  threats(filter: { name: "theft" }) {
+    name
+    description
+    impacts
+    stride
+    threatModel {
+      name
+    }
+  }
+}
+```
+
+### 10. Confidential Information Assets
 
 Find all assets classified as confidential:
 
@@ -168,7 +188,7 @@ query ConfidentialAssets {
 
 ## Detailed Queries
 
-### 10. Threat Model with All Details
+### 11. Threat Model with All Details
 
 Get complete information about a threat model:
 
@@ -194,6 +214,7 @@ query CompleteThreatModel {
     }
 
     threats {
+      name
       description
       impacts
       stride
@@ -228,7 +249,7 @@ query CompleteThreatModel {
 }
 ```
 
-### 11. All Threats with Controls
+### 12. All Threats with Controls
 
 Get all threats and their associated controls:
 
@@ -237,6 +258,7 @@ query AllThreatsWithControls {
   threatModels {
     name
     threats {
+      name
       description
       impacts
       stride
@@ -251,7 +273,7 @@ query AllThreatsWithControls {
 }
 ```
 
-### 12. Threat Models with Data Flow Diagrams
+### 13. Threat Models with Data Flow Diagrams
 
 Find threat models that have DFDs:
 
@@ -290,7 +312,7 @@ query ModelsWithDFDs {
 
 ## Analysis Queries
 
-### 13. Security Control Coverage
+### 14. Security Control Coverage
 
 Analyze which threat models have the most controls:
 
@@ -300,6 +322,7 @@ query ControlCoverage {
     name
     author
     threats {
+      name
       description
       controls {
         name
@@ -310,7 +333,7 @@ query ControlCoverage {
 }
 ```
 
-### 14. Implementation Status
+### 15. Implementation Status
 
 Find threats with unimplemented controls:
 
@@ -319,6 +342,7 @@ query UnimplementedControls {
   threatModels {
     name
     threats {
+      name
       description
       controls {
         name
@@ -332,7 +356,7 @@ query UnimplementedControls {
 
 Note: You'll need to filter client-side for `implemented: false`.
 
-### 15. Risk Reduction Analysis
+### 16. Risk Reduction Analysis
 
 Analyze risk reduction across all controls:
 
@@ -341,6 +365,7 @@ query RiskReductionAnalysis {
   threatModels {
     name
     threats {
+      name
       description
       controls {
         name
@@ -358,7 +383,7 @@ query RiskReductionAnalysis {
 }
 ```
 
-### 16. Third-Party Dependency Audit
+### 17. Third-Party Dependency Audit
 
 Find all third-party dependencies and their criticality:
 
@@ -380,7 +405,7 @@ query ThirdPartyAudit {
 
 ## Multiple Queries in One Request
 
-### 17. Dashboard Data
+### 18. Dashboard Data
 
 Get all data needed for a dashboard in one query:
 
@@ -413,6 +438,7 @@ query Dashboard {
   }
 
   allThreats: threats {
+    name
     description
     stride
     threatModel {
@@ -422,7 +448,7 @@ query Dashboard {
 }
 ```
 
-### 18. Security Posture Report
+### 19. Security Posture Report
 
 Generate a comprehensive security posture report:
 
@@ -439,6 +465,7 @@ query SecurityPostureReport {
   internetFacing: threatModels(filter: { internetFacing: true }) {
     name
     threats {
+      name
       description
       impacts
       controls {
@@ -459,7 +486,7 @@ query SecurityPostureReport {
 
 ## Advanced Queries
 
-### 19. Using Query Variables
+### 20. Using Query Variables
 
 Define reusable queries with variables:
 
@@ -470,6 +497,7 @@ query GetModelByName($modelName: String!) {
     author
     description
     threats {
+      name
       description
       impacts
     }
@@ -484,12 +512,13 @@ Variables:
 }
 ```
 
-### 20. Fragments for Reusable Fields
+### 21. Fragments for Reusable Fields
 
 Use fragments to avoid repeating field selections:
 
 ```graphql
 fragment ThreatDetails on Threat {
+  name
   description
   impacts
   stride
@@ -522,7 +551,7 @@ query ModelsWithThreatDetails {
 
 While the API provides server-side filtering, sometimes you need client-side filtering. Here are some examples using JavaScript:
 
-### 21. Find Threats Without Implemented Controls
+### 22. Find Threats Without Implemented Controls
 
 ```javascript
 const query = `
@@ -551,7 +580,7 @@ const threatsWithoutControls = data.threatModels.flatMap(tm =>
 );
 ```
 
-### 22. Calculate Control Implementation Rate
+### 23. Calculate Control Implementation Rate
 
 ```javascript
 const query = `

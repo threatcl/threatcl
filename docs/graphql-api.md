@@ -159,6 +159,7 @@ threats(filter: ThreatFilter): [Threat!]!
 
 **Arguments:**
 - `filter` (optional): Filter criteria
+  - `name`: String - Filter by threat name (case-insensitive substring match)
   - `impacts`: [String!] - Filter by impact types (e.g., ["Confidentiality", "Integrity"])
   - `stride`: [String!] - Filter by STRIDE categories (e.g., ["Spoofing", "Tampering"])
   - `hasImplementedControls`: Boolean - Filter threats with/without implemented controls
@@ -167,12 +168,27 @@ threats(filter: ThreatFilter): [Threat!]!
 ```graphql
 query {
   threats(filter: { stride: ["Spoofing", "Elevation Of Privilege"] }) {
+    name
     description
     stride
     impacts
     controls {
       name
       implemented
+    }
+  }
+}
+```
+
+**Example (filtering by name):**
+```graphql
+query {
+  threats(filter: { name: "theft" }) {
+    name
+    description
+    impacts
+    threatModel {
+      name
     }
   }
 }
@@ -275,6 +291,7 @@ Represents a security threat.
 **Fields:**
 ```graphql
 type Threat {
+  name: String!
   description: String!
   impacts: [String!]!
   stride: [String!]!
