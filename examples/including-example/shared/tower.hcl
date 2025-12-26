@@ -1,4 +1,4 @@
-spec_version = "0.1.15"
+spec_version = "0.2.3"
 
 threatmodel "Tower of London" {
   description = "A historic castle"
@@ -28,12 +28,12 @@ threatmodel "Tower of London" {
     uptime_dependency = "degraded"
   }
 
-  threat {
+  threat "Crown theft" {
     description = "Someone who isn't the Queen steals the crown"
     impacts = ["Confidentiality"]
   }
 
-  threat {
+  threat "Riskier threat" {
     description = "Something else that is risky"
 
     # proposed_control {
@@ -41,7 +41,7 @@ threatmodel "Tower of London" {
     #   description = "Do the thing"
     # }
 
-    expanded_control "Do the thing" {
+    control "Do the thing" {
       description = "And do it well"
       implemented = true
       risk_reduction = 10
@@ -52,7 +52,7 @@ threatmodel "Tower of London" {
     #   description = "Do another thing"
     # }
 
-    expanded_control "Do another thing" {
+    control "Do another thing" {
       description = "more words about the control"
       implemented = true
       risk_reduction = 10

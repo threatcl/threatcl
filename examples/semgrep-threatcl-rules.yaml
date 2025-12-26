@@ -4,8 +4,8 @@ rules:
       - pattern: |
           spec_version = "$VERSION"
       - pattern-not: |
-          spec_version = "0.1.10"
-    message: "spec_version is '$VERSION', not '0.1.10'"
+          spec_version = "0.2.3"
+    message: "spec_version is '$VERSION', not '0.2.3'"
     severity: WARNING
     languages: [hcl]
     metadata:

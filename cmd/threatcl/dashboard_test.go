@@ -630,8 +630,8 @@ func TestDashboardValidDashboardfile(t *testing.T) {
 		t.Fatalf("Error opening dashboard file: %s", err)
 	}
 
-	if !strings.Contains(string(dbfile), "# HCLTM Dashboard") {
-		t.Errorf("Expected %s to contain %s", dbfile, "# HCLTM Dashboard")
+	if !strings.Contains(string(dbfile), "# Threatcl Dashboard") {
+		t.Errorf("Expected %s to contain %s", dbfile, "# Threatcl Dashboard")
 	}
 
 }
@@ -671,8 +671,8 @@ func TestDashboardValidHtmlfile(t *testing.T) {
 		t.Fatalf("Error opening dashboard file: %s", err)
 	}
 
-	if !strings.Contains(string(dbfile), "HCLTM Dashboard") {
-		t.Errorf("Expected %s to contain %s", dbfile, "HCLTM Dashboard")
+	if !strings.Contains(string(dbfile), "Threatcl Dashboard") {
+		t.Errorf("Expected %s to contain %s", dbfile, "Threatcl Dashboard")
 	}
 
 }

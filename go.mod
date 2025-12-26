@@ -16,7 +16,7 @@ require (
 	github.com/rs/cors v1.11.1
 	github.com/ryanuber/columnize v2.1.2+incompatible
 	github.com/threatcl/go-otm v0.0.2
-	github.com/threatcl/spec v0.1.16
+	github.com/threatcl/spec v0.2.3
 	github.com/vektah/gqlparser/v2 v2.5.17
 	github.com/zenizh/go-capturer v0.0.0-20211219060012-52ea6c8fed04
 )

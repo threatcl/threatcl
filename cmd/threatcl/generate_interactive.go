@@ -536,6 +536,14 @@ func (c *GenerateInteractiveCommand) Run(args []string) int {
 		} else {
 			var tQs = []*survey.Question{
 				{
+				Name: "tname",
+				Prompt: &survey.Input{
+					Message: "[Threat] Name:",
+					Help:    "A unique name for this threat. For example, 'User Impersonation via Stolen Credentials'",
+				},
+				Validate: survey.Required,
+			},
+				{
 					Name: "tdescription",
 					Prompt: &survey.Input{
 						Message: "[Threat] Description:",
@@ -560,6 +568,7 @@ func (c *GenerateInteractiveCommand) Run(args []string) int {
 			}
 
 			tAnswers := struct {
+				Tname        string
 				Tdescription string
 				Timpacttypes []string
 				Tcontrol     string
@@ -568,7 +577,8 @@ func (c *GenerateInteractiveCommand) Run(args []string) int {
 			err = survey.Ask(tQs, &tAnswers)
 
 			t := spec.Threat{
-				Description: tAnswers.Tdescription,
+				Name:        tAnswers.Tname,
+			Description: tAnswers.Tdescription,
 				ImpactType:  tAnswers.Timpacttypes,
 				Control:     tAnswers.Tcontrol,
 			}
