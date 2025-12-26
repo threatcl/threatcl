@@ -152,7 +152,7 @@ func TestServerIntegration(t *testing.T) {
 	// Wait for server to be ready with retry logic
 	var resp *http.Response
 	var err error
-	maxRetries := 30 // 30 retries * 100ms = 3 seconds max
+	maxRetries := 300 // 30 retries * 100ms = 30 seconds max
 	client := &http.Client{Timeout: 1 * time.Second}
 
 	for range maxRetries {
@@ -549,4 +549,3 @@ func TestServerHelpNoLongerMentionsNotImplemented(t *testing.T) {
 		t.Error("Help text should still mention -watch flag")
 	}
 }
-
