@@ -47,6 +47,7 @@ type Statistics struct {
 }
 
 type ThreatFilter struct {
+	Name                   *string  `json:"name,omitempty"`
 	Impacts                []string `json:"impacts,omitempty"`
 	Stride                 []string `json:"stride,omitempty"`
 	HasImplementedControls *bool    `json:"hasImplementedControls,omitempty"`

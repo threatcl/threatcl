@@ -54,6 +54,7 @@ type AdditionalAttribute {
 
 # Threat definition
 type Threat {
+  name: String!
   description: String!
   impacts: [String!]
   stride: [String!]
@@ -170,6 +171,7 @@ input ThreatModelFilter {
 
 # Input filter for threats
 input ThreatFilter {
+  name: String
   impacts: [String!]
   stride: [String!]
   hasImplementedControls: Boolean
