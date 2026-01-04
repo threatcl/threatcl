@@ -32,7 +32,7 @@ func TestCloudWhoamiRun(t *testing.T) {
 			name:         "missing token",
 			token:        "",
 			expectedCode: 1,
-			expectedOut:  "Error retrieving token",
+			expectedOut:  "error retrieving token",
 		},
 		{
 			name:         "invalid token",

@@ -60,7 +60,7 @@ func TestCloudCreateRun(t *testing.T) {
 			args:         []string{"-name", "Test Model"},
 			token:        "",
 			expectedCode: 1,
-			expectedOut:  "Error retrieving token",
+			expectedOut:  "error retrieving token",
 		},
 		{
 			name:         "invalid token",
@@ -376,9 +376,9 @@ func TestCloudCreateCreateThreatModel(t *testing.T) {
 				httpClient.transport.setResponse("POST", "/api/v1/org/org123/models", tt.statusCode, tt.response)
 			}
 
-			cmd := testCloudCreateCommand(t, httpClient, nil, fsSvc)
+			_ = testCloudCreateCommand(t, httpClient, nil, fsSvc)
 
-			tm, err := cmd.createThreatModel("token", "org123", tt.modelName, tt.description, httpClient, fsSvc)
+			tm, err := createThreatModel("token", "org123", tt.modelName, tt.description, httpClient, fsSvc)
 
 			if tt.expectError {
 				if err == nil {
@@ -531,7 +531,7 @@ threatmodel "Test Model" {
   author = "test@example.com"
   description = "A test model"
   
-  threat {
+  threat "Test threat" {
     description = "Test threat"
   }
 }

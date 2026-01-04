@@ -17,19 +17,29 @@ import (
 
 // Mock implementations for testing
 
+// mockResponseData stores response data to create fresh responses on each call
+type mockResponseData struct {
+	statusCode int
+	body       string
+}
+
 // mockRoundTripper implements http.RoundTripper for mocking HTTP responses
 type mockRoundTripper struct {
-	mu         sync.Mutex
-	responses  map[string]*http.Response
-	errors     map[string]error
-	callCounts map[string]int
+	mu               sync.Mutex
+	responses        map[string]*http.Response
+	responseData     map[string]mockResponseData
+	responseSequence map[string][]mockResponseData
+	errors           map[string]error
+	callCounts       map[string]int
 }
 
 func newMockRoundTripper() *mockRoundTripper {
 	return &mockRoundTripper{
-		responses:  make(map[string]*http.Response),
-		errors:     make(map[string]error),
-		callCounts: make(map[string]int),
+		responses:        make(map[string]*http.Response),
+		responseData:     make(map[string]mockResponseData),
+		responseSequence: make(map[string][]mockResponseData),
+		errors:           make(map[string]error),
+		callCounts:       make(map[string]int),
 	}
 }
 
@@ -38,6 +48,7 @@ func (m *mockRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) 
 	defer m.mu.Unlock()
 
 	key := fmt.Sprintf("%s %s", req.Method, req.URL.Path)
+	callIndex := m.callCounts[key]
 	m.callCounts[key]++
 
 	// Check for errors first
@@ -45,7 +56,30 @@ func (m *mockRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) 
 		return nil, err
 	}
 
-	// Check for specific response
+	// Check for sequenced responses (returns different response for each call)
+	if seq, ok := m.responseSequence[key]; ok && callIndex < len(seq) {
+		data := seq[callIndex]
+		resp := &http.Response{
+			StatusCode: data.statusCode,
+			Body:       io.NopCloser(strings.NewReader(data.body)),
+			Header:     make(http.Header),
+		}
+		resp.Header.Set("Content-Type", "application/json")
+		return resp, nil
+	}
+
+	// Check for response data (preferred - creates fresh body each time)
+	if data, ok := m.responseData[key]; ok {
+		resp := &http.Response{
+			StatusCode: data.statusCode,
+			Body:       io.NopCloser(strings.NewReader(data.body)),
+			Header:     make(http.Header),
+		}
+		resp.Header.Set("Content-Type", "application/json")
+		return resp, nil
+	}
+
+	// Check for specific response (legacy - body gets exhausted after first read)
 	if resp, ok := m.responses[key]; ok {
 		return resp, nil
 	}
@@ -64,12 +98,20 @@ func (m *mockRoundTripper) setResponse(method, path string, statusCode int, body
 	defer m.mu.Unlock()
 
 	key := fmt.Sprintf("%s %s", method, path)
-	m.responses[key] = &http.Response{
-		StatusCode: statusCode,
-		Body:       io.NopCloser(strings.NewReader(body)),
-		Header:     make(http.Header),
+	m.responseData[key] = mockResponseData{
+		statusCode: statusCode,
+		body:       body,
 	}
-	m.responses[key].Header.Set("Content-Type", "application/json")
+}
+
+// setResponseSequence sets a sequence of mock responses for a given method and path
+// Each call to the endpoint returns the next response in the sequence
+func (m *mockRoundTripper) setResponseSequence(method, path string, responses []mockResponseData) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	key := fmt.Sprintf("%s %s", method, path)
+	m.responseSequence[key] = responses
 }
 
 // setError sets a mock error for a given method and path

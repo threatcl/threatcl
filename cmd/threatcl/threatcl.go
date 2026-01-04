@@ -177,6 +177,29 @@ func Run(args []string) int {
 				specCfg: cfg,
 			}, nil
 		},
+		"cloud search": func() (cli.Command, error) {
+			return &CloudSearchCommand{
+				CloudCommandBase: CloudCommandBase{
+					GlobalCmdOptions: globalCmdOptions,
+				},
+			}, nil
+		},
+		"cloud validate": func() (cli.Command, error) {
+			return &CloudValidateCommand{
+				CloudCommandBase: CloudCommandBase{
+					GlobalCmdOptions: globalCmdOptions,
+				},
+				specCfg: cfg,
+			}, nil
+		},
+		"cloud push": func() (cli.Command, error) {
+			return &CloudPushCommand{
+				CloudCommandBase: CloudCommandBase{
+					GlobalCmdOptions: globalCmdOptions,
+				},
+				specCfg: cfg,
+			}, nil
+		},
 	}
 
 	cli := &cli.CLI{

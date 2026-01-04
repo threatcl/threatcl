@@ -4,6 +4,7 @@ go 1.25.1
 
 require (
 	github.com/99designs/gqlgen v0.17.55
+	github.com/99designs/keyring v1.2.2
 	github.com/AlecAivazis/survey/v2 v2.3.2
 	github.com/charmbracelet/glamour v0.3.0
 	github.com/fsnotify/fsnotify v1.7.0
@@ -21,6 +22,8 @@ require (
 	github.com/zenizh/go-capturer v0.0.0-20211219060012-52ea6c8fed04
 )
 
+replace github.com/threatcl/spec => ../spec
+
 require (
 	cel.dev/expr v0.24.0 // indirect
 	cloud.google.com/go v0.123.0 // indirect
@@ -31,7 +34,6 @@ require (
 	cloud.google.com/go/monitoring v1.24.2 // indirect
 	cloud.google.com/go/storage v1.57.0 // indirect
 	github.com/99designs/go-keychain v0.0.0-20191008050251-8e49817e8af4 // indirect
-	github.com/99designs/keyring v1.2.2 // indirect
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/detectors/gcp v1.30.0 // indirect
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/metric v0.54.0 // indirect
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/internal/resourcemapping v0.54.0 // indirect

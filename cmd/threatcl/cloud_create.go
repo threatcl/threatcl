@@ -1,11 +1,7 @@
 package main
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
 	"os"
 	"strings"
 	"time"
@@ -143,7 +139,7 @@ func (c *CloudCreateCommand) Run(args []string) int {
 	}
 
 	// Step 3: Create the threat model
-	threatModel, err := c.createThreatModel(token, orgId, c.flagName, c.flagDescription, httpClient, fsSvc)
+	threatModel, err := createThreatModel(token, orgId, c.flagName, c.flagDescription, httpClient, fsSvc)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error creating threat model: %s\n", err)
 		return 1
@@ -169,52 +165,4 @@ func (c *CloudCreateCommand) Run(args []string) int {
 	}
 
 	return 0
-}
-
-func (c *CloudCreateCommand) createThreatModel(token string, orgId string, name string, description string, httpClient HTTPClient, fsSvc FileSystemService) (*threatModel, error) {
-	url := fmt.Sprintf("%s/api/v1/org/%s/models", getAPIBaseURL(fsSvc), orgId)
-
-	// Create the request payload
-	payload := map[string]string{
-		"name":        name,
-		"description": description,
-	}
-
-	payloadBytes, err := json.Marshal(payload)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal payload: %w", err)
-	}
-
-	// Create request
-	req, err := http.NewRequest("POST", url, bytes.NewReader(payloadBytes))
-	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %w", err)
-	}
-
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
-	req.Header.Set("Content-Type", "application/json")
-
-	// Send request
-	resp, err := httpClient.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("failed to connect to API: %w", err)
-	}
-	defer resp.Body.Close()
-
-	body, _ := io.ReadAll(resp.Body)
-
-	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
-		if resp.StatusCode == http.StatusUnauthorized {
-			return nil, fmt.Errorf("authentication failed - token may be invalid or expired. Please run 'threatcl cloud login' again")
-		}
-		return nil, fmt.Errorf("API returned status %d: %s", resp.StatusCode, string(body))
-	}
-
-	// Parse the response
-	var tm threatModel
-	if err := json.Unmarshal(body, &tm); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-
-	return &tm, nil
 }
