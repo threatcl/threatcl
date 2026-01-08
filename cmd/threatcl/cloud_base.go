@@ -57,11 +57,16 @@ func (b *CloudCommandBase) handleTokenError(err error) int {
 	return 1
 }
 
-// resolveOrgId resolves organization ID from flag or user profile
-// If flagOrgId is empty, fetches user info and uses the first organization
+// resolveOrgId resolves organization ID from flag, environment variable, or user profile
+// Priority: 1) flagOrgId, 2) THREATCL_CLOUD_ORG env var, 3) first organization from user profile
 func (b *CloudCommandBase) resolveOrgId(token string, flagOrgId string, httpClient HTTPClient, fsSvc FileSystemService) (string, error) {
 	if flagOrgId != "" {
 		return flagOrgId, nil
+	}
+
+	// Check environment variable
+	if envOrgId := fsSvc.Getenv("THREATCL_CLOUD_ORG"); envOrgId != "" {
+		return envOrgId, nil
 	}
 
 	// Fetch user info to get first organization

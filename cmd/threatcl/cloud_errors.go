@@ -14,4 +14,11 @@ const (
 	ErrFileAlreadyExists   = "file %s already exists. Use -overwrite flag to overwrite"
 	ErrThreatModelNotFound = "threat model not found: %s"
 	ErrAPIReturnedStatus   = "api returned status %d: %s"
+
+	// Library-related errors
+	ErrLibraryFolderNotFound    = "library folder not found: %s"
+	ErrLibraryThreatNotFound    = "threat library item not found: %s"
+	ErrLibraryControlNotFound   = "control library item not found: %s"
+	ErrInvalidLibraryFolderType = "invalid folder type: %s (must be THREAT or CONTROL)"
+	ErrInvalidLibraryStatus     = "invalid status: %s (must be DRAFT, PUBLISHED, ARCHIVED, or DEPRECATED)"
 )

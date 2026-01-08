@@ -24,8 +24,9 @@ Usage: threatcl cloud threatmodel update-status -model-id=<modelId_or_slug> -sta
 
 	The -model-id flag is required and can be either a threat model ID or slug.
 
-	If -org-id is not provided, the command will automatically use the
-	first organization from your user profile.
+	If -org-id is not provided, the command will check the THREATCL_CLOUD_ORG
+	environment variable. If that is also not set, it will use the first
+	organization from your user profile.
 
 Options:
 
@@ -36,14 +37,18 @@ Options:
    Required. The status to update the threat model to. Can be "draft", "in_review", "approved" or "archived".
 
  -org-id=<orgId>
-   Optional organization ID. If not provided, uses the first organization
-   from your user profile.
+   Optional organization ID. If not provided, uses THREATCL_CLOUD_ORG env var
+   or the first organization from your user profile.
 
 Environment Variables:
 
  THREATCL_API_URL
    Override the API base URL (default: https://api.threatcl.com)
    Example: THREATCL_API_URL=http://localhost:8080 threatcl cloud threatmodel update-status -model-id=my-model -status=approved
+
+ THREATCL_CLOUD_ORG
+   Default organization ID to use when -org-id is not specified.
+
 `
 	return strings.TrimSpace(helpText)
 }

@@ -31,7 +31,8 @@ Options:
    Filter threats by impact type. Valid values: Integrity, Confidentiality, Availability
 
  -org-id=<uuid>
-   Optional organization ID. If not specified, searches across all organizations.
+   Optional organization ID. If not specified, uses THREATCL_CLOUD_ORG env var
+   or searches across all organizations.
 
  -config=<file>
    Optional config file
@@ -48,6 +49,9 @@ Environment Variables:
 
  THREATCL_API_URL
    Override the API base URL (default: https://api.threatcl.com)
+
+ THREATCL_CLOUD_ORG
+   Default organization ID to use when -org-id is not specified.
 
 `
 	return strings.TrimSpace(helpText)

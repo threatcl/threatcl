@@ -200,6 +200,72 @@ func Run(args []string) int {
 				specCfg: cfg,
 			}, nil
 		},
+		"cloud library": func() (cli.Command, error) {
+			return &CloudLibraryCommand{}, nil
+		},
+		"cloud library folders": func() (cli.Command, error) {
+			return &CloudLibraryFoldersCommand{
+				CloudCommandBase: CloudCommandBase{
+					GlobalCmdOptions: globalCmdOptions,
+				},
+			}, nil
+		},
+		"cloud library folder": func() (cli.Command, error) {
+			return &CloudLibraryFolderCommand{
+				CloudCommandBase: CloudCommandBase{
+					GlobalCmdOptions: globalCmdOptions,
+				},
+			}, nil
+		},
+		"cloud library threats": func() (cli.Command, error) {
+			return &CloudLibraryThreatsCommand{
+				CloudCommandBase: CloudCommandBase{
+					GlobalCmdOptions: globalCmdOptions,
+				},
+			}, nil
+		},
+		"cloud library threat": func() (cli.Command, error) {
+			return &CloudLibraryThreatCommand{
+				CloudCommandBase: CloudCommandBase{
+					GlobalCmdOptions: globalCmdOptions,
+				},
+			}, nil
+		},
+		"cloud library threat-ref": func() (cli.Command, error) {
+			return &CloudLibraryThreatRefCommand{
+				CloudCommandBase: CloudCommandBase{
+					GlobalCmdOptions: globalCmdOptions,
+				},
+			}, nil
+		},
+		"cloud library controls": func() (cli.Command, error) {
+			return &CloudLibraryControlsCommand{
+				CloudCommandBase: CloudCommandBase{
+					GlobalCmdOptions: globalCmdOptions,
+				},
+			}, nil
+		},
+		"cloud library control": func() (cli.Command, error) {
+			return &CloudLibraryControlCommand{
+				CloudCommandBase: CloudCommandBase{
+					GlobalCmdOptions: globalCmdOptions,
+				},
+			}, nil
+		},
+		"cloud library control-ref": func() (cli.Command, error) {
+			return &CloudLibraryControlRefCommand{
+				CloudCommandBase: CloudCommandBase{
+					GlobalCmdOptions: globalCmdOptions,
+				},
+			}, nil
+		},
+		"cloud library stats": func() (cli.Command, error) {
+			return &CloudLibraryStatsCommand{
+				CloudCommandBase: CloudCommandBase{
+					GlobalCmdOptions: globalCmdOptions,
+				},
+			}, nil
+		},
 	}
 
 	cli := &cli.CLI{

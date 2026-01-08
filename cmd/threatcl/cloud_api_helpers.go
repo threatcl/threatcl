@@ -526,3 +526,167 @@ func validateThreatModel(token, filePath string, httpClient HTTPClient, fsSvc Fi
 	}
 	return orgValid, tmNameValid, tmFileMatchesVersion, nil
 }
+
+// fetchControlLibraryItemByRef retrieves a control library item by its reference ID
+func fetchControlLibraryItemByRef(token, orgId, refId string, httpClient HTTPClient, fsSvc FileSystemService) (*controlLibraryItem, error) {
+	query := `query controlLibraryItemByRef($orgId: ID!, $referenceId: String!) {
+  controlLibraryItemByRef(orgId: $orgId, referenceId: $referenceId) {
+    id
+    referenceId
+    name
+    status
+    currentVersion {
+      version
+      name
+      description
+      controlType
+      controlCategory
+      implementationGuidance
+      nistControls
+      cisControls
+      isoControls
+      tags
+      relatedThreats {
+        referenceId
+        name
+      }
+      defaultRiskReduction
+    }
+    versions {
+      version
+      name
+    }
+    usageCount
+    usedByModels {
+      id
+      name
+    }
+  }
+}`
+
+	reqBody := graphQLRequest{
+		Query: query,
+		Variables: map[string]interface{}{
+			"orgId":       orgId,
+			"referenceId": refId,
+		},
+	}
+
+	jsonData, err := json.Marshal(reqBody)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
+	}
+
+	url := fmt.Sprintf("%s/api/v1/graphql", getAPIBaseURL(fsSvc))
+	resp, err := makeAuthenticatedRequest("POST", url, token, bytes.NewReader(jsonData), httpClient)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, handleAPIErrorResponse(resp)
+	}
+
+	var gqlResp graphQLResponse
+	if err := decodeJSONResponse(resp, &gqlResp); err != nil {
+		return nil, err
+	}
+
+	if len(gqlResp.Errors) > 0 {
+		return nil, fmt.Errorf("GraphQL error: %s", gqlResp.Errors[0].Message)
+	}
+
+	var data struct {
+		ControlLibraryItemByRef *controlLibraryItem `json:"controlLibraryItemByRef"`
+	}
+	if err := json.Unmarshal(gqlResp.Data, &data); err != nil {
+		return nil, fmt.Errorf("failed to parse control library item: %w", err)
+	}
+
+	if data.ControlLibraryItemByRef == nil {
+		return nil, fmt.Errorf(ErrLibraryControlNotFound, refId)
+	}
+
+	return data.ControlLibraryItemByRef, nil
+}
+
+// fetchControlLibraryItemsByRefs retrieves multiple control library items by their reference IDs
+func fetchControlLibraryItemsByRefs(token, orgId string, refIds []string, httpClient HTTPClient, fsSvc FileSystemService) ([]*controlLibraryItem, error) {
+	query := `query controlLibraryItemsByRefs($orgId: ID!, $referenceIds: [String!]!) {
+  controlLibraryItemsByRefs(orgId: $orgId, referenceIds: $referenceIds) {
+    id
+    referenceId
+    name
+    status
+    currentVersion {
+      version
+      name
+      description
+      controlType
+      controlCategory
+      implementationGuidance
+      nistControls
+      cisControls
+      isoControls
+      tags
+      relatedThreats {
+        referenceId
+        name
+      }
+      defaultRiskReduction
+    }
+    versions {
+      version
+      name
+    }
+    usageCount
+    usedByModels {
+      id
+      name
+    }
+  }
+}`
+
+	reqBody := graphQLRequest{
+		Query: query,
+		Variables: map[string]any{
+			"orgId":        orgId,
+			"referenceIds": refIds,
+		},
+	}
+
+	jsonData, err := json.Marshal(reqBody)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
+	}
+
+	url := fmt.Sprintf("%s/api/v1/graphql", getAPIBaseURL(fsSvc))
+	resp, err := makeAuthenticatedRequest("POST", url, token, bytes.NewReader(jsonData), httpClient)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, handleAPIErrorResponse(resp)
+	}
+
+	var gqlResp graphQLResponse
+	if err := decodeJSONResponse(resp, &gqlResp); err != nil {
+		return nil, err
+	}
+
+	if len(gqlResp.Errors) > 0 {
+		return nil, fmt.Errorf("GraphQL error: %s", gqlResp.Errors[0].Message)
+	}
+
+	var data struct {
+		ControlLibraryItemsByRefs []*controlLibraryItem `json:"controlLibraryItemsByRefs"`
+	}
+	if err := json.Unmarshal(gqlResp.Data, &data); err != nil {
+		return nil, fmt.Errorf("failed to parse control library items: %w", err)
+	}
+
+	return data.ControlLibraryItemsByRefs, nil
+}
