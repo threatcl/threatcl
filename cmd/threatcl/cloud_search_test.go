@@ -413,6 +413,8 @@ func TestCloudSearchDisplayResults(t *testing.T) {
 			}{
 				ID: "tm-1", Name: "Web App", Status: "active", Version: "1.0.0",
 			},
+			OrgID:   "org-123",
+			OrgName: "Test Organization",
 		},
 	}
 
@@ -434,6 +436,8 @@ func TestCloudSearchDisplayResults(t *testing.T) {
 		"active",
 		"1.0.0",
 		"Found 1 threat(s) over 1 threatmodel(s) in 2 org(s)",
+		"Org Name: Test Organization",
+		"Org ID:   org-123",
 	}
 
 	for _, field := range expectedFields {

@@ -90,9 +90,25 @@ func (c *CloudSearchCommand) Run(args []string) int {
 	}
 
 	// Step 2: Get organizations to search
+	// Build a map of org ID -> org Name for display
+	orgInfo := make(map[string]string) // orgId -> orgName
 	var orgIds []string
 	if c.flagOrgId != "" {
 		orgIds = []string{c.flagOrgId}
+		// When a specific org-id is provided, we still need to fetch org info to get the name
+		orgs, err := c.fetchOrganizationsGraphQL(token, httpClient, fsSvc)
+		if err == nil {
+			for _, org := range orgs {
+				if org.Organization.ID == c.flagOrgId {
+					orgInfo[org.Organization.ID] = org.Organization.Name
+					break
+				}
+			}
+		}
+		// If we couldn't find the org name, use a placeholder
+		if _, exists := orgInfo[c.flagOrgId]; !exists {
+			orgInfo[c.flagOrgId] = ""
+		}
 	} else {
 		// Fetch organizations via GraphQL
 		orgs, err := c.fetchOrganizationsGraphQL(token, httpClient, fsSvc)
@@ -106,6 +122,7 @@ func (c *CloudSearchCommand) Run(args []string) int {
 		}
 		for _, org := range orgs {
 			orgIds = append(orgIds, org.Organization.ID)
+			orgInfo[org.Organization.ID] = org.Organization.Name
 		}
 	}
 
@@ -116,6 +133,11 @@ func (c *CloudSearchCommand) Run(args []string) int {
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error searching threats in org %s: %s\n", orgId, err)
 			continue
+		}
+		// Populate org info on each threat
+		for i := range threats {
+			threats[i].OrgID = orgId
+			threats[i].OrgName = orgInfo[orgId]
 		}
 		allThreats = append(allThreats, threats...)
 	}
@@ -173,6 +195,10 @@ type graphQLThreat struct {
 		Status      string `json:"status"`
 		Version     string `json:"version"`
 	} `json:"threatModel"`
+	// OrgID and OrgName are populated after the GraphQL query
+	// to track which organization this threat belongs to
+	OrgID   string `json:"-"`
+	OrgName string `json:"-"`
 }
 
 // fetchOrganizationsGraphQL fetches organizations using GraphQL
@@ -335,10 +361,14 @@ func (c *CloudSearchCommand) displaySearchResults(threats []graphQLThreat, impac
 
 		fmt.Println()
 		fmt.Printf("  Threat Model:\n")
-		fmt.Printf("    Name:    %s\n", threat.ThreatModel.Name)
-		fmt.Printf("    ID:      %s\n", threat.ThreatModel.ID)
-		fmt.Printf("    Status:  %s\n", threat.ThreatModel.Status)
-		fmt.Printf("    Version: %s\n", threat.ThreatModel.Version)
+		fmt.Printf("    Name:     %s\n", threat.ThreatModel.Name)
+		fmt.Printf("    ID:       %s\n", threat.ThreatModel.ID)
+		fmt.Printf("    Status:   %s\n", threat.ThreatModel.Status)
+		fmt.Printf("    Version:  %s\n", threat.ThreatModel.Version)
+		if threat.OrgName != "" {
+			fmt.Printf("    Org Name: %s\n", threat.OrgName)
+		}
+		fmt.Printf("    Org ID:   %s\n", threat.OrgID)
 
 		if len(threat.InformationAssets) > 0 {
 			fmt.Println()
