@@ -15,7 +15,10 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/hashicorp/hcl/v2"
+	"github.com/hashicorp/hcl/v2/hclwrite"
 	"github.com/threatcl/spec"
+	"github.com/zclconf/go-cty/cty"
 )
 
 // fetchUserInfo retrieves user information from the API
@@ -377,21 +380,22 @@ func updateHCLBackendThreatmodel(filePath, slug string, fsSvc FileSystemService)
 }
 
 // validateThreatModel validates a local threat model file against a remote threatmodel
-// Returns strings for:
+// Returns:
+// - wrapped threatmodel (for further validation like control refs)
 // - organization is valid and user can access - return orgid
 // - threatmodel name exists - return slug
 // - local file matches the latest version of the threatmodel - return version string
-func validateThreatModel(token, filePath string, httpClient HTTPClient, fsSvc FileSystemService, specCfg *spec.ThreatmodelSpecConfig) (string, string, string, error) {
+func validateThreatModel(token, filePath string, httpClient HTTPClient, fsSvc FileSystemService, specCfg *spec.ThreatmodelSpecConfig) (*spec.ThreatmodelWrapped, string, string, string, error) {
 	orgValid := ""
 	tmNameValid := ""
 	tmFileMatchesVersion := ""
 	// Step 1: Read the file content to calculate size and hash
 	fileContent, err := os.ReadFile(filePath)
 	if err != nil {
-		return orgValid, tmNameValid, tmFileMatchesVersion, fmt.Errorf("error reading file: %s", err)
+		return nil, orgValid, tmNameValid, tmFileMatchesVersion, fmt.Errorf("error reading file: %s", err)
 	}
 
-	// Calculate file size and SHA256 hash
+	// Calculate file size and SHA256 hash from ORIGINAL content (for version matching)
 	// fileSize := len(fileContent)
 	hashBytes := sha256.Sum256(fileContent)
 	fileHash := hex.EncodeToString(hashBytes[:])
@@ -399,18 +403,22 @@ func validateThreatModel(token, filePath string, httpClient HTTPClient, fsSvc Fi
 	// fmt.Printf("File size: %d bytes\n", fileSize)
 	// fmt.Printf("File SHA256: %s\n", fileHash)
 
+	// Preprocess HCL to inject empty descriptions for controls with ref but no description
+	// This allows cloud-backed controls to work without requiring local descriptions
+	processedContent := preprocessHCLForControls(fileContent)
+
 	// Step 2: Create a temporary file with the same filename
 	tmpDir, err := os.MkdirTemp("", "threatcl-validate-")
 	if err != nil {
-		return orgValid, tmNameValid, tmFileMatchesVersion, fmt.Errorf("error creating temporary directory: %s", err)
+		return nil, orgValid, tmNameValid, tmFileMatchesVersion, fmt.Errorf("error creating temporary directory: %s", err)
 	}
 	defer os.RemoveAll(tmpDir) // Clean up the entire temp directory
 
 	// Preserve the original filename
 	tmpFilePath := filepath.Join(tmpDir, filepath.Base(filePath))
-	err = os.WriteFile(tmpFilePath, fileContent, 0600)
+	err = os.WriteFile(tmpFilePath, processedContent, 0600)
 	if err != nil {
-		return orgValid, tmNameValid, tmFileMatchesVersion, fmt.Errorf("error writing temporary file: %s", err)
+		return nil, orgValid, tmNameValid, tmFileMatchesVersion, fmt.Errorf("error writing temporary file: %s", err)
 	}
 
 	// Step 3: Parse the HCL file from the temporary location
@@ -418,14 +426,14 @@ func validateThreatModel(token, filePath string, httpClient HTTPClient, fsSvc Fi
 	tmParser := spec.NewThreatmodelParser(specCfg)
 	err = tmParser.ParseFile(tmpFilePath, false)
 	if err != nil {
-		return orgValid, tmNameValid, tmFileMatchesVersion, fmt.Errorf("error parsing HCL file: %s", err)
+		return nil, orgValid, tmNameValid, tmFileMatchesVersion, fmt.Errorf("error parsing HCL file: %s", err)
 	}
 	// fmt.Println("✓ File parsed successfully")
 
 	// Constraint check
 	constraintMsg, err := spec.VersionConstraints(tmParser.GetWrapped(), false)
 	if err != nil {
-		return orgValid, tmNameValid, tmFileMatchesVersion, fmt.Errorf("error checking constraints: %s", err)
+		return nil, orgValid, tmNameValid, tmFileMatchesVersion, fmt.Errorf("error checking constraints: %s", err)
 	}
 	if constraintMsg != "" {
 		// @TODO do we want this?
@@ -437,11 +445,11 @@ func validateThreatModel(token, filePath string, httpClient HTTPClient, fsSvc Fi
 
 	// Check 1: Exactly one backend block
 	if len(wrapped.Backends) == 0 {
-		return orgValid, tmNameValid, tmFileMatchesVersion, fmt.Errorf("validation failed: No backend block found. Please add a backend block with backend_name=\"threatcl-cloud\"")
+		return wrapped, orgValid, tmNameValid, tmFileMatchesVersion, fmt.Errorf("validation failed: No backend block found. Please add a backend block with backend_name=\"threatcl-cloud\"")
 	}
 
 	if len(wrapped.Backends) > 1 {
-		return orgValid, tmNameValid, tmFileMatchesVersion, fmt.Errorf("validation failed: Multiple backend blocks found (%d). Only one backend block is allowed", len(wrapped.Backends))
+		return wrapped, orgValid, tmNameValid, tmFileMatchesVersion, fmt.Errorf("validation failed: Multiple backend blocks found (%d). Only one backend block is allowed", len(wrapped.Backends))
 	}
 	// fmt.Println("✓ Single backend block found")
 
@@ -449,20 +457,20 @@ func validateThreatModel(token, filePath string, httpClient HTTPClient, fsSvc Fi
 
 	// Check 2: Backend name is "threatcl-cloud"
 	if backend.BackendName != "threatcl-cloud" {
-		return orgValid, tmNameValid, tmFileMatchesVersion, fmt.Errorf("validation failed: Backend name is '%s', expected 'threatcl-cloud'", backend.BackendName)
+		return wrapped, orgValid, tmNameValid, tmFileMatchesVersion, fmt.Errorf("validation failed: Backend name is '%s', expected 'threatcl-cloud'", backend.BackendName)
 	}
 	// fmt.Println("✓ Backend name is 'threatcl-cloud'")
 
 	// Check 3: Backend has organization specified
 	if backend.BackendOrg == "" {
-		return orgValid, tmNameValid, tmFileMatchesVersion, fmt.Errorf("validation failed: Backend organization is not specified. Please set the 'organization' attribute in the backend block")
+		return wrapped, orgValid, tmNameValid, tmFileMatchesVersion, fmt.Errorf("validation failed: Backend organization is not specified. Please set the 'organization' attribute in the backend block")
 	}
 	// fmt.Printf("✓ Backend organization specified: %s\n", backend.BackendOrg)
 
 	// Step 4: Fetch user information
 	whoamiResp, err := fetchUserInfo(token, httpClient, fsSvc)
 	if err != nil {
-		return orgValid, tmNameValid, tmFileMatchesVersion, fmt.Errorf("error fetching user information: %s", err)
+		return wrapped, orgValid, tmNameValid, tmFileMatchesVersion, fmt.Errorf("error fetching user information: %s", err)
 	}
 	// fmt.Printf("✓ User authenticated: %s\n", whoamiResp.User.Email)
 
@@ -483,7 +491,7 @@ func validateThreatModel(token, filePath string, httpClient HTTPClient, fsSvc Fi
 				errMsg += fmt.Sprintf("   - %s (slug: %s, role: %s)", org.Organization.Name, org.Organization.Slug, org.Role)
 			}
 		}
-		return orgValid, tmNameValid, tmFileMatchesVersion, fmt.Errorf("%s", errMsg)
+		return wrapped, orgValid, tmNameValid, tmFileMatchesVersion, fmt.Errorf("%s", errMsg)
 	} else {
 		orgValid = foundOrg.Organization.ID
 	}
@@ -497,17 +505,17 @@ func validateThreatModel(token, filePath string, httpClient HTTPClient, fsSvc Fi
 		// Try and match this threat model
 		threatModel, err := fetchThreatModel(token, foundOrg.Organization.ID, backend.BackendTMShort, httpClient, fsSvc)
 		if err != nil && !strings.Contains(err.Error(), "threat model not found") {
-			return orgValid, tmNameValid, tmFileMatchesVersion, fmt.Errorf("error fetching threat models: %s", err)
+			return wrapped, orgValid, tmNameValid, tmFileMatchesVersion, fmt.Errorf("error fetching threat models: %s", err)
 		}
 		if threatModel == nil {
-			return orgValid, backend.BackendTMShort, tmFileMatchesVersion, fmt.Errorf("error: backend threatmodel '%s' not found", backend.BackendTMShort)
+			return wrapped, orgValid, backend.BackendTMShort, tmFileMatchesVersion, fmt.Errorf("error: backend threatmodel '%s' not found", backend.BackendTMShort)
 		} else {
 			tmNameValid = threatModel.Slug
 			// fmt.Printf("✓ Threat model '%s' found\n", threatModel.Name)
 
 			threatModelVersions, err := fetchThreatModelVersions(token, foundOrg.Organization.ID, threatModel.ID, httpClient, fsSvc)
 			if err != nil {
-				return orgValid, tmNameValid, tmFileMatchesVersion, fmt.Errorf("error fetching threat model versions: %s", err)
+				return wrapped, orgValid, tmNameValid, tmFileMatchesVersion, fmt.Errorf("error fetching threat model versions: %s", err)
 			}
 
 			var foundVersion *threatModelVersion
@@ -524,7 +532,106 @@ func validateThreatModel(token, filePath string, httpClient HTTPClient, fsSvc Fi
 			}
 		}
 	}
-	return orgValid, tmNameValid, tmFileMatchesVersion, nil
+	return wrapped, orgValid, tmNameValid, tmFileMatchesVersion, nil
+}
+
+// preprocessHCLForControls preprocesses HCL content to inject empty description
+// fields into control blocks that have a "ref" attribute but no "description".
+// This allows controls to be defined with just a ref, with the description
+// being populated from the cloud control library later.
+func preprocessHCLForControls(content []byte) []byte {
+	// Parse with hclwrite (lenient parser for AST manipulation)
+	file, diags := hclwrite.ParseConfig(content, "", hcl.InitialPos)
+	if diags.HasErrors() {
+		// If parsing fails, return original content and let the normal parser report errors
+		return content
+	}
+
+	modified := false
+	body := file.Body()
+
+	// Find threatmodel blocks → threat blocks → control blocks
+	for _, tmBlock := range body.Blocks() {
+		if tmBlock.Type() != "threatmodel" {
+			continue
+		}
+		for _, threatBlock := range tmBlock.Body().Blocks() {
+			if threatBlock.Type() != "threat" {
+				continue
+			}
+			for _, controlBlock := range threatBlock.Body().Blocks() {
+				if controlBlock.Type() != "control" {
+					continue
+				}
+				// If has "ref" but no "description", inject empty description
+				hasRef := controlBlock.Body().GetAttribute("ref") != nil
+				hasDesc := controlBlock.Body().GetAttribute("description") != nil
+				if hasRef && !hasDesc {
+					controlBlock.Body().SetAttributeValue("description", cty.StringVal(""))
+					modified = true
+				}
+			}
+		}
+	}
+
+	if modified {
+		return file.Bytes()
+	}
+	return content
+}
+
+// extractControlRefs extracts all unique control refs from a wrapped threatmodel
+func extractControlRefs(wrapped *spec.ThreatmodelWrapped) []string {
+	if wrapped == nil {
+		return nil
+	}
+
+	seen := make(map[string]bool)
+	var refs []string
+
+	for _, tm := range wrapped.Threatmodels {
+		for _, threat := range tm.Threats {
+			for _, control := range threat.Controls {
+				if control.Ref != "" && !seen[control.Ref] {
+					seen[control.Ref] = true
+					refs = append(refs, control.Ref)
+				}
+			}
+		}
+	}
+
+	return refs
+}
+
+// validateControlRefs validates that control refs exist in the library
+// Returns a map of ref -> *controlLibraryItem (for found items), a slice of missing refs, and an error
+func validateControlRefs(token, orgId string, refs []string, httpClient HTTPClient, fsSvc FileSystemService) (map[string]*controlLibraryItem, []string, error) {
+	if len(refs) == 0 {
+		return nil, nil, nil
+	}
+
+	items, err := fetchControlLibraryItemsByRefs(token, orgId, refs, httpClient, fsSvc)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// Build lookup map of found items
+	found := make(map[string]*controlLibraryItem)
+	for _, item := range items {
+		if item != nil {
+			found[item.ReferenceID] = item
+		}
+	}
+
+	// Find missing refs
+	var missing []string
+	for _, ref := range refs {
+		if found[ref] == nil {
+			missing = append(missing, ref)
+		}
+	}
+
+	return found, missing, nil
 }
 
 // fetchControlLibraryItemByRef retrieves a control library item by its reference ID

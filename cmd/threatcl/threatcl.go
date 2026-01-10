@@ -200,6 +200,14 @@ func Run(args []string) int {
 				specCfg: cfg,
 			}, nil
 		},
+		"cloud view": func() (cli.Command, error) {
+			return &CloudViewCommand{
+				CloudCommandBase: CloudCommandBase{
+					GlobalCmdOptions: globalCmdOptions,
+				},
+				specCfg: cfg,
+			}, nil
+		},
 		"cloud library": func() (cli.Command, error) {
 			return &CloudLibraryCommand{}, nil
 		},

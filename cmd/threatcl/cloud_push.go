@@ -120,7 +120,7 @@ func (c *CloudPushCommand) Run(args []string) int {
 	}
 
 	// Step 3: Run validateThreatModel on the temp copy
-	orgValid, tmNameValid, tmFileMatchesVersion, validateErr := validateThreatModel(token, tmpFilePath, httpClient, fsSvc, c.specCfg)
+	_, orgValid, tmNameValid, tmFileMatchesVersion, validateErr := validateThreatModel(token, tmpFilePath, httpClient, fsSvc, c.specCfg)
 
 	// Step 4: Handle validation results
 	if validateErr != nil {

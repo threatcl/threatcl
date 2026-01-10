@@ -83,7 +83,7 @@ func (c *CloudValidateCommand) Run(args []string) int {
 		return 1
 	}
 
-	orgValid, tmNameValid, tmFileMatchesVersion, err := validateThreatModel(token, filePath, httpClient, fsSvc, c.specCfg)
+	wrapped, orgValid, tmNameValid, tmFileMatchesVersion, err := validateThreatModel(token, filePath, httpClient, fsSvc, c.specCfg)
 
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "❌ %s\n", err)
@@ -92,20 +92,44 @@ func (c *CloudValidateCommand) Run(args []string) int {
 
 	if tmFileMatchesVersion != "" {
 		fmt.Printf("✓ Local Threat model file matches the latest version of the cloud threat model at org-id: %s, model-id: %s, version: %s\n", orgValid, tmNameValid, tmFileMatchesVersion)
-		return 0
-	}
-
-	if tmNameValid != "" {
+	} else if tmNameValid != "" {
 		fmt.Printf("✓ Local Threat model file (org-id: %s, model-id: %s) matches a cloud threat model, but doesn't match the latest version\nConsider running 'threatcl cloud push' to update the local file to the latest version.\n", orgValid, tmNameValid)
-		return 0
-	}
-
-	if orgValid != "" {
+	} else if orgValid != "" {
 		fmt.Println("✓ Organization is valid")
-		return 0
+	} else {
+		fmt.Println("Invalid organization")
+		return 1
 	}
 
-	fmt.Println("Invalid organization")
-	return 1
+	// Validate control refs if we have a valid org
+	if orgValid != "" && wrapped != nil {
+		refs := extractControlRefs(wrapped)
+		if len(refs) > 0 {
+			found, missing, refErr := validateControlRefs(token, orgValid, refs, httpClient, fsSvc)
+			if refErr != nil {
+				fmt.Fprintf(os.Stderr, "⚠ Warning: could not validate control refs: %s\n", refErr)
+			} else {
+				if len(missing) > 0 {
+					fmt.Fprintf(os.Stderr, "⚠ Warning: unknown control refs: %v\n", missing)
+				}
+				// Check for non-PUBLISHED controls
+				var nonPublished []string
+				for ref, item := range found {
+					if item != nil && item.Status != "PUBLISHED" {
+						nonPublished = append(nonPublished, fmt.Sprintf("%s (%s)", ref, item.Status))
+					}
+				}
+				if len(nonPublished) > 0 {
+					fmt.Fprintf(os.Stderr, "⚠ Warning: non-PUBLISHED control refs: %v\n", nonPublished)
+				}
+				publishedCount := len(found) - len(nonPublished)
+				if publishedCount > 0 {
+					fmt.Printf("✓ %d control ref(s) validated (PUBLISHED)\n", publishedCount)
+				}
+			}
+		}
+	}
+
+	return 0
 
 }
