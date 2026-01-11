@@ -712,3 +712,283 @@ default_initiative_size = "Medium"
 		})
 	}
 }
+
+func TestEnrichThreatsWithCloudData(t *testing.T) {
+	tests := []struct {
+		name            string
+		wrapped         *spec.ThreatmodelWrapped
+		cloudThreats    map[string]*threatLibraryItem
+		expectedDesc    string
+		expectedName    string
+		expectedImpacts []string
+		expectedStride  []string
+		expectedSkipped int
+		threatIdx       int
+	}{
+		{
+			name: "enrich empty threat fields from PUBLISHED threat",
+			wrapped: &spec.ThreatmodelWrapped{
+				Threatmodels: []spec.Threatmodel{
+					{
+						Name:   "Test TM",
+						Author: "test",
+						Threats: []*spec.Threat{
+							{
+								Name:        "",
+								Ref:         "THR-001",
+								Description: "",
+							},
+						},
+					},
+				},
+			},
+			cloudThreats: map[string]*threatLibraryItem{
+				"THR-001": {
+					ReferenceID: "THR-001",
+					Name:        "Cloud Threat 1",
+					Status:      "PUBLISHED",
+					CurrentVersion: &threatLibraryVersion{
+						Name:        "Cloud Threat 1",
+						Description: "Cloud threat description",
+						Impacts:     []string{"Confidentiality", "Integrity"},
+						Stride:      []string{"Spoofing", "Tampering"},
+					},
+				},
+			},
+			expectedDesc:    "Cloud threat description",
+			expectedName:    "Cloud Threat 1",
+			expectedImpacts: []string{"Confidentiality", "Integrity"},
+			expectedStride:  []string{"Spoofing", "Tampering"},
+			expectedSkipped: 0,
+			threatIdx:       0,
+		},
+		{
+			name: "name is overridden but other local values preserved",
+			wrapped: &spec.ThreatmodelWrapped{
+				Threatmodels: []spec.Threatmodel{
+					{
+						Name:   "Test TM",
+						Author: "test",
+						Threats: []*spec.Threat{
+							{
+								Name:        "Local Threat Name",
+								Ref:         "THR-002",
+								Description: "Local description",
+								ImpactType:  []string{"Availability"},
+								Stride:      []string{"Denial of Service"},
+							},
+						},
+					},
+				},
+			},
+			cloudThreats: map[string]*threatLibraryItem{
+				"THR-002": {
+					ReferenceID: "THR-002",
+					Name:        "Cloud Threat 2",
+					Status:      "PUBLISHED",
+					CurrentVersion: &threatLibraryVersion{
+						Name:        "Cloud Threat 2",
+						Description: "Cloud description 2",
+						Impacts:     []string{"Confidentiality"},
+						Stride:      []string{"Information Disclosure"},
+					},
+				},
+			},
+			expectedDesc:    "Local description",
+			expectedName:    "Cloud Threat 2", // Name is always overridden by cloud
+			expectedImpacts: []string{"Availability"},
+			expectedStride:  []string{"Denial of Service"},
+			expectedSkipped: 0,
+			threatIdx:       0,
+		},
+		{
+			name: "threat without ref is skipped",
+			wrapped: &spec.ThreatmodelWrapped{
+				Threatmodels: []spec.Threatmodel{
+					{
+						Name:   "Test TM",
+						Author: "test",
+						Threats: []*spec.Threat{
+							{
+								Name:        "No Ref Threat",
+								Ref:         "",
+								Description: "Original desc",
+							},
+						},
+					},
+				},
+			},
+			cloudThreats: map[string]*threatLibraryItem{
+				"THR-003": {
+					ReferenceID: "THR-003",
+					Name:        "Cloud Threat 3",
+					Status:      "PUBLISHED",
+					CurrentVersion: &threatLibraryVersion{
+						Description: "Cloud description 3",
+					},
+				},
+			},
+			expectedDesc:    "Original desc",
+			expectedName:    "No Ref Threat",
+			expectedSkipped: 0,
+			threatIdx:       0,
+		},
+		{
+			name: "threat ref not in cloud map",
+			wrapped: &spec.ThreatmodelWrapped{
+				Threatmodels: []spec.Threatmodel{
+					{
+						Name:   "Test TM",
+						Author: "test",
+						Threats: []*spec.Threat{
+							{
+								Name:        "Unknown Ref",
+								Ref:         "UNKNOWN-REF",
+								Description: "Original desc",
+							},
+						},
+					},
+				},
+			},
+			cloudThreats:    map[string]*threatLibraryItem{},
+			expectedDesc:    "Original desc",
+			expectedName:    "Unknown Ref",
+			expectedSkipped: 0,
+			threatIdx:       0,
+		},
+		{
+			name: "DRAFT threat is skipped",
+			wrapped: &spec.ThreatmodelWrapped{
+				Threatmodels: []spec.Threatmodel{
+					{
+						Name:   "Test TM",
+						Author: "test",
+						Threats: []*spec.Threat{
+							{
+								Name:        "Draft Threat",
+								Ref:         "THR-DRAFT",
+								Description: "Original desc",
+							},
+						},
+					},
+				},
+			},
+			cloudThreats: map[string]*threatLibraryItem{
+				"THR-DRAFT": {
+					ReferenceID: "THR-DRAFT",
+					Name:        "Draft Cloud Threat",
+					Status:      "DRAFT",
+					CurrentVersion: &threatLibraryVersion{
+						Name:        "Draft Cloud Threat",
+						Description: "Should not be used",
+					},
+				},
+			},
+			expectedDesc:    "Original desc",
+			expectedName:    "Draft Threat", // Not overridden because DRAFT
+			expectedSkipped: 1,
+			threatIdx:       0,
+		},
+		{
+			name: "ARCHIVED threat is skipped",
+			wrapped: &spec.ThreatmodelWrapped{
+				Threatmodels: []spec.Threatmodel{
+					{
+						Name:   "Test TM",
+						Author: "test",
+						Threats: []*spec.Threat{
+							{
+								Name:        "Archived Threat",
+								Ref:         "THR-ARCHIVED",
+								Description: "Original desc",
+							},
+						},
+					},
+				},
+			},
+			cloudThreats: map[string]*threatLibraryItem{
+				"THR-ARCHIVED": {
+					ReferenceID: "THR-ARCHIVED",
+					Name:        "Archived Cloud Threat",
+					Status:      "ARCHIVED",
+					CurrentVersion: &threatLibraryVersion{
+						Name:        "Archived Cloud Threat",
+						Description: "Should not be used",
+					},
+				},
+			},
+			expectedDesc:    "Original desc",
+			expectedName:    "Archived Threat", // Not overridden because ARCHIVED
+			expectedSkipped: 1,
+			threatIdx:       0,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			skipped := enrichThreatsWithCloudData(tt.wrapped, tt.cloudThreats)
+
+			if len(skipped) != tt.expectedSkipped {
+				t.Errorf("expected %d skipped threats, got %d", tt.expectedSkipped, len(skipped))
+			}
+
+			threat := tt.wrapped.Threatmodels[0].Threats[tt.threatIdx]
+
+			if tt.expectedName != "" && threat.Name != tt.expectedName {
+				t.Errorf("expected Name %q, got %q", tt.expectedName, threat.Name)
+			}
+
+			if tt.expectedDesc != "" && threat.Description != tt.expectedDesc {
+				t.Errorf("expected Description %q, got %q", tt.expectedDesc, threat.Description)
+			}
+
+			if tt.expectedImpacts != nil {
+				if len(threat.ImpactType) != len(tt.expectedImpacts) {
+					t.Errorf("expected %d impacts, got %d", len(tt.expectedImpacts), len(threat.ImpactType))
+				} else {
+					for i, impact := range tt.expectedImpacts {
+						if threat.ImpactType[i] != impact {
+							t.Errorf("expected impact[%d]=%q, got %q", i, impact, threat.ImpactType[i])
+						}
+					}
+				}
+			}
+
+			if tt.expectedStride != nil {
+				if len(threat.Stride) != len(tt.expectedStride) {
+					t.Errorf("expected %d stride, got %d", len(tt.expectedStride), len(threat.Stride))
+				} else {
+					for i, stride := range tt.expectedStride {
+						if threat.Stride[i] != stride {
+							t.Errorf("expected stride[%d]=%q, got %q", i, stride, threat.Stride[i])
+						}
+					}
+				}
+			}
+		})
+	}
+}
+
+func TestEnrichThreatsWithCloudDataNilInputs(t *testing.T) {
+	// Test nil wrapped
+	skipped := enrichThreatsWithCloudData(nil, map[string]*threatLibraryItem{})
+	if len(skipped) != 0 {
+		t.Errorf("expected 0 skipped for nil wrapped, got %d", len(skipped))
+	}
+
+	// Test nil cloudThreats
+	wrapped := &spec.ThreatmodelWrapped{
+		Threatmodels: []spec.Threatmodel{
+			{
+				Name:   "Test",
+				Author: "test",
+			},
+		},
+	}
+	skipped = enrichThreatsWithCloudData(wrapped, nil)
+	if len(skipped) != 0 {
+		t.Errorf("expected 0 skipped for nil cloudThreats, got %d", len(skipped))
+	}
+
+	// Should not panic
+}

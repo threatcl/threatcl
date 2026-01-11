@@ -130,6 +130,35 @@ func (c *CloudValidateCommand) Run(args []string) int {
 		}
 	}
 
+	// Validate threat refs if we have a valid org
+	if orgValid != "" && wrapped != nil {
+		refs := extractThreatRefs(wrapped)
+		if len(refs) > 0 {
+			found, missing, refErr := validateThreatRefs(token, orgValid, refs, httpClient, fsSvc)
+			if refErr != nil {
+				fmt.Fprintf(os.Stderr, "⚠ Warning: could not validate threat refs: %s\n", refErr)
+			} else {
+				if len(missing) > 0 {
+					fmt.Fprintf(os.Stderr, "⚠ Warning: unknown threat refs: %v\n", missing)
+				}
+				// Check for non-PUBLISHED threats
+				var nonPublished []string
+				for ref, item := range found {
+					if item != nil && item.Status != "PUBLISHED" {
+						nonPublished = append(nonPublished, fmt.Sprintf("%s (%s)", ref, item.Status))
+					}
+				}
+				if len(nonPublished) > 0 {
+					fmt.Fprintf(os.Stderr, "⚠ Warning: non-PUBLISHED threat refs: %v\n", nonPublished)
+				}
+				publishedCount := len(found) - len(nonPublished)
+				if publishedCount > 0 {
+					fmt.Printf("✓ %d threat ref(s) validated (PUBLISHED)\n", publishedCount)
+				}
+			}
+		}
+	}
+
 	return 0
 
 }

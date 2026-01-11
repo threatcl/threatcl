@@ -1,10 +1,7 @@
 package main
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
-	"net/http"
 	"os"
 	"strings"
 	"time"
@@ -92,7 +89,7 @@ func (c *CloudLibraryThreatRefCommand) Run(args []string) int {
 	}
 
 	// Fetch threat by reference ID
-	threat, err := c.fetchThreatLibraryItemByRef(token, orgId, refId, httpClient, fsSvc)
+	threat, err := fetchThreatLibraryItemByRef(token, orgId, refId, httpClient, fsSvc)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error fetching threat library item: %s\n", err)
 		return 1
@@ -109,88 +106,6 @@ func (c *CloudLibraryThreatRefCommand) Run(args []string) int {
 
 	c.displayThreat(threat)
 	return 0
-}
-
-func (c *CloudLibraryThreatRefCommand) fetchThreatLibraryItemByRef(token, orgId, refId string, httpClient HTTPClient, fsSvc FileSystemService) (*threatLibraryItem, error) {
-	query := `query threatLibraryItemByRef($orgId: ID!, $referenceId: String!) {
-  threatLibraryItemByRef(orgId: $orgId, referenceId: $referenceId) {
-    id
-    referenceId
-    name
-    status
-    currentVersion {
-      version
-      name
-      description
-      impacts
-      stride
-      severity
-      likelihood
-      cweIds
-      mitreAttackIds
-      tags
-      recommendedControls {
-        referenceId
-        name
-      }
-    }
-    versions {
-      version
-      name
-    }
-    usageCount
-    usedByModels {
-      id
-      name
-    }
-  }
-}`
-
-	reqBody := graphQLRequest{
-		Query: query,
-		Variables: map[string]interface{}{
-			"orgId":       orgId,
-			"referenceId": refId,
-		},
-	}
-
-	jsonData, err := json.Marshal(reqBody)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal request: %w", err)
-	}
-
-	url := fmt.Sprintf("%s/api/v1/graphql", getAPIBaseURL(fsSvc))
-	resp, err := makeAuthenticatedRequest("POST", url, token, bytes.NewReader(jsonData), httpClient)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, handleAPIErrorResponse(resp)
-	}
-
-	var gqlResp graphQLResponse
-	if err := decodeJSONResponse(resp, &gqlResp); err != nil {
-		return nil, err
-	}
-
-	if len(gqlResp.Errors) > 0 {
-		return nil, fmt.Errorf("GraphQL error: %s", gqlResp.Errors[0].Message)
-	}
-
-	var data struct {
-		ThreatLibraryItemByRef *threatLibraryItem `json:"threatLibraryItemByRef"`
-	}
-	if err := json.Unmarshal(gqlResp.Data, &data); err != nil {
-		return nil, fmt.Errorf("failed to parse threat library item: %w", err)
-	}
-
-	if data.ThreatLibraryItemByRef == nil {
-		return nil, fmt.Errorf(ErrLibraryThreatNotFound, refId)
-	}
-
-	return data.ThreatLibraryItemByRef, nil
 }
 
 func (c *CloudLibraryThreatRefCommand) displayThreat(threat *threatLibraryItem) {

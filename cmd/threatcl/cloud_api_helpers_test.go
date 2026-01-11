@@ -926,3 +926,298 @@ threatmodel "Test" {
 		t.Errorf("expected empty description, got '%s'", control.Description)
 	}
 }
+
+func TestPreprocessHCLForThreats(t *testing.T) {
+	tests := []struct {
+		name           string
+		input          string
+		expectModified bool
+		expectHasDesc  bool
+	}{
+		{
+			name: "threat with ref but no description gets description injected",
+			input: `
+spec_version = "0.1.10"
+
+threatmodel "Test" {
+  author = "test@example.com"
+  description = "Test"
+
+  threat "Test Threat" {
+    ref = "T-THREAT"
+  }
+}
+`,
+			expectModified: true,
+			expectHasDesc:  true,
+		},
+		{
+			name: "threat with ref and description is unchanged",
+			input: `
+spec_version = "0.1.10"
+
+threatmodel "Test" {
+  author = "test@example.com"
+  description = "Test"
+
+  threat "Test Threat" {
+    ref = "T-THREAT"
+    description = "My description"
+  }
+}
+`,
+			expectModified: false,
+			expectHasDesc:  true,
+		},
+		{
+			name: "threat without ref is unchanged",
+			input: `
+spec_version = "0.1.10"
+
+threatmodel "Test" {
+  author = "test@example.com"
+  description = "Test"
+
+  threat "Test Threat" {
+    description = "My description"
+  }
+}
+`,
+			expectModified: false,
+			expectHasDesc:  true,
+		},
+		{
+			name: "multiple threats - only those with ref and no description are modified",
+			input: `
+spec_version = "0.1.10"
+
+threatmodel "Test" {
+  author = "test@example.com"
+  description = "Test"
+
+  threat "Threat 1" {
+    ref = "T-001"
+  }
+
+  threat "Threat 2" {
+    ref = "T-002"
+    description = "Has description"
+  }
+
+  threat "Threat 3" {
+    description = "No ref"
+  }
+}
+`,
+			expectModified: true,
+			expectHasDesc:  true,
+		},
+		{
+			name:           "invalid HCL returns original content",
+			input:          `this is { not valid HCL`,
+			expectModified: false,
+			expectHasDesc:  false,
+		},
+		{
+			name: "no threatmodel blocks",
+			input: `
+spec_version = "0.1.10"
+
+backend "threatcl-cloud" {
+  organization = "test-org"
+}
+`,
+			expectModified: false,
+			expectHasDesc:  false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			input := []byte(tt.input)
+			output := preprocessHCLForThreats(input)
+
+			wasModified := string(output) != string(input)
+			if wasModified != tt.expectModified {
+				t.Errorf("expected modified=%v, got modified=%v", tt.expectModified, wasModified)
+			}
+
+			if tt.expectHasDesc && tt.expectModified {
+				// Check that description was injected
+				if !strings.Contains(string(output), "description") {
+					t.Error("expected description to be injected but it wasn't")
+				}
+			}
+		})
+	}
+}
+
+func TestPreprocessHCLForThreatsCanBeParsed(t *testing.T) {
+	// Test that preprocessed content can be successfully parsed by the spec parser
+	input := `
+spec_version = "0.1.10"
+
+backend "threatcl-cloud" {
+  organization = "test-org"
+}
+
+threatmodel "Test" {
+  author = "test@example.com"
+  description = "Test"
+
+  threat "Test Threat" {
+    ref = "T-THREAT"
+  }
+}
+`
+	output := preprocessHCLForThreats([]byte(input))
+
+	// Write to temp file and try to parse
+	tmpFile, err := os.CreateTemp("", "test-preprocess-threat-*.hcl")
+	if err != nil {
+		t.Fatalf("failed to create temp file: %v", err)
+	}
+	defer os.Remove(tmpFile.Name())
+
+	if _, err := tmpFile.Write(output); err != nil {
+		t.Fatalf("failed to write temp file: %v", err)
+	}
+	tmpFile.Close()
+
+	cfg, err := spec.LoadSpecConfig()
+	if err != nil {
+		t.Fatalf("failed to load spec config: %v", err)
+	}
+
+	tmParser := spec.NewThreatmodelParser(cfg)
+	err = tmParser.ParseFile(tmpFile.Name(), false)
+	if err != nil {
+		t.Errorf("preprocessed content should be parseable but got error: %v", err)
+	}
+
+	// Verify the threat has empty description
+	wrapped := tmParser.GetWrapped()
+	if len(wrapped.Threatmodels) == 0 {
+		t.Fatal("expected at least one threatmodel")
+	}
+	if len(wrapped.Threatmodels[0].Threats) == 0 {
+		t.Fatal("expected at least one threat")
+	}
+
+	threat := wrapped.Threatmodels[0].Threats[0]
+	if threat.Ref != "T-THREAT" {
+		t.Errorf("expected ref 'T-THREAT', got '%s'", threat.Ref)
+	}
+	if threat.Description != "" {
+		t.Errorf("expected empty description, got '%s'", threat.Description)
+	}
+}
+
+func TestExtractThreatRefs(t *testing.T) {
+	tests := []struct {
+		name     string
+		wrapped  *spec.ThreatmodelWrapped
+		expected []string
+	}{
+		{
+			name:     "nil wrapped returns nil",
+			wrapped:  nil,
+			expected: nil,
+		},
+		{
+			name: "no threats returns nil",
+			wrapped: &spec.ThreatmodelWrapped{
+				Threatmodels: []spec.Threatmodel{
+					{Name: "Test"},
+				},
+			},
+			expected: nil,
+		},
+		{
+			name: "threats without refs returns nil",
+			wrapped: &spec.ThreatmodelWrapped{
+				Threatmodels: []spec.Threatmodel{
+					{
+						Name: "Test",
+						Threats: []*spec.Threat{
+							{Name: "Threat 1", Description: "desc"},
+							{Name: "Threat 2", Description: "desc"},
+						},
+					},
+				},
+			},
+			expected: nil,
+		},
+		{
+			name: "threats with refs are extracted",
+			wrapped: &spec.ThreatmodelWrapped{
+				Threatmodels: []spec.Threatmodel{
+					{
+						Name: "Test",
+						Threats: []*spec.Threat{
+							{Name: "Threat 1", Ref: "T-001", Description: "desc"},
+							{Name: "Threat 2", Ref: "T-002", Description: "desc"},
+						},
+					},
+				},
+			},
+			expected: []string{"T-001", "T-002"},
+		},
+		{
+			name: "duplicate refs are deduplicated",
+			wrapped: &spec.ThreatmodelWrapped{
+				Threatmodels: []spec.Threatmodel{
+					{
+						Name: "Test",
+						Threats: []*spec.Threat{
+							{Name: "Threat 1", Ref: "T-001", Description: "desc"},
+							{Name: "Threat 2", Ref: "T-001", Description: "desc"},
+							{Name: "Threat 3", Ref: "T-002", Description: "desc"},
+						},
+					},
+				},
+			},
+			expected: []string{"T-001", "T-002"},
+		},
+		{
+			name: "mixed threats with and without refs",
+			wrapped: &spec.ThreatmodelWrapped{
+				Threatmodels: []spec.Threatmodel{
+					{
+						Name: "Test",
+						Threats: []*spec.Threat{
+							{Name: "Threat 1", Ref: "T-001", Description: "desc"},
+							{Name: "Threat 2", Description: "desc"},
+							{Name: "Threat 3", Ref: "T-003", Description: "desc"},
+						},
+					},
+				},
+			},
+			expected: []string{"T-001", "T-003"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := extractThreatRefs(tt.wrapped)
+
+			if tt.expected == nil {
+				if len(result) > 0 {
+					t.Errorf("expected nil or empty, got %v", result)
+				}
+				return
+			}
+
+			if len(result) != len(tt.expected) {
+				t.Errorf("expected %d refs, got %d", len(tt.expected), len(result))
+				return
+			}
+
+			for i, ref := range tt.expected {
+				if result[i] != ref {
+					t.Errorf("expected ref[%d]=%s, got %s", i, ref, result[i])
+				}
+			}
+		})
+	}
+}

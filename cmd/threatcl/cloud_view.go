@@ -130,6 +130,25 @@ func (c *CloudViewCommand) Run(args []string) int {
 				}
 			}
 		}
+
+		// Check for threat refs and enrich if needed
+		threatRefs := extractThreatRefs(wrapped)
+		if len(threatRefs) > 0 {
+			// Fetch threat data from cloud
+			foundThreats, missingThreats, threatErr := validateThreatRefs(token, orgValid, threatRefs, httpClient, fsSvc)
+			if threatErr != nil {
+				fmt.Fprintf(os.Stderr, "Warning: could not fetch threat refs: %s\n", threatErr)
+			} else {
+				if len(missingThreats) > 0 {
+					fmt.Fprintf(os.Stderr, "Warning: unknown threat refs (using local data): %v\n", missingThreats)
+				}
+				// Enrich the threats with cloud data (only PUBLISHED threats)
+				skippedThreats := enrichThreatsWithCloudData(wrapped, foundThreats)
+				for _, s := range skippedThreats {
+					fmt.Fprintf(os.Stderr, "Warning: threat ref %q has status %s (not PUBLISHED), using local data\n", s.Ref, s.Status)
+				}
+			}
+		}
 	}
 
 	// Render markdown
@@ -220,6 +239,72 @@ func enrichControlsWithCloudData(wrapped *spec.ThreatmodelWrapped, cloudControls
 						control.ImplementationNotes = control.ImplementationNotes + "\n\n---\n_Implementation Guidance (from library):_\n" + cv.ImplementationGuidance
 					}
 				}
+			}
+		}
+	}
+
+	return skipped
+}
+
+// skippedThreat represents a threat that was skipped during enrichment
+type skippedThreat struct {
+	Ref    string
+	Status string
+}
+
+// enrichThreatsWithCloudData enriches Threat structs with data from the cloud library.
+// Only PUBLISHED threats are enriched. Returns a list of skipped threats (non-PUBLISHED).
+// For threats with a ref:
+//   - Name is always overridden by the cloud library name (canonical name)
+//   - Description/ImpactType/Stride are only enriched if local is empty
+func enrichThreatsWithCloudData(wrapped *spec.ThreatmodelWrapped, cloudThreats map[string]*threatLibraryItem) []skippedThreat {
+	var skipped []skippedThreat
+
+	if wrapped == nil || cloudThreats == nil {
+		return skipped
+	}
+
+	for i := range wrapped.Threatmodels {
+		tm := &wrapped.Threatmodels[i]
+		for _, threat := range tm.Threats {
+			if threat.Ref == "" {
+				continue
+			}
+
+			cloudItem, found := cloudThreats[threat.Ref]
+			if !found || cloudItem == nil || cloudItem.CurrentVersion == nil {
+				continue
+			}
+
+			// Only enrich from PUBLISHED threats
+			if cloudItem.Status != "PUBLISHED" {
+				skipped = append(skipped, skippedThreat{
+					Ref:    threat.Ref,
+					Status: cloudItem.Status,
+				})
+				continue
+			}
+
+			tv := cloudItem.CurrentVersion
+
+			// Always use cloud library name as the canonical name for referenced threats
+			if tv.Name != "" {
+				threat.Name = tv.Name
+			}
+
+			// Enrich Description only if local is empty
+			if threat.Description == "" && tv.Description != "" {
+				threat.Description = tv.Description
+			}
+
+			// Enrich ImpactType only if local is empty
+			if len(threat.ImpactType) == 0 && len(tv.Impacts) > 0 {
+				threat.ImpactType = tv.Impacts
+			}
+
+			// Enrich Stride only if local is empty
+			if len(threat.Stride) == 0 && len(tv.Stride) > 0 {
+				threat.Stride = tv.Stride
 			}
 		}
 	}

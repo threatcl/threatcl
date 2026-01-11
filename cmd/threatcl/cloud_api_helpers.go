@@ -403,9 +403,10 @@ func validateThreatModel(token, filePath string, httpClient HTTPClient, fsSvc Fi
 	// fmt.Printf("File size: %d bytes\n", fileSize)
 	// fmt.Printf("File SHA256: %s\n", fileHash)
 
-	// Preprocess HCL to inject empty descriptions for controls with ref but no description
-	// This allows cloud-backed controls to work without requiring local descriptions
+	// Preprocess HCL to inject empty descriptions for controls/threats with ref but no description
+	// This allows cloud-backed controls and threats to work without requiring local descriptions
 	processedContent := preprocessHCLForControls(fileContent)
+	processedContent = preprocessHCLForThreats(processedContent)
 
 	// Step 2: Create a temporary file with the same filename
 	tmpDir, err := os.MkdirTemp("", "threatcl-validate-")
@@ -580,6 +581,46 @@ func preprocessHCLForControls(content []byte) []byte {
 	return content
 }
 
+// preprocessHCLForThreats preprocesses HCL content to inject empty description
+// fields into threat blocks that have a "ref" attribute but no "description".
+// This allows threats to be defined with just a ref, with the description
+// being populated from the cloud threat library later.
+func preprocessHCLForThreats(content []byte) []byte {
+	// Parse with hclwrite (lenient parser for AST manipulation)
+	file, diags := hclwrite.ParseConfig(content, "", hcl.InitialPos)
+	if diags.HasErrors() {
+		// If parsing fails, return original content and let the normal parser report errors
+		return content
+	}
+
+	modified := false
+	body := file.Body()
+
+	// Find threatmodel blocks → threat blocks
+	for _, tmBlock := range body.Blocks() {
+		if tmBlock.Type() != "threatmodel" {
+			continue
+		}
+		for _, threatBlock := range tmBlock.Body().Blocks() {
+			if threatBlock.Type() != "threat" {
+				continue
+			}
+			// If has "ref" but no "description", inject empty description
+			hasRef := threatBlock.Body().GetAttribute("ref") != nil
+			hasDesc := threatBlock.Body().GetAttribute("description") != nil
+			if hasRef && !hasDesc {
+				threatBlock.Body().SetAttributeValue("description", cty.StringVal(""))
+				modified = true
+			}
+		}
+	}
+
+	if modified {
+		return file.Bytes()
+	}
+	return content
+}
+
 // extractControlRefs extracts all unique control refs from a wrapped threatmodel
 func extractControlRefs(wrapped *spec.ThreatmodelWrapped) []string {
 	if wrapped == nil {
@@ -596,6 +637,27 @@ func extractControlRefs(wrapped *spec.ThreatmodelWrapped) []string {
 					seen[control.Ref] = true
 					refs = append(refs, control.Ref)
 				}
+			}
+		}
+	}
+
+	return refs
+}
+
+// extractThreatRefs extracts all unique threat refs from a wrapped threatmodel
+func extractThreatRefs(wrapped *spec.ThreatmodelWrapped) []string {
+	if wrapped == nil {
+		return nil
+	}
+
+	seen := make(map[string]bool)
+	var refs []string
+
+	for _, tm := range wrapped.Threatmodels {
+		for _, threat := range tm.Threats {
+			if threat.Ref != "" && !seen[threat.Ref] {
+				seen[threat.Ref] = true
+				refs = append(refs, threat.Ref)
 			}
 		}
 	}
@@ -796,4 +858,189 @@ func fetchControlLibraryItemsByRefs(token, orgId string, refIds []string, httpCl
 	}
 
 	return data.ControlLibraryItemsByRefs, nil
+}
+
+// fetchThreatLibraryItemByRef retrieves a threat library item by its reference ID
+func fetchThreatLibraryItemByRef(token, orgId, refId string, httpClient HTTPClient, fsSvc FileSystemService) (*threatLibraryItem, error) {
+	query := `query threatLibraryItemByRef($orgId: ID!, $referenceId: String!) {
+  threatLibraryItemByRef(orgId: $orgId, referenceId: $referenceId) {
+    id
+    referenceId
+    name
+    status
+    currentVersion {
+      version
+      name
+      description
+      impacts
+      stride
+      severity
+      likelihood
+      cweIds
+      mitreAttackIds
+      tags
+    }
+    versions {
+      version
+      name
+    }
+    usageCount
+    usedByModels {
+      id
+      name
+    }
+  }
+}`
+
+	reqBody := graphQLRequest{
+		Query: query,
+		Variables: map[string]any{
+			"orgId":       orgId,
+			"referenceId": refId,
+		},
+	}
+
+	jsonData, err := json.Marshal(reqBody)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
+	}
+
+	url := fmt.Sprintf("%s/api/v1/graphql", getAPIBaseURL(fsSvc))
+	resp, err := makeAuthenticatedRequest("POST", url, token, bytes.NewReader(jsonData), httpClient)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, handleAPIErrorResponse(resp)
+	}
+
+	var gqlResp graphQLResponse
+	if err := decodeJSONResponse(resp, &gqlResp); err != nil {
+		return nil, err
+	}
+
+	if len(gqlResp.Errors) > 0 {
+		return nil, fmt.Errorf("GraphQL error: %s", gqlResp.Errors[0].Message)
+	}
+
+	var data struct {
+		ThreatLibraryItemByRef *threatLibraryItem `json:"threatLibraryItemByRef"`
+	}
+	if err := json.Unmarshal(gqlResp.Data, &data); err != nil {
+		return nil, fmt.Errorf("failed to parse threat library item: %w", err)
+	}
+
+	if data.ThreatLibraryItemByRef == nil {
+		return nil, fmt.Errorf(ErrLibraryThreatNotFound, refId)
+	}
+
+	return data.ThreatLibraryItemByRef, nil
+}
+
+// fetchThreatLibraryItemsByRefs retrieves multiple threat library items by their reference IDs
+func fetchThreatLibraryItemsByRefs(token, orgId string, refIds []string, httpClient HTTPClient, fsSvc FileSystemService) ([]*threatLibraryItem, error) {
+	query := `query threatLibraryItemsByRefs($orgId: ID!, $referenceIds: [String!]!) {
+  threatLibraryItemsByRefs(orgId: $orgId, referenceIds: $referenceIds) {
+    id
+    referenceId
+    name
+    status
+    currentVersion {
+      version
+      name
+      description
+      impacts
+      stride
+      severity
+      likelihood
+      cweIds
+      mitreAttackIds
+      tags
+    }
+    versions {
+      version
+      name
+    }
+    usageCount
+    usedByModels {
+      id
+      name
+    }
+  }
+}`
+
+	reqBody := graphQLRequest{
+		Query: query,
+		Variables: map[string]any{
+			"orgId":        orgId,
+			"referenceIds": refIds,
+		},
+	}
+
+	jsonData, err := json.Marshal(reqBody)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
+	}
+
+	url := fmt.Sprintf("%s/api/v1/graphql", getAPIBaseURL(fsSvc))
+	resp, err := makeAuthenticatedRequest("POST", url, token, bytes.NewReader(jsonData), httpClient)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, handleAPIErrorResponse(resp)
+	}
+
+	var gqlResp graphQLResponse
+	if err := decodeJSONResponse(resp, &gqlResp); err != nil {
+		return nil, err
+	}
+
+	if len(gqlResp.Errors) > 0 {
+		return nil, fmt.Errorf("GraphQL error: %s", gqlResp.Errors[0].Message)
+	}
+
+	var data struct {
+		ThreatLibraryItemsByRefs []*threatLibraryItem `json:"threatLibraryItemsByRefs"`
+	}
+	if err := json.Unmarshal(gqlResp.Data, &data); err != nil {
+		return nil, fmt.Errorf("failed to parse threat library items: %w", err)
+	}
+
+	return data.ThreatLibraryItemsByRefs, nil
+}
+
+// validateThreatRefs validates that threat refs exist in the library
+// Returns a map of ref -> *threatLibraryItem (for found items), a slice of missing refs, and an error
+func validateThreatRefs(token, orgId string, refs []string, httpClient HTTPClient, fsSvc FileSystemService) (map[string]*threatLibraryItem, []string, error) {
+	if len(refs) == 0 {
+		return nil, nil, nil
+	}
+
+	items, err := fetchThreatLibraryItemsByRefs(token, orgId, refs, httpClient, fsSvc)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// Build lookup map of found items
+	found := make(map[string]*threatLibraryItem)
+	for _, item := range items {
+		if item != nil {
+			found[item.ReferenceID] = item
+		}
+	}
+
+	// Find missing refs
+	var missing []string
+	for _, ref := range refs {
+		if found[ref] == nil {
+			missing = append(missing, ref)
+		}
+	}
+
+	return found, missing, nil
 }
