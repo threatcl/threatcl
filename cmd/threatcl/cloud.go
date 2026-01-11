@@ -188,7 +188,8 @@ type defaultKeyringService struct{}
 
 func (d *defaultKeyringService) Get(key string) (string, error) {
 	ring, err := keyring.Open(keyring.Config{
-		ServiceName: "threatcl",
+		ServiceName:  "threatcl",
+		KeychainName: "threatcl",
 	})
 	if err != nil {
 		return "", fmt.Errorf("failed to open keyring: %w", err)
@@ -214,7 +215,8 @@ func (d *defaultKeyringService) Get(key string) (string, error) {
 
 func (d *defaultKeyringService) Set(key string, data map[string]interface{}) error {
 	ring, err := keyring.Open(keyring.Config{
-		ServiceName: "threatcl",
+		ServiceName:  "threatcl",
+		KeychainName: "threatcl",
 	})
 	if err != nil {
 		return fmt.Errorf("failed to open keyring: %w", err)
