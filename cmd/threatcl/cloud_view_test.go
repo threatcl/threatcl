@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"net/http"
 	"os"
 	"strings"
@@ -194,7 +193,7 @@ threatmodel "Test Model" {
 			createFile:   true,
 			token:        "",
 			expectedCode: 1,
-			expectedOut:  "error retrieving token",
+			expectedOut:  "no tokens found",
 		},
 	}
 
@@ -227,13 +226,9 @@ threatmodel "Test Model" {
 			keyringSvc := newMockKeyringService()
 			fsSvc := newMockFileSystemService()
 
-			// Set up token
+			// Set up token in new format
 			if tt.token != "" {
-				keyringSvc.Set("access_token", map[string]interface{}{
-					"access_token": tt.token,
-				})
-			} else if tt.name == "missing token" {
-				keyringSvc.setError(fmt.Errorf("no token"))
+				keyringSvc.setMockToken(tt.token, "test-org-id", "Test Org")
 			}
 
 			// Set up HTTP response
@@ -663,9 +658,7 @@ default_initiative_size = "Medium"
 			keyringSvc := newMockKeyringService()
 			fsSvc := newMockFileSystemService()
 
-			keyringSvc.Set("access_token", map[string]interface{}{
-				"access_token": "valid-token",
-			})
+			keyringSvc.setMockToken("valid-token", "test-org-id", "Test Org")
 
 			httpClient.transport.setResponse("GET", "/api/v1/users/me", http.StatusOK, jsonResponse(whoamiResponse{
 				User: userInfo{Email: "test@example.com", FullName: "Test User"},

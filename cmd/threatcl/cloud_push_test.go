@@ -147,7 +147,7 @@ threatmodel "Test Model" {
 		t.Errorf("expected exit code 1, got %d", code)
 	}
 
-	if !strings.Contains(out, "error retrieving token") {
+	if !strings.Contains(out, "no tokens found") {
 		t.Errorf("expected error about token, got %q", out)
 	}
 }
@@ -187,9 +187,7 @@ threatmodel "Test Model" {
 	keyringSvc := newMockKeyringService()
 	fsSvc := newMockFileSystemService()
 
-	keyringSvc.Set("access_token", map[string]interface{}{
-		"access_token": "valid-token",
-	})
+	keyringSvc.setMockToken("valid-token", "org-id", "Test Org")
 
 	// Set up whoami response
 	httpClient.transport.setResponse("GET", "/api/v1/users/me", http.StatusOK, jsonResponse(whoamiResponse{
@@ -265,9 +263,7 @@ threatmodel "Test Model" {
 	keyringSvc := newMockKeyringService()
 	fsSvc := newMockFileSystemService()
 
-	keyringSvc.Set("access_token", map[string]interface{}{
-		"access_token": "valid-token",
-	})
+	keyringSvc.setMockToken("valid-token", "org-id", "Test Org")
 
 	fsSvc.SetFileContent(tmpFile.Name(), []byte(validHCL))
 
@@ -347,9 +343,7 @@ threatmodel "Test Model" {
 	keyringSvc := newMockKeyringService()
 	fsSvc := newMockFileSystemService()
 
-	keyringSvc.Set("access_token", map[string]interface{}{
-		"access_token": "valid-token",
-	})
+	keyringSvc.setMockToken("valid-token", "org-id", "Test Org")
 
 	// Set up whoami response
 	httpClient.transport.setResponse("GET", "/api/v1/users/me", http.StatusOK, jsonResponse(whoamiResponse{
@@ -404,9 +398,7 @@ threatmodel "Test Model" {
 	keyringSvc := newMockKeyringService()
 	fsSvc := newMockFileSystemService()
 
-	keyringSvc.Set("access_token", map[string]interface{}{
-		"access_token": "valid-token",
-	})
+	keyringSvc.setMockToken("valid-token", "org-id", "Test Org")
 
 	// Set up whoami response
 	httpClient.transport.setResponse("GET", "/api/v1/users/me", http.StatusOK, jsonResponse(whoamiResponse{
@@ -475,9 +467,7 @@ threatmodel "Test Model" {
 	keyringSvc := newMockKeyringService()
 	fsSvc := newMockFileSystemService()
 
-	keyringSvc.Set("access_token", map[string]interface{}{
-		"access_token": "valid-token",
-	})
+	keyringSvc.setMockToken("valid-token", "org-id", "Test Org")
 
 	fsSvc.SetFileContent(tmpFile.Name(), []byte(validHCL))
 
@@ -563,9 +553,7 @@ threatmodel "Test Model" {
 	keyringSvc := newMockKeyringService()
 	fsSvc := newMockFileSystemService()
 
-	keyringSvc.Set("access_token", map[string]interface{}{
-		"access_token": "valid-token",
-	})
+	keyringSvc.setMockToken("valid-token", "org-id", "Test Org")
 
 	// Set up whoami response
 	httpClient.transport.setResponse("GET", "/api/v1/users/me", http.StatusOK, jsonResponse(whoamiResponse{
@@ -623,9 +611,7 @@ threatmodel "Test Model" {
 	keyringSvc := newMockKeyringService()
 	fsSvc := newMockFileSystemService()
 
-	keyringSvc.Set("access_token", map[string]interface{}{
-		"access_token": "valid-token",
-	})
+	keyringSvc.setMockToken("valid-token", "org-id", "Test Org")
 
 	// Set up whoami response with different org
 	httpClient.transport.setResponse("GET", "/api/v1/users/me", http.StatusOK, jsonResponse(whoamiResponse{
@@ -681,9 +667,7 @@ threatmodel "Test Model" {
 	keyringSvc := newMockKeyringService()
 	fsSvc := newMockFileSystemService()
 
-	keyringSvc.Set("access_token", map[string]interface{}{
-		"access_token": "valid-token",
-	})
+	keyringSvc.setMockToken("valid-token", "org-id", "Test Org")
 
 	fsSvc.SetFileContent(tmpFile.Name(), []byte(validHCL))
 

@@ -56,27 +56,20 @@ func (c *CloudThreatmodelsCommand) Run(args []string) int {
 	// Initialize dependencies
 	httpClient, keyringSvc, fsSvc := c.initDependencies(10 * time.Second)
 
-	// Step 1: Retrieve token
-	token, err := c.getTokenWithDeps(keyringSvc, fsSvc)
+	// Step 1: Retrieve token and org ID
+	token, orgId, err := c.getTokenAndOrgId(c.flagOrgId, keyringSvc, fsSvc)
 	if err != nil {
 		return c.handleTokenError(err)
 	}
 
-	// Step 2: Get organization ID
-	orgId, err := c.resolveOrgId(token, c.flagOrgId, httpClient, fsSvc)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "%s\n", err)
-		return 1
-	}
-
-	// Step 3: Fetch threat models
+	// Step 2: Fetch threat models
 	threatModels, err := fetchThreatModels(token, orgId, httpClient, fsSvc)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error fetching threat models: %s\n", err)
 		return 1
 	}
 
-	// Step 4: Display results
+	// Step 3: Display results
 	c.displayThreatModels(threatModels)
 
 	return 0

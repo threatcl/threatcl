@@ -46,10 +46,34 @@ type deviceCodeResponse struct {
 }
 
 type tokenResponse struct {
+	AccessToken    string `json:"access_token"`
+	TokenType      string `json:"token_type"`
+	OrganizationID string `json:"organization_id"`
+	ExpiresAt      *int64 `json:"expires_at,omitempty"`
+}
+
+// Token store types for multi-org token management
+
+// tokenStore holds all tokens and configuration for multi-org support
+type tokenStore struct {
+	Version    int                     `json:"version"`
+	DefaultOrg string                  `json:"default_org,omitempty"`
+	Tokens     map[string]orgTokenData `json:"tokens"`
+}
+
+// orgTokenData holds token data for a specific organization
+type orgTokenData struct {
 	AccessToken string `json:"access_token"`
 	TokenType   string `json:"token_type"`
-	ExpiresIn   *int   `json:"expires_in,omitempty"`
+	ExpiresAt   *int64 `json:"expires_at,omitempty"`
+	OrgName     string `json:"org_name,omitempty"`
 }
+
+// tokenStoreVersion is the current version of the token store format
+const tokenStoreVersion = 2
+
+// tokenStoreKeyringKey is the key used to store the token store in keyring
+const tokenStoreKeyringKey = "token_store"
 
 type errorResponse struct {
 	Error struct {
@@ -60,9 +84,11 @@ type errorResponse struct {
 }
 
 type whoamiResponse struct {
-	ID            string          `json:"id"`
-	User          userInfo        `json:"user"`
-	Organizations []orgMembership `json:"organizations"`
+	ID                       string          `json:"id"`
+	User                     userInfo        `json:"user"`
+	Organizations            []orgMembership `json:"organizations"`
+	ApiTokenOrganizationID   string          `json:"api_token_organization_id,omitempty"`
+	ApiTokenOrganizationName string          `json:"api_token_organization_name,omitempty"`
 }
 
 type userInfo struct {
@@ -156,7 +182,10 @@ type HTTPClient interface {
 // KeyringService interface for keyring operations
 type KeyringService interface {
 	Get(key string) (string, error)
+	GetRaw(key string) ([]byte, error)
 	Set(key string, data map[string]interface{}) error
+	SetRaw(key string, data []byte) error
+	Delete(key string) error
 }
 
 // FileSystemService interface for file system operations
@@ -186,11 +215,14 @@ func (d *defaultHTTPClient) Post(url, contentType string, body io.Reader) (*http
 // defaultKeyringService wraps keyring to implement KeyringService interface
 type defaultKeyringService struct{}
 
-func (d *defaultKeyringService) Get(key string) (string, error) {
-	ring, err := keyring.Open(keyring.Config{
-		ServiceName:  "threatcl",
-		KeychainName: "threatcl",
+func (d *defaultKeyringService) openKeyring() (keyring.Keyring, error) {
+	return keyring.Open(keyring.Config{
+		ServiceName: "threatcl",
 	})
+}
+
+func (d *defaultKeyringService) Get(key string) (string, error) {
+	ring, err := d.openKeyring()
 	if err != nil {
 		return "", fmt.Errorf("failed to open keyring: %w", err)
 	}
@@ -213,26 +245,57 @@ func (d *defaultKeyringService) Get(key string) (string, error) {
 	return accessToken, nil
 }
 
-func (d *defaultKeyringService) Set(key string, data map[string]interface{}) error {
-	ring, err := keyring.Open(keyring.Config{
-		ServiceName:  "threatcl",
-		KeychainName: "threatcl",
-	})
+func (d *defaultKeyringService) GetRaw(key string) ([]byte, error) {
+	ring, err := d.openKeyring()
 	if err != nil {
-		return fmt.Errorf("failed to open keyring: %w", err)
+		return nil, fmt.Errorf("failed to open keyring: %w", err)
 	}
 
+	item, err := ring.Get(key)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get data from keyring: %w", err)
+	}
+
+	return item.Data, nil
+}
+
+func (d *defaultKeyringService) Set(key string, data map[string]interface{}) error {
 	tokenJSON, err := json.Marshal(data)
 	if err != nil {
 		return fmt.Errorf("failed to marshal token: %w", err)
 	}
 
+	return d.SetRaw(key, tokenJSON)
+}
+
+func (d *defaultKeyringService) SetRaw(key string, data []byte) error {
+	ring, err := d.openKeyring()
+	if err != nil {
+		return fmt.Errorf("failed to open keyring: %w", err)
+	}
+
 	err = ring.Set(keyring.Item{
-		Key:  key,
-		Data: tokenJSON,
+		Key:         key,
+		Label:       "ThreatCL Cloud Credentials",
+		Description: "ThreatCL Cloud API tokens",
+		Data:        data,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to save to keyring: %w", err)
+	}
+
+	return nil
+}
+
+func (d *defaultKeyringService) Delete(key string) error {
+	ring, err := d.openKeyring()
+	if err != nil {
+		return fmt.Errorf("failed to open keyring: %w", err)
+	}
+
+	err = ring.Remove(key)
+	if err != nil {
+		return fmt.Errorf("failed to delete from keyring: %w", err)
 	}
 
 	return nil
@@ -383,4 +446,349 @@ func getTokenFromFile(fsSvc FileSystemService) (string, error) {
 	}
 
 	return accessToken, nil
+}
+
+// Token store management functions
+
+// getConfigPath returns the path to the threatcl config directory
+func getConfigPath(fsSvc FileSystemService) (string, error) {
+	configDir := fsSvc.Getenv("XDG_CONFIG_HOME")
+	if configDir == "" {
+		homeDir := fsSvc.Getenv("HOME")
+		if homeDir == "" {
+			return "", fmt.Errorf("could not determine home directory")
+		}
+		configDir = filepath.Join(homeDir, ".config")
+	}
+	return filepath.Join(configDir, "threatcl"), nil
+}
+
+// getTokenStorePath returns the path to the token store file
+func getTokenStorePath(fsSvc FileSystemService) (string, error) {
+	configPath, err := getConfigPath(fsSvc)
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(configPath, "tokens.json"), nil
+}
+
+// loadTokenStore loads the token store from keyring or file
+// Returns an empty store if no tokens exist yet
+func loadTokenStore(keyringSvc KeyringService, fsSvc FileSystemService) (*tokenStore, error) {
+	if keyringSvc == nil {
+		keyringSvc = &defaultKeyringService{}
+	}
+	if fsSvc == nil {
+		fsSvc = &defaultFileSystemService{}
+	}
+
+	// Try keyring first
+	store, err := loadTokenStoreFromKeyring(keyringSvc)
+	if err == nil {
+		return store, nil
+	}
+
+	// Fall back to file
+	store, err = loadTokenStoreFromFile(fsSvc)
+	if err == nil {
+		return store, nil
+	}
+
+	// Check if old format exists (for migration error message)
+	if hasOldTokenFormat(keyringSvc, fsSvc) {
+		return nil, fmt.Errorf("token format has changed - please run 'threatcl cloud login' to re-authenticate")
+	}
+
+	// No store exists yet - return empty store
+	return &tokenStore{
+		Version: tokenStoreVersion,
+		Tokens:  make(map[string]orgTokenData),
+	}, nil
+}
+
+// loadTokenStoreFromKeyring loads the token store from keyring
+func loadTokenStoreFromKeyring(keyringSvc KeyringService) (*tokenStore, error) {
+	data, err := keyringSvc.GetRaw(tokenStoreKeyringKey)
+	if err != nil {
+		return nil, err
+	}
+
+	var store tokenStore
+	if err := json.Unmarshal(data, &store); err != nil {
+		return nil, fmt.Errorf("failed to parse token store: %w", err)
+	}
+
+	// Validate version
+	if store.Version != tokenStoreVersion {
+		return nil, fmt.Errorf("unsupported token store version: %d", store.Version)
+	}
+
+	// Ensure Tokens map is initialized
+	if store.Tokens == nil {
+		store.Tokens = make(map[string]orgTokenData)
+	}
+
+	return &store, nil
+}
+
+// loadTokenStoreFromFile loads the token store from file
+func loadTokenStoreFromFile(fsSvc FileSystemService) (*tokenStore, error) {
+	storePath, err := getTokenStorePath(fsSvc)
+	if err != nil {
+		return nil, err
+	}
+
+	data, err := fsSvc.ReadFile(storePath)
+	if err != nil {
+		return nil, err
+	}
+
+	var store tokenStore
+	if err := json.Unmarshal(data, &store); err != nil {
+		return nil, fmt.Errorf("failed to parse token store: %w", err)
+	}
+
+	// Validate version
+	if store.Version != tokenStoreVersion {
+		return nil, fmt.Errorf("unsupported token store version: %d", store.Version)
+	}
+
+	// Ensure Tokens map is initialized
+	if store.Tokens == nil {
+		store.Tokens = make(map[string]orgTokenData)
+	}
+
+	return &store, nil
+}
+
+// hasOldTokenFormat checks if old single-token format exists
+func hasOldTokenFormat(keyringSvc KeyringService, fsSvc FileSystemService) bool {
+	// Check keyring for old format
+	_, err := keyringSvc.Get("access_token")
+	if err == nil {
+		return true
+	}
+
+	// Check file for old format
+	configPath, err := getConfigPath(fsSvc)
+	if err != nil {
+		return false
+	}
+	oldPath := filepath.Join(configPath, "settings.json")
+	if _, err := fsSvc.Stat(oldPath); err == nil {
+		// File exists, check if it has old format
+		data, err := fsSvc.ReadFile(oldPath)
+		if err == nil {
+			var oldSettings map[string]interface{}
+			if json.Unmarshal(data, &oldSettings) == nil {
+				// Old format has access_token at root level, not version field
+				if _, hasAccessToken := oldSettings["access_token"]; hasAccessToken {
+					if _, hasVersion := oldSettings["version"]; !hasVersion {
+						return true
+					}
+				}
+			}
+		}
+	}
+
+	return false
+}
+
+// saveTokenStore saves the token store to keyring or file
+func saveTokenStore(store *tokenStore, keyringSvc KeyringService, fsSvc FileSystemService) error {
+	if keyringSvc == nil {
+		keyringSvc = &defaultKeyringService{}
+	}
+	if fsSvc == nil {
+		fsSvc = &defaultFileSystemService{}
+	}
+
+	// Ensure version is set
+	store.Version = tokenStoreVersion
+
+	data, err := json.MarshalIndent(store, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal token store: %w", err)
+	}
+
+	// Try keyring first
+	err = keyringSvc.SetRaw(tokenStoreKeyringKey, data)
+	if err == nil {
+		return nil
+	}
+
+	// Fall back to file
+	return saveTokenStoreToFile(store, fsSvc)
+}
+
+// saveTokenStoreToFile saves the token store to file
+func saveTokenStoreToFile(store *tokenStore, fsSvc FileSystemService) error {
+	configPath, err := getConfigPath(fsSvc)
+	if err != nil {
+		return err
+	}
+
+	// Create directory if needed
+	if err := fsSvc.MkdirAll(configPath, 0755); err != nil {
+		return fmt.Errorf("failed to create config directory: %w", err)
+	}
+
+	storePath, err := getTokenStorePath(fsSvc)
+	if err != nil {
+		return err
+	}
+
+	data, err := json.MarshalIndent(store, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal token store: %w", err)
+	}
+
+	return fsSvc.WriteFile(storePath, data, 0600)
+}
+
+// getTokenForOrg retrieves the token for a specific organization
+func getTokenForOrg(orgId string, keyringSvc KeyringService, fsSvc FileSystemService) (string, error) {
+	store, err := loadTokenStore(keyringSvc, fsSvc)
+	if err != nil {
+		return "", err
+	}
+
+	tokenData, ok := store.Tokens[orgId]
+	if !ok {
+		return "", fmt.Errorf("no token found for organization %s", orgId)
+	}
+
+	return tokenData.AccessToken, nil
+}
+
+// setTokenForOrg stores a token for a specific organization
+func setTokenForOrg(orgId, token, tokenType, orgName string, expiresAt *int64, keyringSvc KeyringService, fsSvc FileSystemService) error {
+	store, err := loadTokenStore(keyringSvc, fsSvc)
+	if err != nil {
+		// If we can't load (e.g., old format), create new store
+		store = &tokenStore{
+			Version: tokenStoreVersion,
+			Tokens:  make(map[string]orgTokenData),
+		}
+	}
+
+	store.Tokens[orgId] = orgTokenData{
+		AccessToken: token,
+		TokenType:   tokenType,
+		ExpiresAt:   expiresAt,
+		OrgName:     orgName,
+	}
+
+	// Set as default if no default exists
+	if store.DefaultOrg == "" {
+		store.DefaultOrg = orgId
+	}
+
+	return saveTokenStore(store, keyringSvc, fsSvc)
+}
+
+// removeTokenForOrg removes a token for a specific organization
+func removeTokenForOrg(orgId string, keyringSvc KeyringService, fsSvc FileSystemService) error {
+	store, err := loadTokenStore(keyringSvc, fsSvc)
+	if err != nil {
+		return err
+	}
+
+	if _, ok := store.Tokens[orgId]; !ok {
+		return fmt.Errorf("no token found for organization %s", orgId)
+	}
+
+	delete(store.Tokens, orgId)
+
+	// Clear default if it was the removed org
+	if store.DefaultOrg == orgId {
+		store.DefaultOrg = ""
+		// Set new default if only one token remains
+		if len(store.Tokens) == 1 {
+			for id := range store.Tokens {
+				store.DefaultOrg = id
+				break
+			}
+		}
+	}
+
+	return saveTokenStore(store, keyringSvc, fsSvc)
+}
+
+// removeAllTokens removes all tokens from the store
+func removeAllTokens(keyringSvc KeyringService, fsSvc FileSystemService) error {
+	if keyringSvc == nil {
+		keyringSvc = &defaultKeyringService{}
+	}
+	if fsSvc == nil {
+		fsSvc = &defaultFileSystemService{}
+	}
+
+	// Try to delete from keyring
+	_ = keyringSvc.Delete(tokenStoreKeyringKey)
+
+	// Try to delete file
+	storePath, err := getTokenStorePath(fsSvc)
+	if err == nil {
+		// We don't have a Delete method on FileSystemService, so we'll write an empty store
+		emptyStore := &tokenStore{
+			Version: tokenStoreVersion,
+			Tokens:  make(map[string]orgTokenData),
+		}
+		data, _ := json.MarshalIndent(emptyStore, "", "  ")
+		_ = fsSvc.WriteFile(storePath, data, 0600)
+	}
+
+	return nil
+}
+
+// getDefaultOrg returns the default organization ID
+func getDefaultOrg(keyringSvc KeyringService, fsSvc FileSystemService) (string, error) {
+	store, err := loadTokenStore(keyringSvc, fsSvc)
+	if err != nil {
+		return "", err
+	}
+
+	if store.DefaultOrg != "" {
+		return store.DefaultOrg, nil
+	}
+
+	// If no default but only one token, return that
+	if len(store.Tokens) == 1 {
+		for orgId := range store.Tokens {
+			return orgId, nil
+		}
+	}
+
+	if len(store.Tokens) == 0 {
+		return "", fmt.Errorf("no tokens found - please run 'threatcl cloud login' first")
+	}
+
+	return "", fmt.Errorf("multiple organizations configured but no default set - use 'threatcl cloud token default <org-id>' or --org-id flag")
+}
+
+// setDefaultOrg sets the default organization ID
+func setDefaultOrg(orgId string, keyringSvc KeyringService, fsSvc FileSystemService) error {
+	store, err := loadTokenStore(keyringSvc, fsSvc)
+	if err != nil {
+		return err
+	}
+
+	// Verify the org has a token
+	if _, ok := store.Tokens[orgId]; !ok {
+		return fmt.Errorf("no token found for organization %s", orgId)
+	}
+
+	store.DefaultOrg = orgId
+	return saveTokenStore(store, keyringSvc, fsSvc)
+}
+
+// listTokens returns all stored tokens (for display, not the actual token values)
+func listTokens(keyringSvc KeyringService, fsSvc FileSystemService) (map[string]orgTokenData, string, error) {
+	store, err := loadTokenStore(keyringSvc, fsSvc)
+	if err != nil {
+		return nil, "", err
+	}
+
+	return store.Tokens, store.DefaultOrg, nil
 }

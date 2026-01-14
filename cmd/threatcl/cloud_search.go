@@ -87,8 +87,8 @@ func (c *CloudSearchCommand) Run(args []string) int {
 	// Initialize dependencies
 	httpClient, keyringSvc, fsSvc := c.initDependencies(30 * time.Second)
 
-	// Step 1: Retrieve token
-	token, err := c.getTokenWithDeps(keyringSvc, fsSvc)
+	// Step 1: Retrieve token (use default org token for searches)
+	token, _, err := c.getTokenAndOrgId(c.flagOrgId, keyringSvc, fsSvc)
 	if err != nil {
 		return c.handleTokenError(err)
 	}

@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"strings"
 	"testing"
@@ -361,7 +360,7 @@ func TestCloudLibraryFoldersRun(t *testing.T) {
 			args:         []string{},
 			token:        "",
 			expectedCode: 1,
-			expectedOut:  "error retrieving token",
+			expectedOut:  "no tokens found",
 		},
 		{
 			name:         "json output",
@@ -390,11 +389,7 @@ func TestCloudLibraryFoldersRun(t *testing.T) {
 			fsSvc := newMockFileSystemService()
 
 			if tt.token != "" {
-				keyringSvc.Set("access_token", map[string]interface{}{
-					"access_token": tt.token,
-				})
-			} else {
-				keyringSvc.setError(fmt.Errorf("no token"))
+				keyringSvc.setMockToken(tt.token, "org-123", "Test Org")
 			}
 
 			if tt.queryStatus != 0 {
@@ -474,11 +469,7 @@ func TestCloudLibraryFolderRun(t *testing.T) {
 			fsSvc := newMockFileSystemService()
 
 			if tt.token != "" {
-				keyringSvc.Set("access_token", map[string]interface{}{
-					"access_token": tt.token,
-				})
-			} else {
-				keyringSvc.setError(fmt.Errorf("no token"))
+				keyringSvc.setMockToken(tt.token, "org-123", "Test Org")
 			}
 
 			if tt.queryStatus != 0 {
@@ -567,11 +558,7 @@ func TestCloudLibraryThreatsRun(t *testing.T) {
 			fsSvc := newMockFileSystemService()
 
 			if tt.token != "" {
-				keyringSvc.Set("access_token", map[string]interface{}{
-					"access_token": tt.token,
-				})
-			} else {
-				keyringSvc.setError(fmt.Errorf("no token"))
+				keyringSvc.setMockToken(tt.token, "org-123", "Test Org")
 			}
 
 			if tt.queryStatus != 0 {
@@ -651,11 +638,7 @@ func TestCloudLibraryThreatRun(t *testing.T) {
 			fsSvc := newMockFileSystemService()
 
 			if tt.token != "" {
-				keyringSvc.Set("access_token", map[string]interface{}{
-					"access_token": tt.token,
-				})
-			} else {
-				keyringSvc.setError(fmt.Errorf("no token"))
+				keyringSvc.setMockToken(tt.token, "org-123", "Test Org")
 			}
 
 			if tt.queryStatus != 0 {
@@ -753,11 +736,7 @@ func TestCloudLibraryThreatRefRun(t *testing.T) {
 			fsSvc := newMockFileSystemService()
 
 			if tt.token != "" {
-				keyringSvc.Set("access_token", map[string]interface{}{
-					"access_token": tt.token,
-				})
-			} else {
-				keyringSvc.setError(fmt.Errorf("no token"))
+				keyringSvc.setMockToken(tt.token, "org-123", "Test Org")
 			}
 
 			if tt.queryStatus != 0 {
@@ -839,11 +818,7 @@ func TestCloudLibraryControlsRun(t *testing.T) {
 			fsSvc := newMockFileSystemService()
 
 			if tt.token != "" {
-				keyringSvc.Set("access_token", map[string]interface{}{
-					"access_token": tt.token,
-				})
-			} else {
-				keyringSvc.setError(fmt.Errorf("no token"))
+				keyringSvc.setMockToken(tt.token, "org-123", "Test Org")
 			}
 
 			if tt.queryStatus != 0 {
@@ -923,11 +898,7 @@ func TestCloudLibraryControlRun(t *testing.T) {
 			fsSvc := newMockFileSystemService()
 
 			if tt.token != "" {
-				keyringSvc.Set("access_token", map[string]interface{}{
-					"access_token": tt.token,
-				})
-			} else {
-				keyringSvc.setError(fmt.Errorf("no token"))
+				keyringSvc.setMockToken(tt.token, "org-123", "Test Org")
 			}
 
 			if tt.queryStatus != 0 {
@@ -1026,11 +997,7 @@ func TestCloudLibraryControlRefRun(t *testing.T) {
 			fsSvc := newMockFileSystemService()
 
 			if tt.token != "" {
-				keyringSvc.Set("access_token", map[string]interface{}{
-					"access_token": tt.token,
-				})
-			} else {
-				keyringSvc.setError(fmt.Errorf("no token"))
+				keyringSvc.setMockToken(tt.token, "org-123", "Test Org")
 			}
 
 			if tt.queryStatus != 0 {
@@ -1099,7 +1066,7 @@ func TestCloudLibraryStatsRun(t *testing.T) {
 			args:         []string{},
 			token:        "",
 			expectedCode: 1,
-			expectedOut:  "error retrieving token",
+			expectedOut:  "no tokens found",
 		},
 	}
 
@@ -1110,11 +1077,7 @@ func TestCloudLibraryStatsRun(t *testing.T) {
 			fsSvc := newMockFileSystemService()
 
 			if tt.token != "" {
-				keyringSvc.Set("access_token", map[string]interface{}{
-					"access_token": tt.token,
-				})
-			} else {
-				keyringSvc.setError(fmt.Errorf("no token"))
+				keyringSvc.setMockToken(tt.token, "org-123", "Test Org")
 			}
 
 			if tt.queryStatus != 0 {

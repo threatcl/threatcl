@@ -165,14 +165,16 @@ func (m *mockHTTPClient) Post(url, contentType string, body io.Reader) (*http.Re
 
 // mockKeyringService implements KeyringService interface
 type mockKeyringService struct {
-	mu    sync.Mutex
-	store map[string]map[string]interface{}
-	err   error // Error to return on Get/Set operations
+	mu       sync.Mutex
+	store    map[string]map[string]interface{}
+	rawStore map[string][]byte
+	err      error // Error to return on Get/Set operations
 }
 
 func newMockKeyringService() *mockKeyringService {
 	return &mockKeyringService{
-		store: make(map[string]map[string]interface{}),
+		store:    make(map[string]map[string]interface{}),
+		rawStore: make(map[string][]byte),
 	}
 }
 
@@ -197,6 +199,22 @@ func (m *mockKeyringService) Get(key string) (string, error) {
 	return accessToken, nil
 }
 
+func (m *mockKeyringService) GetRaw(key string) ([]byte, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if m.err != nil {
+		return nil, m.err
+	}
+
+	data, ok := m.rawStore[key]
+	if !ok {
+		return nil, fmt.Errorf("key not found: %s", key)
+	}
+
+	return data, nil
+}
+
 func (m *mockKeyringService) Set(key string, data map[string]interface{}) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -209,11 +227,54 @@ func (m *mockKeyringService) Set(key string, data map[string]interface{}) error 
 	return nil
 }
 
+func (m *mockKeyringService) SetRaw(key string, data []byte) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if m.err != nil {
+		return m.err
+	}
+
+	m.rawStore[key] = data
+	return nil
+}
+
+func (m *mockKeyringService) Delete(key string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if m.err != nil {
+		return m.err
+	}
+
+	delete(m.store, key)
+	delete(m.rawStore, key)
+	return nil
+}
+
 // setError sets an error to return on next Get/Set operation
 func (m *mockKeyringService) setError(err error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.err = err
+}
+
+// setMockToken sets up a token in the new token store format
+// This is the preferred way to set up tokens for testing
+func (m *mockKeyringService) setMockToken(token string, orgId string, orgName string) {
+	store := tokenStore{
+		Version:    2,
+		DefaultOrg: orgId,
+		Tokens: map[string]orgTokenData{
+			orgId: {
+				AccessToken: token,
+				TokenType:   "Bearer",
+				OrgName:     orgName,
+			},
+		},
+	}
+	data, _ := json.Marshal(store)
+	m.SetRaw("token_store", data)
 }
 
 // clearError clears the error

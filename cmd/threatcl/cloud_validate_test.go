@@ -186,7 +186,7 @@ threatmodel "Test Model" {
 			createFile:   true,
 			token:        "",
 			expectedCode: 1,
-			expectedOut:  "error retrieving token",
+			expectedOut:  "no tokens found",
 		},
 		{
 			name:         "invalid token",
@@ -229,13 +229,9 @@ threatmodel "Test Model" {
 			keyringSvc := newMockKeyringService()
 			fsSvc := newMockFileSystemService()
 
-			// Set up token
+			// Set up token in new format
 			if tt.token != "" {
-				keyringSvc.Set("access_token", map[string]interface{}{
-					"access_token": tt.token,
-				})
-			} else if tt.name == "missing token" {
-				keyringSvc.setError(fmt.Errorf("no token"))
+				keyringSvc.setMockToken(tt.token, "test-org-id", "Test Org")
 			}
 
 			// Set up HTTP response
@@ -491,10 +487,8 @@ threatmodel "Test Model" {
 			keyringSvc := newMockKeyringService()
 			fsSvc := newMockFileSystemService()
 
-			// Set up token
-			keyringSvc.Set("access_token", map[string]interface{}{
-				"access_token": "valid-token",
-			})
+			// Set up token in new format
+			keyringSvc.setMockToken("valid-token", "test-org-id", "Test Org")
 
 			// Set up whoami response
 			whoamiResp := whoamiResponse{
@@ -649,9 +643,7 @@ threatmodel "Test Model" {
 			keyringSvc := newMockKeyringService()
 			fsSvc := newMockFileSystemService()
 
-			keyringSvc.Set("access_token", map[string]interface{}{
-				"access_token": "valid-token",
-			})
+			keyringSvc.setMockToken("valid-token", "test-org-id", "Test Org")
 
 			tt.setupMock(httpClient)
 
@@ -745,9 +737,7 @@ threatmodel "Test Model" {
 			fsSvc := newMockFileSystemService()
 
 			// Set up token for tests that need to reach validation logic
-			keyringSvc.Set("access_token", map[string]interface{}{
-				"access_token": "valid-token",
-			})
+			keyringSvc.setMockToken("valid-token", "test-org-id", "Test Org")
 
 			cfg, err := spec.LoadSpecConfig()
 			if err != nil {
@@ -863,9 +853,7 @@ invalid syntax {{{
 			keyringSvc := newMockKeyringService()
 			fsSvc := newMockFileSystemService()
 
-			keyringSvc.Set("access_token", map[string]interface{}{
-				"access_token": "valid-token",
-			})
+			keyringSvc.setMockToken("valid-token", "test-org-id", "Test Org")
 
 			httpClient.transport.setResponse("GET", "/api/v1/users/me", http.StatusOK, jsonResponse(whoamiResponse{
 				User: userInfo{Email: "test@example.com", FullName: "Test User"},

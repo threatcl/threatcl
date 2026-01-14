@@ -32,7 +32,7 @@ func TestCloudWhoamiRun(t *testing.T) {
 			name:         "missing token",
 			token:        "",
 			expectedCode: 1,
-			expectedOut:  "error retrieving token",
+			expectedOut:  "no tokens found",
 		},
 		{
 			name:         "invalid token",
@@ -65,13 +65,9 @@ func TestCloudWhoamiRun(t *testing.T) {
 			keyringSvc := newMockKeyringService()
 			fsSvc := newMockFileSystemService()
 
-			// Set up token
+			// Set up token in new format
 			if tt.token != "" {
-				keyringSvc.Set("access_token", map[string]interface{}{
-					"access_token": tt.token,
-				})
-			} else {
-				keyringSvc.setError(fmt.Errorf("no token"))
+				keyringSvc.setMockToken(tt.token, "org123", "Test Org")
 			}
 
 			// Set up HTTP response
@@ -206,7 +202,7 @@ func TestCloudWhoamiDisplayUserInfo(t *testing.T) {
 	cmd := testCloudWhoamiCommand(t, nil, nil, nil)
 
 	out := capturer.CaptureStdout(func() {
-		cmd.displayUserInfo(resp)
+		cmd.displayUserInfo(resp, "org123")
 	})
 
 	// Check for key information
@@ -243,7 +239,7 @@ func TestCloudWhoamiDisplayUserInfoNoOrgs(t *testing.T) {
 	cmd := testCloudWhoamiCommand(t, nil, nil, nil)
 
 	out := capturer.CaptureStdout(func() {
-		cmd.displayUserInfo(resp)
+		cmd.displayUserInfo(resp, "")
 	})
 
 	// Should still display user info
@@ -268,7 +264,7 @@ func TestCloudWhoamiDisplayUserInfoEmailNotVerified(t *testing.T) {
 	cmd := testCloudWhoamiCommand(t, nil, nil, nil)
 
 	out := capturer.CaptureStdout(func() {
-		cmd.displayUserInfo(resp)
+		cmd.displayUserInfo(resp, "")
 	})
 
 	// Should display email without checkmark

@@ -79,20 +79,13 @@ func (c *CloudThreatmodelUpdateStatusCommand) Run(args []string) int {
 	// Initialize dependencies
 	httpClient, keyringSvc, fsSvc := c.initDependencies(10 * time.Second)
 
-	// Step 1: Retrieve token
-	token, err := c.getTokenWithDeps(keyringSvc, fsSvc)
+	// Step 1: Retrieve token and org ID
+	token, orgId, err := c.getTokenAndOrgId(c.flagOrgId, keyringSvc, fsSvc)
 	if err != nil {
 		return c.handleTokenError(err)
 	}
 
-	// Step 2: Get organization ID
-	orgId, err := c.resolveOrgId(token, c.flagOrgId, httpClient, fsSvc)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "%s\n", err)
-		return 1
-	}
-
-	// Step 3: Update threat model status
+	// Step 2: Update threat model status
 	err = updateThreatmodelStatus(token, orgId, c.flagModelId, c.flagStatus, httpClient, fsSvc)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error updating threat model status: %s\n", err)

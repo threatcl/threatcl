@@ -94,7 +94,7 @@ func TestCloudSearchRun(t *testing.T) {
 		},
 		{
 			name:         "successful search with specific org",
-			args:         []string{"-impacts", "Confidentiality", "-org-id", "org-456"},
+			args:         []string{"-impacts", "Confidentiality", "-org-id", "org123"},
 			token:        "valid-token",
 			threatStatus: http.StatusOK,
 			threatResp:   threatsResponse,
@@ -120,7 +120,7 @@ func TestCloudSearchRun(t *testing.T) {
 			args:         []string{"-impacts", "Integrity"},
 			token:        "",
 			expectedCode: 1,
-			expectedOut:  "error retrieving token",
+			expectedOut:  "no tokens found",
 		},
 		{
 			name:         "unauthorized token",
@@ -168,13 +168,9 @@ func TestCloudSearchRun(t *testing.T) {
 			keyringSvc := newMockKeyringService()
 			fsSvc := newMockFileSystemService()
 
-			// Set up token
+			// Set up token in new format
 			if tt.token != "" {
-				keyringSvc.Set("access_token", map[string]interface{}{
-					"access_token": tt.token,
-				})
-			} else {
-				keyringSvc.setError(fmt.Errorf("no token"))
+				keyringSvc.setMockToken(tt.token, "org123", "Test Org")
 			}
 
 			// Set up responses

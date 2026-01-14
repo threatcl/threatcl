@@ -13,7 +13,7 @@ type CloudWhoamiCommand struct {
 
 func (c *CloudWhoamiCommand) Help() string {
 	helpText := `
-Usage: threatcl cloud whoami
+Usage: threatcl cloud whoami [options]
 
 	Display information about the currently authenticated user.
 
@@ -22,6 +22,9 @@ Usage: threatcl cloud whoami
 
 Options:
 
+ -org-id=<id>
+   Use the token for this specific organization (optional)
+
  -config=<file>
    Optional config file
 
@@ -29,7 +32,9 @@ Environment Variables:
 
  THREATCL_API_URL
    Override the API base URL (default: https://api.threatcl.com)
-   Example: THREATCL_API_URL=http://localhost:8080 threatcl cloud whoami
+
+ THREATCL_CLOUD_ORG
+   Default organization ID (used when -org-id is not specified)
 
 `
 	return strings.TrimSpace(helpText)
@@ -40,14 +45,17 @@ func (c *CloudWhoamiCommand) Synopsis() string {
 }
 
 func (c *CloudWhoamiCommand) Run(args []string) int {
+	var orgIdFlag string
+
 	flagSet := c.GetFlagset("cloud whoami")
+	flagSet.StringVar(&orgIdFlag, "org-id", "", "Organization ID")
 	flagSet.Parse(args)
 
 	// Initialize dependencies
 	httpClient, keyringSvc, fsSvc := c.initDependencies(10 * time.Second)
 
-	// Step 1: Retrieve token
-	token, err := c.getTokenWithDeps(keyringSvc, fsSvc)
+	// Step 1: Retrieve token for the specified/default org
+	token, orgId, err := c.getTokenAndOrgId(orgIdFlag, keyringSvc, fsSvc)
 	if err != nil {
 		return c.handleTokenError(err)
 	}
@@ -60,15 +68,19 @@ func (c *CloudWhoamiCommand) Run(args []string) int {
 	}
 
 	// Step 3: Display results
-	c.displayUserInfo(whoamiResp)
+	c.displayUserInfo(whoamiResp, orgId)
 
 	return 0
 }
 
-func (c *CloudWhoamiCommand) displayUserInfo(resp *whoamiResponse) {
+func (c *CloudWhoamiCommand) displayUserInfo(resp *whoamiResponse, currentOrgId string) {
 	fmt.Println(strings.Repeat("=", 60))
 	fmt.Println("  ThreatCL Cloud - User Information")
 	fmt.Println(strings.Repeat("=", 60))
+	fmt.Println()
+
+	// Current org context
+	fmt.Printf("Current Organization: %s\n", currentOrgId)
 	fmt.Println()
 
 	// User Information
@@ -92,7 +104,11 @@ func (c *CloudWhoamiCommand) displayUserInfo(resp *whoamiResponse) {
 			if i > 0 {
 				fmt.Println()
 			}
-			fmt.Printf("  Name:              %s\n", org.Organization.Name)
+			currentMarker := ""
+			if org.Organization.ID == currentOrgId {
+				currentMarker = " (current)"
+			}
+			fmt.Printf("  Name:              %s%s\n", org.Organization.Name, currentMarker)
 			fmt.Printf("  ID:                %s\n", org.Organization.ID)
 			fmt.Printf("  Slug:              %s\n", org.Organization.Slug)
 			fmt.Printf("  Role:              %s\n", org.Role)

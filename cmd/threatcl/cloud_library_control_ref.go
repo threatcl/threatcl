@@ -75,17 +75,10 @@ func (c *CloudLibraryControlRefCommand) Run(args []string) int {
 	// Initialize dependencies
 	httpClient, keyringSvc, fsSvc := c.initDependencies(30 * time.Second)
 
-	// Get token
-	token, err := c.getTokenWithDeps(keyringSvc, fsSvc)
+	// Get token and org ID
+	token, orgId, err := c.getTokenAndOrgId(c.flagOrgId, keyringSvc, fsSvc)
 	if err != nil {
 		return c.handleTokenError(err)
-	}
-
-	// Resolve org ID
-	orgId, err := c.resolveOrgId(token, c.flagOrgId, httpClient, fsSvc)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "%s\n", err)
-		return 1
 	}
 
 	// Fetch control by reference ID

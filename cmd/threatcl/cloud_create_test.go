@@ -42,7 +42,7 @@ func TestCloudCreateRun(t *testing.T) {
 		},
 		{
 			name:         "successful creation with org-id",
-			args:         []string{"-name", "Test Model", "-org-id", "org456"},
+			args:         []string{"-name", "Test Model", "-org-id", "org123"},
 			token:        "valid-token",
 			statusCode:   http.StatusCreated,
 			response:     jsonResponse(threatModel{ID: "tm123", Name: "Test Model", Slug: "test-model"}),
@@ -60,7 +60,7 @@ func TestCloudCreateRun(t *testing.T) {
 			args:         []string{"-name", "Test Model"},
 			token:        "",
 			expectedCode: 1,
-			expectedOut:  "error retrieving token",
+			expectedOut:  "no tokens found",
 		},
 		{
 			name:         "invalid token",
@@ -96,13 +96,9 @@ func TestCloudCreateRun(t *testing.T) {
 			keyringSvc := newMockKeyringService()
 			fsSvc := newMockFileSystemService()
 
-			// Set up token
+			// Set up token in new format
 			if tt.token != "" {
-				keyringSvc.Set("access_token", map[string]interface{}{
-					"access_token": tt.token,
-				})
-			} else {
-				keyringSvc.setError(fmt.Errorf("no token"))
+				keyringSvc.setMockToken(tt.token, "org123", "Test Org")
 			}
 
 			// Set up whoami response for automatic org-id
@@ -152,10 +148,8 @@ func TestCloudCreateRunWithoutOrgId(t *testing.T) {
 	keyringSvc := newMockKeyringService()
 	fsSvc := newMockFileSystemService()
 
-	// Set up token
-	keyringSvc.Set("access_token", map[string]interface{}{
-		"access_token": "valid-token",
-	})
+	// Set up token in new format
+	keyringSvc.setMockToken("valid-token", "org123", "Test Org")
 
 	// Set up whoami response with organization
 	whoamiResp := whoamiResponse{
@@ -194,35 +188,28 @@ func TestCloudCreateRunWithoutOrgId(t *testing.T) {
 	}
 }
 
-func TestCloudCreateRunNoOrganizations(t *testing.T) {
+func TestCloudCreateRunNoTokenForOrg(t *testing.T) {
 	httpClient := newMockHTTPClient()
 	keyringSvc := newMockKeyringService()
 	fsSvc := newMockFileSystemService()
 
-	// Set up token
-	keyringSvc.Set("access_token", map[string]interface{}{
-		"access_token": "valid-token",
-	})
-
-	// Set up whoami response with no organizations
-	whoamiResp := whoamiResponse{
-		Organizations: []orgMembership{},
-	}
-	httpClient.transport.setResponse("GET", "/api/v1/users/me", http.StatusOK, jsonResponse(whoamiResp))
+	// Set up token for org123
+	keyringSvc.setMockToken("valid-token", "org123", "Test Org")
 
 	cmd := testCloudCreateCommand(t, httpClient, keyringSvc, fsSvc)
 
 	var code int
 	out := capturer.CaptureOutput(func() {
-		code = cmd.Run([]string{"-name", "Test Model"})
+		// Try to use a different org than the one we have a token for
+		code = cmd.Run([]string{"-name", "Test Model", "-org-id", "different-org"})
 	})
 
 	if code != 1 {
 		t.Errorf("expected exit code 1, got %d", code)
 	}
 
-	if !strings.Contains(out, "No organizations found") {
-		t.Errorf("expected error message about no organizations, got %q", out)
+	if !strings.Contains(out, "no token found for organization") {
+		t.Errorf("expected error message about no token for org, got %q", out)
 	}
 }
 
@@ -410,10 +397,8 @@ func TestCloudCreateDisplayOutput(t *testing.T) {
 	keyringSvc := newMockKeyringService()
 	fsSvc := newMockFileSystemService()
 
-	// Set up token
-	keyringSvc.Set("access_token", map[string]interface{}{
-		"access_token": "valid-token",
-	})
+	// Set up token in new format
+	keyringSvc.setMockToken("valid-token", "org123", "Test Org")
 
 	// Set up whoami response
 	whoamiResp := whoamiResponse{
@@ -463,10 +448,8 @@ func TestCloudCreateDisplayOutputNoDescription(t *testing.T) {
 	keyringSvc := newMockKeyringService()
 	fsSvc := newMockFileSystemService()
 
-	// Set up token
-	keyringSvc.Set("access_token", map[string]interface{}{
-		"access_token": "valid-token",
-	})
+	// Set up token in new format
+	keyringSvc.setMockToken("valid-token", "org123", "Test Org")
 
 	// Set up whoami response
 	whoamiResp := whoamiResponse{
@@ -642,13 +625,9 @@ threatmodel "Model 2" {
 			keyringSvc := newMockKeyringService()
 			fsSvc := newMockFileSystemService()
 
-			// Set up token
+			// Set up token in new format
 			if tt.token != "" {
-				keyringSvc.Set("access_token", map[string]interface{}{
-					"access_token": tt.token,
-				})
-			} else {
-				keyringSvc.setError(fmt.Errorf("no token"))
+				keyringSvc.setMockToken(tt.token, "org123", "Test Org")
 			}
 
 			// Set up file content for upload (the upload uses fsSvc.ReadFile)

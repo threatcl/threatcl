@@ -130,20 +130,13 @@ func (c *CloudCreateCommand) Run(args []string) int {
 	}
 	httpClient, keyringSvc, fsSvc := c.initDependencies(timeout)
 
-	// Step 1: Retrieve token
-	token, err := c.getTokenWithDeps(keyringSvc, fsSvc)
+	// Step 1: Retrieve token and org ID
+	token, orgId, err := c.getTokenAndOrgId(c.flagOrgId, keyringSvc, fsSvc)
 	if err != nil {
 		return c.handleTokenError(err)
 	}
 
-	// Step 2: Get organization ID
-	orgId, err := c.resolveOrgId(token, c.flagOrgId, httpClient, fsSvc)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "%s\n", err)
-		return 1
-	}
-
-	// Step 3: Create the threat model
+	// Step 2: Create the threat model
 	threatModel, err := createThreatModel(token, orgId, c.flagName, c.flagDescription, httpClient, fsSvc)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error creating threat model: %s\n", err)

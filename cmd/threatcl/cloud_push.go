@@ -90,8 +90,8 @@ func (c *CloudPushCommand) Run(args []string) int {
 	// Initialize dependencies - use longer timeout for upload
 	httpClient, keyringSvc, fsSvc := c.initDependencies(30 * time.Second)
 
-	// Step 1: Retrieve token
-	token, err := c.getTokenWithDeps(keyringSvc, fsSvc)
+	// Step 1: Retrieve token (org will be determined from file content)
+	token, _, err := c.getTokenAndOrgId("", keyringSvc, fsSvc)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "❌ %s\n", err)
 		fmt.Fprintf(os.Stderr, "   %s\n", ErrPleaseLogin)
@@ -105,6 +105,11 @@ func (c *CloudPushCommand) Run(args []string) int {
 		return 1
 	}
 
+	// Preprocess HCL to inject empty descriptions for controls/threats with ref but no description
+	// This allows cloud-backed controls and threats to work without requiring local descriptions
+	processedContent := preprocessHCLForControls(fileContent)
+	processedContent = preprocessHCLForThreats(processedContent)
+
 	tmpDir, err := os.MkdirTemp("", "threatcl-push-")
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error creating temporary directory: %s\n", err)
@@ -113,7 +118,7 @@ func (c *CloudPushCommand) Run(args []string) int {
 	defer os.RemoveAll(tmpDir)
 
 	tmpFilePath := filepath.Join(tmpDir, filepath.Base(filePath))
-	err = os.WriteFile(tmpFilePath, fileContent, 0600)
+	err = os.WriteFile(tmpFilePath, processedContent, 0600)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error writing temporary file: %s\n", err)
 		return 1

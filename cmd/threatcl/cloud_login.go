@@ -7,7 +7,6 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 )
@@ -23,15 +22,17 @@ Usage: threatcl cloud login
 	Authenticate with ThreatCL Cloud using device flow authentication.
 
 	This command will:
-	1. Check if you are already authenticated (if a token exists, it will be validated)
-	2. Request a device code from the ThreatCL API
-	3. Display a verification URL and user code
-	4. Wait for you to authorize the device in your browser
-	5. Save the access token securely to your OS keychain (or settings file)
+	1. Request a device code from the ThreatCL API
+	2. Display a verification URL and user code
+	3. Wait for you to authorize the device in your browser
+	4. Save the access token securely to your OS keychain (or settings file)
 
-	If you are already authenticated with a valid token, this command will exit
-	with an error. Use 'threatcl cloud whoami' to verify your current session.
-	If your token is invalid or expired, login will proceed and replace it.
+	Tokens are scoped to organizations. You can authenticate with multiple
+	organizations by running login multiple times and selecting different
+	organizations in the web interface.
+
+	Use 'threatcl cloud token list' to see all authenticated organizations.
+	Use 'threatcl cloud token default <org-id>' to set the default organization.
 
 Options:
 
@@ -59,22 +60,6 @@ func (c *CloudLoginCommand) Run(args []string) int {
 	// Initialize dependencies
 	httpClient, keyringSvc, fsSvc := c.initDependencies(5 * time.Second)
 
-	// Check if user is already authenticated
-	token, err := getToken(keyringSvc, fsSvc)
-	if err == nil {
-		// Token exists, validate it
-		isValid, validateErr := validateToken(token, httpClient, fsSvc)
-		if validateErr != nil {
-			// Network error - unable to validate, but allow login to proceed with warning
-			fmt.Fprintf(os.Stderr, "Warning: Could not validate existing token (%s). Proceeding with login...\n\n", validateErr)
-		} else if isValid {
-			// Valid token exists - prevent login
-			fmt.Fprintf(os.Stderr, "Error: You are already authenticated. Use 'threatcl cloud whoami' to verify your session.\n")
-			return 1
-		}
-		// Token exists but is invalid/expired - allow login to proceed (will replace token)
-	}
-
 	// Step 1: Request device code
 	deviceResp, err := c.requestDeviceCode(httpClient, fsSvc)
 	if err != nil {
@@ -92,14 +77,22 @@ func (c *CloudLoginCommand) Run(args []string) int {
 		return 1
 	}
 
-	// Step 4: Save token
-	err = c.saveToken(tokenResp, keyringSvc, fsSvc)
+	// Step 4: Fetch org name for display
+	orgName := c.fetchOrgName(tokenResp.AccessToken, tokenResp.OrganizationID, httpClient, fsSvc)
+
+	// Step 5: Save token
+	err = c.saveToken(tokenResp, orgName, keyringSvc, fsSvc)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error saving token: %s\n", err)
 		return 1
 	}
 
-	fmt.Println("\n✓ Successfully authenticated and saved token!")
+	fmt.Println()
+	if orgName != "" {
+		fmt.Printf("✓ Successfully authenticated with organization: %s\n", orgName)
+	} else {
+		fmt.Printf("✓ Successfully authenticated with organization: %s\n", tokenResp.OrganizationID)
+	}
 	return 0
 }
 
@@ -216,71 +209,31 @@ func (c *CloudLoginCommand) pollForToken(deviceResp *deviceCodeResponse, httpCli
 	}
 }
 
-func (c *CloudLoginCommand) saveToken(tokenResp *tokenResponse, keyringSvc KeyringService, fsSvc FileSystemService) error {
-	// Try to save to keyring first
-	err := c.saveTokenToKeyring(tokenResp, keyringSvc)
-	if err == nil {
-		return nil
-	}
-
-	// If keyring fails, fall back to file
-	fmt.Fprintf(os.Stderr, "Warning: Could not save to keyring (%s), falling back to file storage\n", err)
-	return c.saveTokenToFile(tokenResp, fsSvc)
-}
-
-func (c *CloudLoginCommand) saveTokenToKeyring(tokenResp *tokenResponse, keyringSvc KeyringService) error {
-	// Create token data structure
-	tokenData := map[string]interface{}{
-		"access_token": tokenResp.AccessToken,
-		"token_type":   tokenResp.TokenType,
-	}
-	if tokenResp.ExpiresIn != nil {
-		tokenData["expires_in"] = *tokenResp.ExpiresIn
-		tokenData["expires_at"] = time.Now().Add(time.Duration(*tokenResp.ExpiresIn) * time.Second).Unix()
-	}
-
-	return keyringSvc.Set("access_token", tokenData)
-}
-
-func (c *CloudLoginCommand) saveTokenToFile(tokenResp *tokenResponse, fsSvc FileSystemService) error {
-	// Determine config directory
-	configDir := fsSvc.Getenv("XDG_CONFIG_HOME")
-	if configDir == "" {
-		homeDir := fsSvc.Getenv("HOME")
-		if homeDir == "" {
-			return fmt.Errorf("could not determine home directory")
-		}
-		configDir = filepath.Join(homeDir, ".config")
-	}
-
-	threatclDir := filepath.Join(configDir, "threatcl")
-
-	// Create directory if it doesn't exist
-	if err := fsSvc.MkdirAll(threatclDir, 0755); err != nil {
-		return fmt.Errorf("failed to create config directory: %w", err)
-	}
-
-	// Create settings structure
-	settings := map[string]interface{}{
-		"access_token": tokenResp.AccessToken,
-		"token_type":   tokenResp.TokenType,
-	}
-	if tokenResp.ExpiresIn != nil {
-		settings["expires_in"] = *tokenResp.ExpiresIn
-		settings["expires_at"] = time.Now().Add(time.Duration(*tokenResp.ExpiresIn) * time.Second).Unix()
-	}
-
-	// Marshal to JSON
-	settingsJSON, err := json.MarshalIndent(settings, "", "  ")
+func (c *CloudLoginCommand) fetchOrgName(token, orgId string, httpClient HTTPClient, fsSvc FileSystemService) string {
+	// Try to fetch user info to get org name
+	whoamiResp, err := fetchUserInfo(token, httpClient, fsSvc)
 	if err != nil {
-		return fmt.Errorf("failed to marshal settings: %w", err)
+		return ""
 	}
 
-	// Write to file
-	settingsPath := filepath.Join(threatclDir, "settings.json")
-	if err := fsSvc.WriteFile(settingsPath, settingsJSON, 0600); err != nil {
-		return fmt.Errorf("failed to write settings file: %w", err)
+	// Find the org in the response
+	for _, org := range whoamiResp.Organizations {
+		if org.Organization.ID == orgId {
+			return org.Organization.Name
+		}
 	}
 
-	return nil
+	return ""
+}
+
+func (c *CloudLoginCommand) saveToken(tokenResp *tokenResponse, orgName string, keyringSvc KeyringService, fsSvc FileSystemService) error {
+	return setTokenForOrg(
+		tokenResp.OrganizationID,
+		tokenResp.AccessToken,
+		tokenResp.TokenType,
+		orgName,
+		tokenResp.ExpiresAt,
+		keyringSvc,
+		fsSvc,
+	)
 }

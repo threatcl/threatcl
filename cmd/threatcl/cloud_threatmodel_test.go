@@ -29,10 +29,8 @@ func TestCloudThreatmodelRunWithOrgId(t *testing.T) {
 	keyringSvc := newMockKeyringService()
 	fsSvc := newMockFileSystemService()
 
-	// Set up token
-	keyringSvc.Set("access_token", map[string]interface{}{
-		"access_token": "valid-token",
-	})
+	// Set up token in new format
+	keyringSvc.setMockToken("valid-token", "org123", "Test Org")
 
 	// Set up threat model response
 	threatModel := threatModel{
@@ -88,10 +86,8 @@ func TestCloudThreatmodelRunWithoutOrgId(t *testing.T) {
 	keyringSvc := newMockKeyringService()
 	fsSvc := newMockFileSystemService()
 
-	// Set up token
-	keyringSvc.Set("access_token", map[string]interface{}{
-		"access_token": "valid-token",
-	})
+	// Set up token in new format
+	keyringSvc.setMockToken("valid-token", "org123", "Test Org")
 
 	// Set up whoami response with organization
 	whoamiResp := whoamiResponse{
@@ -152,35 +148,28 @@ func TestCloudThreatmodelRunNoModelId(t *testing.T) {
 	}
 }
 
-func TestCloudThreatmodelRunNoOrganizations(t *testing.T) {
+func TestCloudThreatmodelRunNoTokenForOrg(t *testing.T) {
 	httpClient := newMockHTTPClient()
 	keyringSvc := newMockKeyringService()
 	fsSvc := newMockFileSystemService()
 
-	// Set up token
-	keyringSvc.Set("access_token", map[string]interface{}{
-		"access_token": "valid-token",
-	})
-
-	// Set up whoami response with no organizations
-	whoamiResp := whoamiResponse{
-		Organizations: []orgMembership{},
-	}
-	httpClient.transport.setResponse("GET", "/api/v1/users/me", http.StatusOK, jsonResponse(whoamiResp))
+	// Set up token for org123
+	keyringSvc.setMockToken("valid-token", "org123", "Test Org")
 
 	cmd := testCloudThreatmodelCommand(t, httpClient, keyringSvc, fsSvc)
 
 	var code int
 	out := capturer.CaptureOutput(func() {
-		code = cmd.Run([]string{"-model-id", "tm1"})
+		// Try to use a different org than the one we have a token for
+		code = cmd.Run([]string{"-model-id", "tm1", "-org-id", "different-org"})
 	})
 
 	if code != 1 {
 		t.Errorf("expected exit code 1, got %d", code)
 	}
 
-	if !strings.Contains(out, "No organizations found") {
-		t.Errorf("expected error message about no organizations, got %q", out)
+	if !strings.Contains(out, "no token found for organization") {
+		t.Errorf("expected error message about no token for org, got %q", out)
 	}
 }
 
@@ -224,10 +213,8 @@ func TestCloudThreatmodelRunAPIErrors(t *testing.T) {
 			keyringSvc := newMockKeyringService()
 			fsSvc := newMockFileSystemService()
 
-			// Set up token
-			keyringSvc.Set("access_token", map[string]interface{}{
-				"access_token": "valid-token",
-			})
+			// Set up token in new format
+			keyringSvc.setMockToken("valid-token", "org123", "Test Org")
 
 			// Set up error response
 			if tt.httpErr != nil {
@@ -409,10 +396,8 @@ func TestCloudThreatmodelRunWithDownload(t *testing.T) {
 	keyringSvc := newMockKeyringService()
 	fsSvc := newMockFileSystemService()
 
-	// Set up token
-	keyringSvc.Set("access_token", map[string]interface{}{
-		"access_token": "valid-token",
-	})
+	// Set up token in new format
+	keyringSvc.setMockToken("valid-token", "org123", "Test Org")
 
 	// Set up threat model metadata response (still needed even when downloading)
 	threatModel := threatModel{
@@ -463,10 +448,8 @@ func TestCloudThreatmodelRunWithDownloadWithoutOrgId(t *testing.T) {
 	keyringSvc := newMockKeyringService()
 	fsSvc := newMockFileSystemService()
 
-	// Set up token
-	keyringSvc.Set("access_token", map[string]interface{}{
-		"access_token": "valid-token",
-	})
+	// Set up token in new format
+	keyringSvc.setMockToken("valid-token", "org123", "Test Org")
 
 	// Set up whoami response with organization
 	whoamiResp := whoamiResponse{
@@ -553,10 +536,8 @@ func TestCloudThreatmodelRunWithDownloadAPIErrors(t *testing.T) {
 			keyringSvc := newMockKeyringService()
 			fsSvc := newMockFileSystemService()
 
-			// Set up token
-			keyringSvc.Set("access_token", map[string]interface{}{
-				"access_token": "valid-token",
-			})
+			// Set up token in new format
+			keyringSvc.setMockToken("valid-token", "org123", "Test Org")
 
 			// Set up threat model metadata response (needed before download)
 			threatModel := threatModel{
@@ -600,10 +581,8 @@ func TestCloudThreatmodelRunWithDownloadFileWriteError(t *testing.T) {
 	keyringSvc := newMockKeyringService()
 	fsSvc := newMockFileSystemService()
 
-	// Set up token
-	keyringSvc.Set("access_token", map[string]interface{}{
-		"access_token": "valid-token",
-	})
+	// Set up token in new format
+	keyringSvc.setMockToken("valid-token", "org123", "Test Org")
 
 	// Set up threat model metadata response
 	threatModel := threatModel{
@@ -752,10 +731,8 @@ func TestCloudThreatmodelRunWithDownloadAndOverwrite(t *testing.T) {
 	keyringSvc := newMockKeyringService()
 	fsSvc := newMockFileSystemService()
 
-	// Set up token
-	keyringSvc.Set("access_token", map[string]interface{}{
-		"access_token": "valid-token",
-	})
+	// Set up token in new format
+	keyringSvc.setMockToken("valid-token", "org123", "Test Org")
 
 	// Simulate existing file
 	fsSvc.files["output.hcl"] = []byte("old content")
@@ -798,10 +775,8 @@ func TestCloudThreatmodelRunWithDownloadFileExistsNoOverwrite(t *testing.T) {
 	keyringSvc := newMockKeyringService()
 	fsSvc := newMockFileSystemService()
 
-	// Set up token
-	keyringSvc.Set("access_token", map[string]interface{}{
-		"access_token": "valid-token",
-	})
+	// Set up token in new format
+	keyringSvc.setMockToken("valid-token", "org123", "Test Org")
 
 	// Simulate existing file
 	fsSvc.files["output.hcl"] = []byte("old content")

@@ -119,6 +119,44 @@ func Run(args []string) int {
 				},
 			}, nil
 		},
+		"cloud logout": func() (cli.Command, error) {
+			return &CloudLogoutCommand{
+				CloudCommandBase: CloudCommandBase{
+					GlobalCmdOptions: globalCmdOptions,
+				},
+			}, nil
+		},
+		"cloud token": func() (cli.Command, error) {
+			return &CloudTokenCommand{}, nil
+		},
+		"cloud token list": func() (cli.Command, error) {
+			return &CloudTokenListCommand{
+				CloudCommandBase: CloudCommandBase{
+					GlobalCmdOptions: globalCmdOptions,
+				},
+			}, nil
+		},
+		"cloud token add": func() (cli.Command, error) {
+			return &CloudTokenAddCommand{
+				CloudCommandBase: CloudCommandBase{
+					GlobalCmdOptions: globalCmdOptions,
+				},
+			}, nil
+		},
+		"cloud token remove": func() (cli.Command, error) {
+			return &CloudTokenRemoveCommand{
+				CloudCommandBase: CloudCommandBase{
+					GlobalCmdOptions: globalCmdOptions,
+				},
+			}, nil
+		},
+		"cloud token default": func() (cli.Command, error) {
+			return &CloudTokenDefaultCommand{
+				CloudCommandBase: CloudCommandBase{
+					GlobalCmdOptions: globalCmdOptions,
+				},
+			}, nil
+		},
 		"cloud whoami": func() (cli.Command, error) {
 			return &CloudWhoamiCommand{
 				CloudCommandBase: CloudCommandBase{

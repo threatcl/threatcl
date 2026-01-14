@@ -123,20 +123,13 @@ func (c *CloudUploadCommand) Run(args []string) int {
 		return 1
 	}
 
-	// Step 2: Retrieve token
-	token, err := c.getTokenWithDeps(keyringSvc, fsSvc)
+	// Step 2: Retrieve token and org ID
+	token, orgId, err := c.getTokenAndOrgId(c.flagOrgId, keyringSvc, fsSvc)
 	if err != nil {
 		return c.handleTokenError(err)
 	}
 
-	// Step 3: Get organization ID
-	orgId, err := c.resolveOrgId(token, c.flagOrgId, httpClient, fsSvc)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "%s\n", err)
-		return 1
-	}
-
-	// Step 4: Upload the file
+	// Step 3: Upload the file
 	err = uploadFile(token, orgId, c.flagModelId, filePath, httpClient, fsSvc)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error uploading file: %s\n", err)

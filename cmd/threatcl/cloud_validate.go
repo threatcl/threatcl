@@ -76,7 +76,7 @@ func (c *CloudValidateCommand) Run(args []string) int {
 
 	// Initialize dependencies
 	httpClient, keyringSvc, fsSvc := c.initDependencies(10 * time.Second)
-	token, err := c.getTokenWithDeps(keyringSvc, fsSvc)
+	token, _, err := c.getTokenAndOrgId("", keyringSvc, fsSvc)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "❌ %s\n", err)
 		fmt.Fprintf(os.Stderr, "   %s\n", ErrPleaseLogin)

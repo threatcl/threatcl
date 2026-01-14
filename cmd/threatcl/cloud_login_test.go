@@ -21,25 +21,21 @@ func TestCloudLoginRunAlreadyAuthenticated(t *testing.T) {
 		expectedCode int
 		expectedOut  string
 	}{
+		// Note: With multi-org token support, login no longer blocks if a token exists.
+		// It proceeds with the device flow and adds/replaces the token for the org.
 		{
-			name:         "valid existing token",
+			name:         "existing token proceeds with login",
 			token:        "valid-token",
 			validToken:   true,
-			expectedCode: 1,
-			expectedOut:  "already authenticated",
+			expectedCode: 0, // Login proceeds even with existing token
+			expectedOut:  "Successfully authenticated",
 		},
 		{
-			name:         "invalid existing token",
+			name:         "invalid existing token proceeds with login",
 			token:        "invalid-token",
 			validToken:   false,
 			expectedCode: 0, // Should proceed with login
-		},
-		{
-			name:         "validation network error",
-			token:        "token",
-			validateErr:  fmt.Errorf("network error"),
-			expectedCode: 0, // Should proceed with warning
-			expectedOut:  "Warning",
+			expectedOut:  "Successfully authenticated",
 		},
 	}
 
@@ -49,11 +45,9 @@ func TestCloudLoginRunAlreadyAuthenticated(t *testing.T) {
 			keyringSvc := newMockKeyringService()
 			fsSvc := newMockFileSystemService()
 
-			// Set up token in keyring
+			// Set up token in keyring (new format)
 			if tt.token != "" {
-				keyringSvc.Set("access_token", map[string]interface{}{
-					"access_token": tt.token,
-				})
+				keyringSvc.setMockToken(tt.token, "org123", "Test Org")
 			}
 
 			// Set up token validation response
@@ -67,29 +61,37 @@ func TestCloudLoginRunAlreadyAuthenticated(t *testing.T) {
 				httpClient.transport.setResponse("GET", "/api/v1/users/me", statusCode, `{"id":"user123"}`)
 			}
 
-			// If login should proceed (invalid token or network error), set up device flow
-			if !tt.validToken || tt.validateErr != nil {
-				// Device code response
-				deviceResp := deviceCodeResponse{
-					DeviceCode:      "device-code-123",
-					ExpiresIn:       600,
-					Interval:        1, // Fast for testing
-					UserCode:        "ABC-123",
-					VerificationURL: "https://example.com/verify",
-				}
-				httpClient.transport.setResponse("POST", "/api/v1/auth/device", http.StatusOK, jsonResponse(deviceResp))
-
-				// Token poll response
-				tokenResp := tokenResponse{
-					AccessToken: "access-token-123",
-					TokenType:   "Bearer",
-				}
-				httpClient.transport.setResponse("POST", "/api/v1/auth/device/poll", http.StatusOK, jsonResponse(tokenResp))
-
-				// Set up file system for token save
-				fsSvc.setEnv("HOME", "/tmp")
-				fsSvc.MkdirAll("/tmp/.config/threatcl", 0755)
+			// Login always proceeds with device flow (no longer blocks for existing tokens)
+			// Device code response
+			deviceResp := deviceCodeResponse{
+				DeviceCode:      "device-code-123",
+				ExpiresIn:       600,
+				Interval:        1, // Fast for testing
+				UserCode:        "ABC-123",
+				VerificationURL: "https://example.com/verify",
 			}
+			httpClient.transport.setResponse("POST", "/api/v1/auth/device", http.StatusOK, jsonResponse(deviceResp))
+
+			// Token poll response with OrganizationID
+			tokenResp := tokenResponse{
+				AccessToken:    "access-token-123",
+				TokenType:      "Bearer",
+				OrganizationID: "new-org-123",
+				ExpiresAt:      int64Ptr(time.Now().Add(time.Hour).Unix()),
+			}
+			httpClient.transport.setResponse("POST", "/api/v1/auth/device/poll", http.StatusOK, jsonResponse(tokenResp))
+
+			// Whoami response for org name lookup
+			whoamiResp := whoamiResponse{
+				Organizations: []orgMembership{
+					{Organization: orgInfo{ID: "new-org-123", Name: "New Org"}},
+				},
+			}
+			httpClient.transport.setResponse("GET", "/api/v1/whoami", http.StatusOK, jsonResponse(whoamiResp))
+
+			// Set up file system for token save
+			fsSvc.setEnv("HOME", "/tmp")
+			fsSvc.MkdirAll("/tmp/.config/threatcl", 0755)
 
 			cmd := testCloudLoginCommand(t, httpClient, keyringSvc, fsSvc)
 
@@ -132,11 +134,20 @@ func TestCloudLoginRunSuccessfulFlow(t *testing.T) {
 
 	// Token poll response (success on first try)
 	tokenResp := tokenResponse{
-		AccessToken: "access-token-123",
-		TokenType:   "Bearer",
-		ExpiresIn:   intPtr(3600),
+		AccessToken:    "access-token-123",
+		TokenType:      "Bearer",
+		OrganizationID: "org-123",
+		ExpiresAt:      int64Ptr(time.Now().Add(time.Hour).Unix()),
 	}
 	httpClient.transport.setResponse("POST", "/api/v1/auth/device/poll", http.StatusOK, jsonResponse(tokenResp))
+
+	// Whoami response for org name lookup
+	whoamiResp := whoamiResponse{
+		Organizations: []orgMembership{
+			{Organization: orgInfo{ID: "org-123", Name: "Test Org"}},
+		},
+	}
+	httpClient.transport.setResponse("GET", "/api/v1/whoami", http.StatusOK, jsonResponse(whoamiResp))
 
 	cmd := testCloudLoginCommand(t, httpClient, keyringSvc, fsSvc)
 
@@ -153,13 +164,27 @@ func TestCloudLoginRunSuccessfulFlow(t *testing.T) {
 		t.Errorf("expected success message, got %q", out)
 	}
 
-	// Verify token was saved to keyring
-	token, err := keyringSvc.Get("access_token")
+	// Verify token was saved to keyring using new token store format
+	rawData, err := keyringSvc.GetRaw("token_store")
 	if err != nil {
-		t.Errorf("token should be saved to keyring: %v", err)
+		t.Errorf("token store should be saved to keyring: %v", err)
 	}
-	if token != "access-token-123" {
-		t.Errorf("expected token %q, got %q", "access-token-123", token)
+	var store tokenStore
+	if err := json.Unmarshal(rawData, &store); err != nil {
+		t.Errorf("failed to unmarshal token store: %v", err)
+	}
+	if store.Version != 2 {
+		t.Errorf("expected version 2, got %d", store.Version)
+	}
+	if store.DefaultOrg != "org-123" {
+		t.Errorf("expected default org %q, got %q", "org-123", store.DefaultOrg)
+	}
+	tokenData, ok := store.Tokens["org-123"]
+	if !ok {
+		t.Errorf("expected token for org-123")
+	}
+	if tokenData.AccessToken != "access-token-123" {
+		t.Errorf("expected token %q, got %q", "access-token-123", tokenData.AccessToken)
 	}
 }
 
@@ -238,8 +263,8 @@ func TestCloudLoginRunKeyringFallback(t *testing.T) {
 	keyringSvc := newMockKeyringService()
 	fsSvc := newMockFileSystemService()
 
-	// No existing token
-	keyringSvc.setError(fmt.Errorf("no token"))
+	// Keyring operations fail - simulate broken keyring
+	keyringSvc.setError(fmt.Errorf("keyring error"))
 
 	// Device code response
 	deviceResp := deviceCodeResponse{
@@ -251,15 +276,22 @@ func TestCloudLoginRunKeyringFallback(t *testing.T) {
 	}
 	httpClient.transport.setResponse("POST", "/api/v1/auth/device", http.StatusOK, jsonResponse(deviceResp))
 
-	// Token poll response
+	// Token poll response with OrganizationID
 	tokenResp := tokenResponse{
-		AccessToken: "access-token-123",
-		TokenType:   "Bearer",
+		AccessToken:    "access-token-123",
+		TokenType:      "Bearer",
+		OrganizationID: "org-123",
+		ExpiresAt:      int64Ptr(time.Now().Add(time.Hour).Unix()),
 	}
 	httpClient.transport.setResponse("POST", "/api/v1/auth/device/poll", http.StatusOK, jsonResponse(tokenResp))
 
-	// Keyring save fails
-	keyringSvc.setError(fmt.Errorf("keyring error"))
+	// Whoami response for org name lookup
+	whoamiResp := whoamiResponse{
+		Organizations: []orgMembership{
+			{Organization: orgInfo{ID: "org-123", Name: "Test Org"}},
+		},
+	}
+	httpClient.transport.setResponse("GET", "/api/v1/whoami", http.StatusOK, jsonResponse(whoamiResp))
 
 	// Set up file system
 	fsSvc.setEnv("HOME", "/tmp")
@@ -276,24 +308,28 @@ func TestCloudLoginRunKeyringFallback(t *testing.T) {
 		t.Errorf("expected exit code 0, got %d", code)
 	}
 
-	if !strings.Contains(out, "falling back to file storage") {
-		t.Errorf("expected fallback message, got %q", out)
+	if !strings.Contains(out, "Successfully authenticated") {
+		t.Errorf("expected success message, got %q", out)
 	}
 
-	// Verify token was saved to file
-	settingsPath := filepath.Join("/tmp", ".config", "threatcl", "settings.json")
-	data, err := fsSvc.ReadFile(settingsPath)
+	// Verify token was saved to file when keyring failed (tokens.json)
+	tokensPath := filepath.Join("/tmp", ".config", "threatcl", "tokens.json")
+	data, err := fsSvc.ReadFile(tokensPath)
 	if err != nil {
 		t.Errorf("token should be saved to file: %v", err)
 	}
 
-	var settings map[string]interface{}
-	if err := json.Unmarshal(data, &settings); err != nil {
-		t.Fatalf("failed to parse settings: %v", err)
+	var store tokenStore
+	if err := json.Unmarshal(data, &store); err != nil {
+		t.Fatalf("failed to parse token store: %v", err)
 	}
 
-	if settings["access_token"] != "access-token-123" {
-		t.Errorf("expected token in file, got %v", settings)
+	tokenData, ok := store.Tokens["org-123"]
+	if !ok {
+		t.Errorf("expected token for org-123 in file")
+	}
+	if tokenData.AccessToken != "access-token-123" {
+		t.Errorf("expected token in file, got %v", tokenData.AccessToken)
 	}
 }
 
@@ -397,9 +433,10 @@ func TestCloudLoginPollForToken(t *testing.T) {
 
 func TestCloudLoginSaveToken(t *testing.T) {
 	tokenResp := &tokenResponse{
-		AccessToken: "access-token-123",
-		TokenType:   "Bearer",
-		ExpiresIn:   intPtr(3600),
+		AccessToken:    "access-token-123",
+		TokenType:      "Bearer",
+		OrganizationID: "org-123",
+		ExpiresAt:      int64Ptr(time.Now().Add(time.Hour).Unix()),
 	}
 
 	t.Run("save to keyring", func(t *testing.T) {
@@ -408,18 +445,29 @@ func TestCloudLoginSaveToken(t *testing.T) {
 
 		cmd := testCloudLoginCommand(t, nil, keyringSvc, fsSvc)
 
-		err := cmd.saveToken(tokenResp, keyringSvc, fsSvc)
+		err := cmd.saveToken(tokenResp, "Test Org", keyringSvc, fsSvc)
 		if err != nil {
 			t.Errorf("unexpected error: %v", err)
 		}
 
-		// Verify token was saved
-		token, err := keyringSvc.Get("access_token")
+		// Verify token was saved using new token store format
+		rawData, err := keyringSvc.GetRaw("token_store")
 		if err != nil {
-			t.Errorf("token should be saved: %v", err)
+			t.Errorf("token store should be saved: %v", err)
 		}
-		if token != "access-token-123" {
-			t.Errorf("expected token %q, got %q", "access-token-123", token)
+		var store tokenStore
+		if err := json.Unmarshal(rawData, &store); err != nil {
+			t.Errorf("failed to unmarshal token store: %v", err)
+		}
+		tokenData, ok := store.Tokens["org-123"]
+		if !ok {
+			t.Errorf("expected token for org-123")
+		}
+		if tokenData.AccessToken != "access-token-123" {
+			t.Errorf("expected token %q, got %q", "access-token-123", tokenData.AccessToken)
+		}
+		if tokenData.OrgName != "Test Org" {
+			t.Errorf("expected org name %q, got %q", "Test Org", tokenData.OrgName)
 		}
 	})
 
@@ -432,25 +480,29 @@ func TestCloudLoginSaveToken(t *testing.T) {
 
 		cmd := testCloudLoginCommand(t, nil, keyringSvc, fsSvc)
 
-		err := cmd.saveToken(tokenResp, keyringSvc, fsSvc)
+		err := cmd.saveToken(tokenResp, "Test Org", keyringSvc, fsSvc)
 		if err != nil {
 			t.Errorf("unexpected error: %v", err)
 		}
 
-		// Verify token was saved to file
-		settingsPath := filepath.Join("/tmp", ".config", "threatcl", "settings.json")
+		// Verify token was saved to file (tokens.json now instead of settings.json)
+		settingsPath := filepath.Join("/tmp", ".config", "threatcl", "tokens.json")
 		data, err := fsSvc.ReadFile(settingsPath)
 		if err != nil {
 			t.Errorf("token should be saved to file: %v", err)
 		}
 
-		var settings map[string]interface{}
-		if err := json.Unmarshal(data, &settings); err != nil {
-			t.Fatalf("failed to parse settings: %v", err)
+		var store tokenStore
+		if err := json.Unmarshal(data, &store); err != nil {
+			t.Fatalf("failed to parse token store: %v", err)
 		}
 
-		if settings["access_token"] != "access-token-123" {
-			t.Errorf("expected token in file, got %v", settings)
+		tokenData, ok := store.Tokens["org-123"]
+		if !ok {
+			t.Errorf("expected token for org-123 in file")
+		}
+		if tokenData.AccessToken != "access-token-123" {
+			t.Errorf("expected token in file, got %v", tokenData.AccessToken)
 		}
 	})
 }
@@ -476,7 +528,11 @@ func TestCloudLoginDisplayVerificationInstructions(t *testing.T) {
 	}
 }
 
-// Helper function
+// Helper functions
 func intPtr(i int) *int {
+	return &i
+}
+
+func int64Ptr(i int64) *int64 {
 	return &i
 }
