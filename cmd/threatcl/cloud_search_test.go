@@ -102,11 +102,40 @@ func TestCloudSearchRun(t *testing.T) {
 			expectedOut:  "Found 1 threat",
 		},
 		{
-			name:         "missing impacts flag",
+			name:         "successful search with no filters",
 			args:         []string{},
 			token:        "valid-token",
-			expectedCode: 1,
-			expectedOut:  "-impacts flag is required",
+			useSequence:  true,
+			orgsStatus:   http.StatusOK,
+			orgsResponse: orgsResponse,
+			threatStatus: http.StatusOK,
+			threatResp:   threatsResponse,
+			expectedCode: 0,
+			expectedOut:  "SQL Injection",
+		},
+		{
+			name:         "successful search with stride filter",
+			args:         []string{"-stride", "Tampering,Info Disclosure"},
+			token:        "valid-token",
+			useSequence:  true,
+			orgsStatus:   http.StatusOK,
+			orgsResponse: orgsResponse,
+			threatStatus: http.StatusOK,
+			threatResp:   threatsResponse,
+			expectedCode: 0,
+			expectedOut:  "SQL Injection",
+		},
+		{
+			name:         "successful search with has-controls filter",
+			args:         []string{"-has-controls", "true"},
+			token:        "valid-token",
+			useSequence:  true,
+			orgsStatus:   http.StatusOK,
+			orgsResponse: orgsResponse,
+			threatStatus: http.StatusOK,
+			threatResp:   threatsResponse,
+			expectedCode: 0,
+			expectedOut:  "SQL Injection",
 		},
 		{
 			name:         "invalid impacts value",
@@ -114,6 +143,62 @@ func TestCloudSearchRun(t *testing.T) {
 			token:        "valid-token",
 			expectedCode: 1,
 			expectedOut:  "invalid impact value",
+		},
+		{
+			name:         "invalid stride value",
+			args:         []string{"-stride", "Invalid"},
+			token:        "valid-token",
+			expectedCode: 1,
+			expectedOut:  "invalid STRIDE value",
+		},
+		{
+			name:         "invalid type value",
+			args:         []string{"-type", "invalid"},
+			token:        "valid-token",
+			expectedCode: 1,
+			expectedOut:  "invalid -type value",
+		},
+		{
+			name:         "invalid has-controls value",
+			args:         []string{"-has-controls", "maybe"},
+			token:        "valid-token",
+			expectedCode: 1,
+			expectedOut:  "invalid -has-controls value",
+		},
+		{
+			name:         "invalid implemented value",
+			args:         []string{"-type", "controls", "-implemented", "maybe"},
+			token:        "valid-token",
+			expectedCode: 1,
+			expectedOut:  "invalid -implemented value",
+		},
+		{
+			name:         "impacts flag not valid for controls",
+			args:         []string{"-type", "controls", "-impacts", "Integrity"},
+			token:        "valid-token",
+			expectedCode: 1,
+			expectedOut:  "-impacts flag is not valid when -type=controls",
+		},
+		{
+			name:         "stride flag not valid for controls",
+			args:         []string{"-type", "controls", "-stride", "Info Disclosure"},
+			token:        "valid-token",
+			expectedCode: 1,
+			expectedOut:  "-stride flag is not valid when -type=controls",
+		},
+		{
+			name:         "has-controls flag not valid for controls",
+			args:         []string{"-type", "controls", "-has-controls", "true"},
+			token:        "valid-token",
+			expectedCode: 1,
+			expectedOut:  "-has-controls flag is not valid when -type=controls",
+		},
+		{
+			name:         "implemented flag not valid for threats",
+			args:         []string{"-type", "threats", "-implemented", "true"},
+			token:        "valid-token",
+			expectedCode: 1,
+			expectedOut:  "-implemented flag is not valid when -type=threats",
 		},
 		{
 			name:         "missing token",
@@ -366,7 +451,8 @@ func TestCloudSearchSearchThreatsGraphQL(t *testing.T) {
 
 			cmd := testCloudSearchCommand(t, httpClient, nil, fsSvc)
 
-			threats, err := cmd.searchThreatsGraphQL("test-token", "org-123", "Integrity", httpClient, fsSvc)
+			filter := threatSearchFilter{Impacts: "Integrity"}
+			threats, err := cmd.searchThreatsGraphQL("test-token", "org-123", filter, httpClient, fsSvc)
 
 			if tt.expectError {
 				if err == nil {
@@ -384,7 +470,98 @@ func TestCloudSearchSearchThreatsGraphQL(t *testing.T) {
 	}
 }
 
-func TestCloudSearchDisplayResults(t *testing.T) {
+func TestCloudSearchSearchControlsGraphQL(t *testing.T) {
+	tests := []struct {
+		name        string
+		statusCode  int
+		response    string
+		httpErr     error
+		expectError bool
+		expectedLen int
+	}{
+		{
+			name:       "successful search",
+			statusCode: http.StatusOK,
+			response: `{
+				"data": {
+					"controls": [
+						{
+							"id": "control-1",
+							"name": "Input Validation",
+							"description": "Validate user input",
+							"implemented": true,
+							"threatModel": {"id": "tm-1", "name": "TM 1", "description": "", "status": "active", "version": "1.0"}
+						}
+					]
+				}
+			}`,
+			expectError: false,
+			expectedLen: 1,
+		},
+		{
+			name:       "no controls",
+			statusCode: http.StatusOK,
+			response: `{
+				"data": {"controls": []}
+			}`,
+			expectError: false,
+			expectedLen: 0,
+		},
+		{
+			name:        "unauthorized",
+			statusCode:  http.StatusUnauthorized,
+			response:    `{"error":"unauthorized"}`,
+			expectError: true,
+		},
+		{
+			name:        "network error",
+			httpErr:     fmt.Errorf("network error"),
+			expectError: true,
+		},
+		{
+			name:       "graphql error",
+			statusCode: http.StatusOK,
+			response: `{
+				"data": null,
+				"errors": [{"message": "Organization not found"}]
+			}`,
+			expectError: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			httpClient := newMockHTTPClient()
+			fsSvc := newMockFileSystemService()
+
+			if tt.httpErr != nil {
+				httpClient.transport.setError("POST", "/api/v1/graphql", tt.httpErr)
+			} else {
+				httpClient.transport.setResponse("POST", "/api/v1/graphql", tt.statusCode, tt.response)
+			}
+
+			cmd := testCloudSearchCommand(t, httpClient, nil, fsSvc)
+
+			filter := controlSearchFilter{}
+			controls, err := cmd.searchControlsGraphQL("test-token", "org-123", filter, httpClient, fsSvc)
+
+			if tt.expectError {
+				if err == nil {
+					t.Error("expected error but got none")
+				}
+			} else {
+				if err != nil {
+					t.Fatalf("unexpected error: %v", err)
+				}
+				if len(controls) != tt.expectedLen {
+					t.Errorf("expected %d controls, got %d", tt.expectedLen, len(controls))
+				}
+			}
+		})
+	}
+}
+
+func TestCloudSearchDisplayThreatResults(t *testing.T) {
 	threats := []graphQLThreat{
 		{
 			ID:          "threat-1",
@@ -417,7 +594,7 @@ func TestCloudSearchDisplayResults(t *testing.T) {
 	cmd := testCloudSearchCommand(t, nil, nil, nil)
 
 	out := capturer.CaptureStdout(func() {
-		cmd.displaySearchResults(threats, "Integrity", 2)
+		cmd.displayThreatResults(threats, "impacts: Integrity", 2)
 	})
 
 	expectedFields := []string{
@@ -443,15 +620,74 @@ func TestCloudSearchDisplayResults(t *testing.T) {
 	}
 }
 
-func TestCloudSearchDisplayResultsEmpty(t *testing.T) {
+func TestCloudSearchDisplayThreatResultsEmpty(t *testing.T) {
 	cmd := testCloudSearchCommand(t, nil, nil, nil)
 
 	out := capturer.CaptureStdout(func() {
-		cmd.displaySearchResults([]graphQLThreat{}, "Availability", 1)
+		cmd.displayThreatResults([]graphQLThreat{}, "impacts: Availability", 1)
 	})
 
 	if !strings.Contains(out, "No threats found") {
 		t.Errorf("expected 'No threats found' message, got %q", out)
+	}
+}
+
+func TestCloudSearchDisplayControlResults(t *testing.T) {
+	controls := []graphQLControl{
+		{
+			ID:          "control-1",
+			Name:        "Input Validation",
+			Description: "Validate all user inputs",
+			Implemented: true,
+			ThreatModel: struct {
+				ID          string `json:"id"`
+				Name        string `json:"name"`
+				Description string `json:"description"`
+				Status      string `json:"status"`
+				Version     string `json:"version"`
+			}{
+				ID: "tm-1", Name: "Web App", Status: "active", Version: "1.0.0",
+			},
+			OrgID:   "org-123",
+			OrgName: "Test Organization",
+		},
+	}
+
+	cmd := testCloudSearchCommand(t, nil, nil, nil)
+
+	out := capturer.CaptureStdout(func() {
+		cmd.displayControlResults(controls, "implemented: true", 1)
+	})
+
+	expectedFields := []string{
+		"Input Validation",
+		"control-1",
+		"Validate all user inputs",
+		"Implemented: true",
+		"Web App",
+		"active",
+		"1.0.0",
+		"Found 1 control(s) over 1 threatmodel(s) in 1 org(s)",
+		"Org Name: Test Organization",
+		"Org ID:   org-123",
+	}
+
+	for _, field := range expectedFields {
+		if !strings.Contains(out, field) {
+			t.Errorf("expected output to contain %q, got %q", field, out)
+		}
+	}
+}
+
+func TestCloudSearchDisplayControlResultsEmpty(t *testing.T) {
+	cmd := testCloudSearchCommand(t, nil, nil, nil)
+
+	out := capturer.CaptureStdout(func() {
+		cmd.displayControlResults([]graphQLControl{}, "all", 1)
+	})
+
+	if !strings.Contains(out, "No controls found") {
+		t.Errorf("expected 'No controls found' message, got %q", out)
 	}
 }
 
@@ -461,11 +697,23 @@ func TestCloudSearchHelp(t *testing.T) {
 
 	expectedText := []string{
 		"threatcl cloud search",
+		"-type",
 		"-impacts",
+		"-stride",
+		"-has-controls",
+		"-implemented",
+		"-threatmodel-id",
 		"-org-id",
 		"Integrity",
 		"Confidentiality",
 		"Availability",
+		"Spoofing",
+		"Tampering",
+		"Info Disclosure",
+		"Denial Of Service",
+		"Elevation Of Privilege",
+		"threats",
+		"controls",
 		"THREATCL_API_URL",
 	}
 
