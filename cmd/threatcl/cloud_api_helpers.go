@@ -45,7 +45,7 @@ func fetchUserInfo(token string, httpClient HTTPClient, fsSvc FileSystemService)
 }
 
 // uploadFile uploads a threat model file to the API
-func uploadFile(token, orgId, modelIdOrSlug, filePath string, httpClient HTTPClient, fsSvc FileSystemService) error {
+func uploadFile(token, orgId, modelIdOrSlug, filePath string, ignoreLinkedControls bool, httpClient HTTPClient, fsSvc FileSystemService) error {
 	apiURL := fmt.Sprintf("%s/api/v1/org/%s/models/%s/upload", getAPIBaseURL(fsSvc), url.PathEscape(orgId), url.PathEscape(modelIdOrSlug))
 
 	// Read the file
@@ -67,6 +67,14 @@ func uploadFile(token, orgId, modelIdOrSlug, filePath string, httpClient HTTPCli
 	_, err = fileWriter.Write(fileData)
 	if err != nil {
 		return fmt.Errorf("failed to write file data: %w", err)
+	}
+
+	// Add ignore-linked-controls field if requested
+	if ignoreLinkedControls {
+		err = writer.WriteField("ignore-linked-controls", "1")
+		if err != nil {
+			return fmt.Errorf("failed to write ignore-linked-controls field: %w", err)
+		}
 	}
 
 	// Close the multipart writer
@@ -941,7 +949,9 @@ func fetchThreatLibraryItemByRef(token, orgId, refId string, httpClient HTTPClie
 }
 
 // fetchThreatLibraryItemsByRefs retrieves multiple threat library items by their reference IDs
-func fetchThreatLibraryItemsByRefs(token, orgId string, refIds []string, httpClient HTTPClient, fsSvc FileSystemService) ([]*threatLibraryItem, error) {
+// If includeRecommendedControls is true, the query will also fetch full details for recommended controls
+func fetchThreatLibraryItemsByRefs(token, orgId string, refIds []string, includeRecommendedControls bool, httpClient HTTPClient, fsSvc FileSystemService) ([]*threatLibraryItem, error) {
+	// Base query without recommended controls
 	query := `query threatLibraryItemsByRefs($orgId: ID!, $referenceIds: [String!]!) {
   threatLibraryItemsByRefs(orgId: $orgId, referenceIds: $referenceIds) {
     id
@@ -971,6 +981,58 @@ func fetchThreatLibraryItemsByRefs(token, orgId string, refIds []string, httpCli
     }
   }
 }`
+
+	// Extended query with recommended controls
+	if includeRecommendedControls {
+		query = `query threatLibraryItemsByRefs($orgId: ID!, $referenceIds: [String!]!) {
+  threatLibraryItemsByRefs(orgId: $orgId, referenceIds: $referenceIds) {
+    id
+    referenceId
+    name
+    status
+    currentVersion {
+      version
+      name
+      description
+      impacts
+      stride
+      severity
+      likelihood
+      cweIds
+      mitreAttackIds
+      tags
+      recommendedControls {
+        id
+        referenceId
+        name
+        status
+        currentVersion {
+          version
+          name
+          description
+          controlType
+          controlCategory
+          implementationGuidance
+          nistControls
+          cisControls
+          isoControls
+          tags
+          defaultRiskReduction
+        }
+      }
+    }
+    versions {
+      version
+      name
+    }
+    usageCount
+    usedByModels {
+      id
+      name
+    }
+  }
+}`
+	}
 
 	reqBody := graphQLRequest{
 		Query: query,
@@ -1016,13 +1078,14 @@ func fetchThreatLibraryItemsByRefs(token, orgId string, refIds []string, httpCli
 }
 
 // validateThreatRefs validates that threat refs exist in the library
+// If includeRecommendedControls is true, the returned items will include full details for recommended controls
 // Returns a map of ref -> *threatLibraryItem (for found items), a slice of missing refs, and an error
-func validateThreatRefs(token, orgId string, refs []string, httpClient HTTPClient, fsSvc FileSystemService) (map[string]*threatLibraryItem, []string, error) {
+func validateThreatRefs(token, orgId string, refs []string, includeRecommendedControls bool, httpClient HTTPClient, fsSvc FileSystemService) (map[string]*threatLibraryItem, []string, error) {
 	if len(refs) == 0 {
 		return nil, nil, nil
 	}
 
-	items, err := fetchThreatLibraryItemsByRefs(token, orgId, refs, httpClient, fsSvc)
+	items, err := fetchThreatLibraryItemsByRefs(token, orgId, refs, includeRecommendedControls, httpClient, fsSvc)
 	if err != nil {
 		return nil, nil, err
 	}

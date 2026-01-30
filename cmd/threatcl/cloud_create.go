@@ -153,7 +153,7 @@ func (c *CloudCreateCommand) Run(args []string) int {
 	// Step 4: Upload file if provided
 	if c.flagUpload != "" {
 		fmt.Printf("\nUploading file %s...\n", c.flagUpload)
-		err := uploadFile(token, orgId, threatModel.Slug, c.flagUpload, httpClient, fsSvc)
+		err := uploadFile(token, orgId, threatModel.Slug, c.flagUpload, false, httpClient, fsSvc)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error uploading file: %s\n", err)
 			fmt.Fprintf(os.Stderr, "Note: The threat model was created successfully, but the upload failed.\n")

@@ -14,9 +14,10 @@ import (
 // CloudViewCommand renders a threat model with enriched control data from ThreatCL Cloud
 type CloudViewCommand struct {
 	CloudCommandBase
-	specCfg    *spec.ThreatmodelSpecConfig
-	flagRawOut bool
-	testEnv    bool
+	specCfg                  *spec.ThreatmodelSpecConfig
+	flagRawOut               bool
+	flagIgnoreLinkedControls bool
+	testEnv                  bool
 }
 
 func (c *CloudViewCommand) Help() string {
@@ -33,6 +34,9 @@ Usage: threatcl cloud view [options] <file>
   those local values are preserved and the cloud data is not used to
   overwrite them.
 
+  By default, threats that reference the threat library will also include
+  their recommended controls from the library.
+
 Options:
 
   -config=<file>
@@ -44,6 +48,10 @@ Options:
   -raw
     If set, will output raw markdown instead of formatted terminal output
 
+  -ignore-linked-controls
+    If set, will not fetch or display recommended controls linked to threats
+    from the threat library. Default: false
+
 Examples:
 
   # View a threat model with enriched controls
@@ -51,6 +59,9 @@ Examples:
 
   # Output raw markdown
   threatcl cloud view -raw my-threatmodel.hcl
+
+  # View without fetching linked controls from threats
+  threatcl cloud view -ignore-linked-controls my-threatmodel.hcl
 
 Environment Variables:
 
@@ -68,6 +79,7 @@ func (c *CloudViewCommand) Synopsis() string {
 func (c *CloudViewCommand) Run(args []string) int {
 	flagSet := c.GetFlagset("cloud view")
 	flagSet.BoolVar(&c.flagRawOut, "raw", false, "Output raw markdown")
+	flagSet.BoolVar(&c.flagIgnoreLinkedControls, "ignore-linked-controls", false, "Don't fetch recommended controls linked to threats")
 	flagSet.Parse(args)
 
 	// Get remaining args (the file path)
@@ -134,8 +146,9 @@ func (c *CloudViewCommand) Run(args []string) int {
 		// Check for threat refs and enrich if needed
 		threatRefs := extractThreatRefs(wrapped)
 		if len(threatRefs) > 0 {
-			// Fetch threat data from cloud
-			foundThreats, missingThreats, threatErr := validateThreatRefs(token, orgValid, threatRefs, httpClient, fsSvc)
+			// Fetch threat data from cloud (include recommended controls unless flag is set)
+			includeLinkedControls := !c.flagIgnoreLinkedControls
+			foundThreats, missingThreats, threatErr := validateThreatRefs(token, orgValid, threatRefs, includeLinkedControls, httpClient, fsSvc)
 			if threatErr != nil {
 				fmt.Fprintf(os.Stderr, "Warning: could not fetch threat refs: %s\n", threatErr)
 			} else {
@@ -257,6 +270,7 @@ type skippedThreat struct {
 // For threats with a ref:
 //   - Name is always overridden by the cloud library name (canonical name)
 //   - Description/ImpactType/Stride are only enriched if local is empty
+//   - RecommendedControls from the library are added to the threat's Controls list
 func enrichThreatsWithCloudData(wrapped *spec.ThreatmodelWrapped, cloudThreats map[string]*threatLibraryItem) []skippedThreat {
 	var skipped []skippedThreat
 
@@ -305,6 +319,42 @@ func enrichThreatsWithCloudData(wrapped *spec.ThreatmodelWrapped, cloudThreats m
 			// Enrich Stride only if local is empty
 			if len(threat.Stride) == 0 && len(tv.Stride) > 0 {
 				threat.Stride = tv.Stride
+			}
+
+			// Add recommended controls from the library (only PUBLISHED controls)
+			if len(tv.RecommendedControls) > 0 {
+				// Build a set of existing control refs to avoid duplicates
+				existingRefs := make(map[string]bool)
+				for _, ctrl := range threat.Controls {
+					if ctrl.Ref != "" {
+						existingRefs[ctrl.Ref] = true
+					}
+				}
+
+				for _, recCtrl := range tv.RecommendedControls {
+					if recCtrl == nil || recCtrl.CurrentVersion == nil {
+						continue
+					}
+					// Only add PUBLISHED controls
+					if recCtrl.Status != "PUBLISHED" {
+						continue
+					}
+					// Skip if already exists
+					if existingRefs[recCtrl.ReferenceID] {
+						continue
+					}
+
+					cv := recCtrl.CurrentVersion
+					newControl := &spec.Control{
+						Name:                cv.Name,
+						Ref:                 recCtrl.ReferenceID,
+						Description:         cv.Description,
+						ImplementationNotes: cv.ImplementationGuidance,
+						RiskReduction:       cv.DefaultRiskReduction,
+					}
+					threat.Controls = append(threat.Controls, newControl)
+					existingRefs[recCtrl.ReferenceID] = true
+				}
 			}
 		}
 	}

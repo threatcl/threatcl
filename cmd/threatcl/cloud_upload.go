@@ -130,7 +130,7 @@ func (c *CloudUploadCommand) Run(args []string) int {
 	}
 
 	// Step 3: Upload the file
-	err = uploadFile(token, orgId, c.flagModelId, filePath, httpClient, fsSvc)
+	err = uploadFile(token, orgId, c.flagModelId, filePath, false, httpClient, fsSvc)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error uploading file: %s\n", err)
 		return 1

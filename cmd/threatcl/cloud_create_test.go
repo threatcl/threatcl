@@ -767,7 +767,7 @@ func TestCloudCreateUploadFile(t *testing.T) {
 
 			_ = testCloudCreateCommand(t, httpClient, nil, fsSvc)
 
-			err := uploadFile("token", "org123", "test-model", tt.filePath, httpClient, fsSvc)
+			err := uploadFile("token", "org123", "test-model", tt.filePath, false, httpClient, fsSvc)
 
 			if tt.expectError {
 				if err == nil {

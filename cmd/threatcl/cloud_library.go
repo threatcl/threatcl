@@ -74,17 +74,17 @@ type threatLibraryItem struct {
 }
 
 type threatLibraryVersion struct {
-	Version             string           `json:"version"`
-	Name                string           `json:"name"`
-	Description         string           `json:"description"`
-	Impacts             []string         `json:"impacts"`
-	Stride              []string         `json:"stride"`
-	Severity            string           `json:"severity"`
-	Likelihood          string           `json:"likelihood"`
-	CWEIds              []string         `json:"cweIds"`
-	MitreAttackIds      []string         `json:"mitreAttackIds"`
-	Tags                []string         `json:"tags"`
-	RecommendedControls []libraryItemRef `json:"recommendedControls"`
+	Version             string                `json:"version"`
+	Name                string                `json:"name"`
+	Description         string                `json:"description"`
+	Impacts             []string              `json:"impacts"`
+	Stride              []string              `json:"stride"`
+	Severity            string                `json:"severity"`
+	Likelihood          string                `json:"likelihood"`
+	CWEIds              []string              `json:"cweIds"`
+	MitreAttackIds      []string              `json:"mitreAttackIds"`
+	Tags                []string              `json:"tags"`
+	RecommendedControls []*controlLibraryItem `json:"recommendedControls"`
 }
 
 // Control Library types

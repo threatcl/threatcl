@@ -134,7 +134,7 @@ func (c *CloudValidateCommand) Run(args []string) int {
 	if orgValid != "" && wrapped != nil {
 		refs := extractThreatRefs(wrapped)
 		if len(refs) > 0 {
-			found, missing, refErr := validateThreatRefs(token, orgValid, refs, httpClient, fsSvc)
+			found, missing, refErr := validateThreatRefs(token, orgValid, refs, false, httpClient, fsSvc)
 			if refErr != nil {
 				fmt.Fprintf(os.Stderr, "⚠ Warning: could not validate threat refs: %s\n", refErr)
 			} else {

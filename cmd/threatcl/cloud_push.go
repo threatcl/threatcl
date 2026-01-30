@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -12,14 +11,15 @@ import (
 
 type CloudPushCommand struct {
 	CloudCommandBase
-	flagNoCreate      bool
-	flagNoUpdateLocal bool
-	specCfg           *spec.ThreatmodelSpecConfig
+	flagNoCreate             bool
+	flagNoUpdateLocal        bool
+	flagIgnoreLinkedControls bool
+	specCfg                  *spec.ThreatmodelSpecConfig
 }
 
 func (c *CloudPushCommand) Help() string {
 	helpText := `
-Usage: threatcl cloud push <file> [-no-create] [-no-update-local]
+Usage: threatcl cloud push <file> [-no-create] [-no-update-local] [-ignore-linked-controls]
 
 	Push a threat model HCL file to ThreatCL Cloud.
 
@@ -42,6 +42,10 @@ Options:
    If a new threat model is created, don't update the local HCL file
    with the threatmodel slug. Default: false (will update)
 
+ -ignore-linked-controls
+   If set, the cloud will not attempt to link controls to reference threats
+   from the control library during upload. Default: false
+
  -config=<file>
    Optional config file
 
@@ -62,6 +66,7 @@ func (c *CloudPushCommand) Run(args []string) int {
 	flagSet := c.GetFlagset("cloud push")
 	flagSet.BoolVar(&c.flagNoCreate, "no-create", false, "Don't create threat model if it doesn't exist")
 	flagSet.BoolVar(&c.flagNoUpdateLocal, "no-update-local", false, "Don't update local HCL file with threatmodel slug")
+	flagSet.BoolVar(&c.flagIgnoreLinkedControls, "ignore-linked-controls", false, "Don't link controls from the control library during upload")
 	flagSet.Parse(args)
 
 	// Get file path from remaining args
@@ -98,34 +103,10 @@ func (c *CloudPushCommand) Run(args []string) int {
 		return 1
 	}
 
-	// Step 2: Create a temporary copy of the file (push tmp copy)
-	fileContent, err := os.ReadFile(filePath)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error reading file: %s\n", err)
-		return 1
-	}
-
-	// Preprocess HCL to inject empty descriptions for controls/threats with ref but no description
-	// This allows cloud-backed controls and threats to work without requiring local descriptions
-	processedContent := preprocessHCLForControls(fileContent)
-	processedContent = preprocessHCLForThreats(processedContent)
-
-	tmpDir, err := os.MkdirTemp("", "threatcl-push-")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error creating temporary directory: %s\n", err)
-		return 1
-	}
-	defer os.RemoveAll(tmpDir)
-
-	tmpFilePath := filepath.Join(tmpDir, filepath.Base(filePath))
-	err = os.WriteFile(tmpFilePath, processedContent, 0600)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error writing temporary file: %s\n", err)
-		return 1
-	}
-
-	// Step 3: Run validateThreatModel on the temp copy
-	_, orgValid, tmNameValid, tmFileMatchesVersion, validateErr := validateThreatModel(token, tmpFilePath, httpClient, fsSvc, c.specCfg)
+	// Step 2: Run validateThreatModel on the original file
+	// Note: validateThreatModel handles preprocessing internally for HCL parsing,
+	// while using the original content for hash calculation
+	wrapped, orgValid, tmNameValid, tmFileMatchesVersion, validateErr := validateThreatModel(token, filePath, httpClient, fsSvc, c.specCfg)
 
 	// Step 4: Handle validation results
 	if validateErr != nil {
@@ -155,7 +136,7 @@ func (c *CloudPushCommand) Run(args []string) int {
 	// Case: tmNameValid but no version match - upload new version
 	if tmNameValid != "" && tmFileMatchesVersion == "" {
 		fmt.Printf("Uploading new version to threat model '%s'...\n", tmNameValid)
-		err = uploadFile(token, orgValid, tmNameValid, filePath, httpClient, fsSvc)
+		err = uploadFile(token, orgValid, tmNameValid, filePath, c.flagIgnoreLinkedControls, httpClient, fsSvc)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error uploading file: %s\n", err)
 			return 1
@@ -171,16 +152,8 @@ func (c *CloudPushCommand) Run(args []string) int {
 			return 0
 		}
 
-		// Parse HCL to get threatmodel name and description
-		tmParser := spec.NewThreatmodelParser(c.specCfg)
-		err = tmParser.ParseFile(tmpFilePath, false)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error parsing HCL file: %s\n", err)
-			return 1
-		}
-
-		wrapped := tmParser.GetWrapped()
-		if len(wrapped.Threatmodels) != 1 {
+		// Use the already-parsed wrapped threatmodel from validateThreatModel
+		if wrapped == nil || len(wrapped.Threatmodels) != 1 {
 			fmt.Fprintf(os.Stderr, "Error: file must contain exactly one threat model, found %d\n", len(wrapped.Threatmodels))
 			return 1
 		}
@@ -244,7 +217,7 @@ func (c *CloudPushCommand) Run(args []string) int {
 
 		// Upload the updated file
 		fmt.Printf("Uploading threat model...\n")
-		err = uploadFile(token, orgValid, newTM.Slug, filePath, httpClient, fsSvc)
+		err = uploadFile(token, orgValid, newTM.Slug, filePath, c.flagIgnoreLinkedControls, httpClient, fsSvc)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error uploading file: %s\n", err)
 			fmt.Fprintf(os.Stderr, "Note: The threat model was created and local file updated, but the upload failed.\n")

@@ -48,6 +48,10 @@ func TestCloudPushHelp(t *testing.T) {
 	if !strings.Contains(help, "-no-update-local") {
 		t.Error("Help text should mention -no-update-local flag")
 	}
+
+	if !strings.Contains(help, "-ignore-linked-controls") {
+		t.Error("Help text should mention -ignore-linked-controls flag")
+	}
 }
 
 func TestCloudPushSynopsis(t *testing.T) {
