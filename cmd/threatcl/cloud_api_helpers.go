@@ -10,6 +10,7 @@ import (
 	"io"
 	"mime/multipart"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -45,7 +46,7 @@ func fetchUserInfo(token string, httpClient HTTPClient, fsSvc FileSystemService)
 
 // uploadFile uploads a threat model file to the API
 func uploadFile(token, orgId, modelIdOrSlug, filePath string, httpClient HTTPClient, fsSvc FileSystemService) error {
-	url := fmt.Sprintf("%s/api/v1/org/%s/models/%s/upload", getAPIBaseURL(fsSvc), orgId, modelIdOrSlug)
+	apiURL := fmt.Sprintf("%s/api/v1/org/%s/models/%s/upload", getAPIBaseURL(fsSvc), url.PathEscape(orgId), url.PathEscape(modelIdOrSlug))
 
 	// Read the file
 	fileData, err := fsSvc.ReadFile(filePath)
@@ -75,7 +76,7 @@ func uploadFile(token, orgId, modelIdOrSlug, filePath string, httpClient HTTPCli
 	}
 
 	// Create request
-	req, err := http.NewRequest("POST", url, &requestBody)
+	req, err := http.NewRequest("POST", apiURL, &requestBody)
 	if err != nil {
 		return fmt.Errorf("%s: %w", ErrFailedToCreateReq, err)
 	}
@@ -105,7 +106,7 @@ func uploadFile(token, orgId, modelIdOrSlug, filePath string, httpClient HTTPCli
 }
 
 // downloadFile downloads a threat model file from the API
-func downloadFile(url, token, downloadPath string, overwrite bool, httpClient HTTPClient, fsSvc FileSystemService) error {
+func downloadFile(apiURL, token, downloadPath string, overwrite bool, httpClient HTTPClient, fsSvc FileSystemService) error {
 	// Check if file exists and overwrite flag is not set
 	if !overwrite {
 		if _, err := fsSvc.Stat(downloadPath); err == nil {
@@ -113,7 +114,7 @@ func downloadFile(url, token, downloadPath string, overwrite bool, httpClient HT
 		}
 	}
 
-	resp, err := makeAuthenticatedRequest("GET", url, token, nil, httpClient)
+	resp, err := makeAuthenticatedRequest("GET", apiURL, token, nil, httpClient)
 	if err != nil {
 		return err
 	}
@@ -139,9 +140,9 @@ func downloadFile(url, token, downloadPath string, overwrite bool, httpClient HT
 
 // fetchThreatModel retrieves a single threat model
 func fetchThreatModel(token, orgId, modelIdOrSlug string, httpClient HTTPClient, fsSvc FileSystemService) (*threatModel, error) {
-	url := fmt.Sprintf("%s/api/v1/org/%s/models/%s", getAPIBaseURL(fsSvc), orgId, modelIdOrSlug)
+	apiURL := fmt.Sprintf("%s/api/v1/org/%s/models/%s", getAPIBaseURL(fsSvc), url.PathEscape(orgId), url.PathEscape(modelIdOrSlug))
 
-	resp, err := makeAuthenticatedRequest("GET", url, token, nil, httpClient)
+	resp, err := makeAuthenticatedRequest("GET", apiURL, token, nil, httpClient)
 	if err != nil {
 		return nil, err
 	}
@@ -168,9 +169,9 @@ func fetchThreatModel(token, orgId, modelIdOrSlug string, httpClient HTTPClient,
 
 // deleteThreatModel deletes a threat model
 func deleteThreatModel(token, orgId, modelIdOrSlug string, httpClient HTTPClient, fsSvc FileSystemService) error {
-	url := fmt.Sprintf("%s/api/v1/org/%s/models/%s", getAPIBaseURL(fsSvc), orgId, modelIdOrSlug)
+	apiURL := fmt.Sprintf("%s/api/v1/org/%s/models/%s", getAPIBaseURL(fsSvc), url.PathEscape(orgId), url.PathEscape(modelIdOrSlug))
 
-	resp, err := makeAuthenticatedRequest("DELETE", url, token, nil, httpClient)
+	resp, err := makeAuthenticatedRequest("DELETE", apiURL, token, nil, httpClient)
 	if err != nil {
 		return err
 	}
@@ -185,7 +186,7 @@ func deleteThreatModel(token, orgId, modelIdOrSlug string, httpClient HTTPClient
 
 // updateThreatmodelStatus updates the status of a threat model
 func updateThreatmodelStatus(token, orgId, modelIdOrSlug, status string, httpClient HTTPClient, fsSvc FileSystemService) error {
-	url := fmt.Sprintf("%s/api/v1/org/%s/models/%s/status", getAPIBaseURL(fsSvc), orgId, modelIdOrSlug)
+	apiURL := fmt.Sprintf("%s/api/v1/org/%s/models/%s/status", getAPIBaseURL(fsSvc), url.PathEscape(orgId), url.PathEscape(modelIdOrSlug))
 
 	// Create the request payload
 	payload := map[string]string{
@@ -197,7 +198,7 @@ func updateThreatmodelStatus(token, orgId, modelIdOrSlug, status string, httpCli
 		return fmt.Errorf("failed to marshal payload: %w", err)
 	}
 
-	req, err := http.NewRequest("POST", url, bytes.NewReader(payloadBytes))
+	req, err := http.NewRequest("POST", apiURL, bytes.NewReader(payloadBytes))
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
 	}
@@ -220,9 +221,9 @@ func updateThreatmodelStatus(token, orgId, modelIdOrSlug, status string, httpCli
 
 // fetchThreatModels retrieves all threat models for an organization
 func fetchThreatModels(token, orgId string, httpClient HTTPClient, fsSvc FileSystemService) ([]threatModel, error) {
-	url := fmt.Sprintf("%s/api/v1/org/%s/models", getAPIBaseURL(fsSvc), orgId)
+	apiURL := fmt.Sprintf("%s/api/v1/org/%s/models", getAPIBaseURL(fsSvc), url.PathEscape(orgId))
 
-	resp, err := makeAuthenticatedRequest("GET", url, token, nil, httpClient)
+	resp, err := makeAuthenticatedRequest("GET", apiURL, token, nil, httpClient)
 	if err != nil {
 		return nil, err
 	}
@@ -242,9 +243,9 @@ func fetchThreatModels(token, orgId string, httpClient HTTPClient, fsSvc FileSys
 
 // fetchThreatModelVersions retrieves all versions of a threat model
 func fetchThreatModelVersions(token, orgId, modelId string, httpClient HTTPClient, fsSvc FileSystemService) (*threatModelVersionsResponse, error) {
-	url := fmt.Sprintf("%s/api/v1/org/%s/models/%s/versions", getAPIBaseURL(fsSvc), orgId, modelId)
+	apiURL := fmt.Sprintf("%s/api/v1/org/%s/models/%s/versions", getAPIBaseURL(fsSvc), url.PathEscape(orgId), url.PathEscape(modelId))
 
-	resp, err := makeAuthenticatedRequest("GET", url, token, nil, httpClient)
+	resp, err := makeAuthenticatedRequest("GET", apiURL, token, nil, httpClient)
 	if err != nil {
 		return nil, err
 	}
@@ -271,7 +272,7 @@ func fetchThreatModelVersions(token, orgId, modelId string, httpClient HTTPClien
 
 // createThreatModel creates a new threat model in the cloud
 func createThreatModel(token, orgId, name, description string, httpClient HTTPClient, fsSvc FileSystemService) (*threatModel, error) {
-	url := fmt.Sprintf("%s/api/v1/org/%s/models", getAPIBaseURL(fsSvc), orgId)
+	apiURL := fmt.Sprintf("%s/api/v1/org/%s/models", getAPIBaseURL(fsSvc), url.PathEscape(orgId))
 
 	// Create the request payload
 	payload := map[string]string{
@@ -285,7 +286,7 @@ func createThreatModel(token, orgId, name, description string, httpClient HTTPCl
 	}
 
 	// Create request
-	req, err := http.NewRequest("POST", url, bytes.NewReader(payloadBytes))
+	req, err := http.NewRequest("POST", apiURL, bytes.NewReader(payloadBytes))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}

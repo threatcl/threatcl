@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -94,8 +95,8 @@ func (c *CloudThreatmodelCommand) Run(args []string) int {
 
 	// Step 4: Download threat model file
 	if c.flagDownload != "" {
-		url := fmt.Sprintf("%s/api/v1/org/%s/models/%s/download", getAPIBaseURL(fsSvc), orgId, c.flagModelId)
-		err = downloadFile(url, token, c.flagDownload, c.flagOverwrite, httpClient, fsSvc)
+		apiURL := fmt.Sprintf("%s/api/v1/org/%s/models/%s/download", getAPIBaseURL(fsSvc), url.PathEscape(orgId), url.PathEscape(c.flagModelId))
+		err = downloadFile(apiURL, token, c.flagDownload, c.flagOverwrite, httpClient, fsSvc)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error downloading threat model file: %s\n", err)
 			return 1
