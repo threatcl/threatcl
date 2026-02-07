@@ -67,18 +67,18 @@ func TestCloudSearchRun(t *testing.T) {
 	}`
 
 	tests := []struct {
-		name           string
-		args           []string
-		token          string
-		useSequence    bool
-		orgsStatus     int
-		orgsResponse   string
-		orgsErr        error
-		threatStatus   int
-		threatResp     string
-		threatErr      error
-		expectedCode   int
-		expectedOut    string
+		name         string
+		args         []string
+		token        string
+		useSequence  bool
+		orgsStatus   int
+		orgsResponse string
+		orgsErr      error
+		threatStatus int
+		threatResp   string
+		threatErr    error
+		expectedCode int
+		expectedOut  string
 	}{
 		{
 			name:         "successful search with results",

@@ -12,9 +12,9 @@ import (
 // ThreatModelCache provides thread-safe in-memory storage for parsed threat models
 type ThreatModelCache struct {
 	mu          sync.RWMutex
-	models      map[string]*spec.Threatmodel  // key: threatmodel name
-	fileToModel map[string][]string           // key: filepath, value: model names
-	modelToFile map[string]string             // key: threatmodel name, value: filepath
+	models      map[string]*spec.Threatmodel // key: threatmodel name
+	fileToModel map[string][]string          // key: filepath, value: model names
+	modelToFile map[string]string            // key: threatmodel name, value: filepath
 	specCfg     *spec.ThreatmodelSpecConfig
 	rootDir     string
 }
@@ -146,7 +146,6 @@ func (c *ThreatModelCache) GetSourceFile(modelName string) (string, bool) {
 	filepath, exists := c.modelToFile[modelName]
 	return filepath, exists
 }
-
 
 // findAllFiles wraps Json and Hcl file finding
 // This is adapted from cmd/threatcl/util.go

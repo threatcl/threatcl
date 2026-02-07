@@ -7,13 +7,13 @@ import (
 
 func TestResolveOrgId(t *testing.T) {
 	tests := []struct {
-		name           string
-		flagOrgId      string
-		envOrgId       string
-		userOrgs       []orgMembership
-		expectedOrgId  string
-		expectError    bool
-		errorContains  string
+		name          string
+		flagOrgId     string
+		envOrgId      string
+		userOrgs      []orgMembership
+		expectedOrgId string
+		expectError   bool
+		errorContains string
 	}{
 		{
 			name:          "flag takes priority over env and user orgs",
@@ -40,9 +40,9 @@ func TestResolveOrgId(t *testing.T) {
 			expectError:   false,
 		},
 		{
-			name:          "first user org from multiple orgs",
-			flagOrgId:     "",
-			envOrgId:      "",
+			name:      "first user org from multiple orgs",
+			flagOrgId: "",
+			envOrgId:  "",
 			userOrgs: []orgMembership{
 				{Organization: orgInfo{ID: "first-org"}},
 				{Organization: orgInfo{ID: "second-org"}},

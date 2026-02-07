@@ -628,11 +628,11 @@ threatmodel "Test Model" {
 			expectError: false,
 		},
 		{
-			name: "successful update with tabs",
-			initialContent: "spec_version = \"0.1.10\"\n\nbackend \"threatcl-cloud\" {\n\torganization = \"test-org\"\n}\n",
-			slug:           "test-slug",
+			name:            "successful update with tabs",
+			initialContent:  "spec_version = \"0.1.10\"\n\nbackend \"threatcl-cloud\" {\n\torganization = \"test-org\"\n}\n",
+			slug:            "test-slug",
 			expectedContent: "spec_version = \"0.1.10\"\n\nbackend \"threatcl-cloud\" {\n\torganization = \"test-org\"\n\tthreatmodel = \"test-slug\"\n}\n",
-			expectError:    false,
+			expectError:     false,
 		},
 		{
 			name: "threatmodel already set",
@@ -715,10 +715,10 @@ threatmodel "Test Model" {
 
 func TestPreprocessHCLForControls(t *testing.T) {
 	tests := []struct {
-		name            string
-		input           string
-		expectModified  bool
-		expectHasDesc   bool
+		name           string
+		input          string
+		expectModified bool
+		expectHasDesc  bool
 	}{
 		{
 			name: "control with ref but no description gets description injected",

@@ -63,14 +63,14 @@ type libraryFolder struct {
 
 // Threat Library types
 type threatLibraryItem struct {
-	ID             string                  `json:"id"`
-	ReferenceID    string                  `json:"referenceId"`
-	Name           string                  `json:"name"`
-	Status         string                  `json:"status"`
-	CurrentVersion *threatLibraryVersion   `json:"currentVersion"`
-	Versions       []threatLibraryVersion  `json:"versions"`
-	UsageCount     int                     `json:"usageCount"`
-	UsedByModels   []libraryUsedByModel    `json:"usedByModels"`
+	ID             string                 `json:"id"`
+	ReferenceID    string                 `json:"referenceId"`
+	Name           string                 `json:"name"`
+	Status         string                 `json:"status"`
+	CurrentVersion *threatLibraryVersion  `json:"currentVersion"`
+	Versions       []threatLibraryVersion `json:"versions"`
+	UsageCount     int                    `json:"usageCount"`
+	UsedByModels   []libraryUsedByModel   `json:"usedByModels"`
 }
 
 type threatLibraryVersion struct {

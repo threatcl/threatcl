@@ -12,13 +12,13 @@ import (
 
 type CloudSearchCommand struct {
 	CloudCommandBase
-	flagImpacts        string
-	flagOrgId          string
-	flagType           string
-	flagStride         string
-	flagHasControls    string
-	flagImplemented    string
-	flagThreatModelId  string
+	flagImpacts       string
+	flagOrgId         string
+	flagType          string
+	flagStride        string
+	flagHasControls   string
+	flagImplemented   string
+	flagThreatModelId string
 }
 
 func (c *CloudSearchCommand) Help() string {
@@ -161,11 +161,11 @@ func (c *CloudSearchCommand) Run(args []string) int {
 	var strideCategories []string
 	if c.flagStride != "" {
 		validStride := map[string]bool{
-			"Spoofing":              true,
-			"Tampering":             true,
-			"Repudiation":           true,
-			"Info Disclosure":       true,
-			"Denial Of Service":     true,
+			"Spoofing":               true,
+			"Tampering":              true,
+			"Repudiation":            true,
+			"Info Disclosure":        true,
+			"Denial Of Service":      true,
 			"Elevation Of Privilege": true,
 		}
 		strideCategories = strings.Split(c.flagStride, ",")
@@ -390,10 +390,10 @@ func (c *CloudSearchCommand) fetchOrganizationsGraphQL(token string, httpClient 
 
 // threatSearchFilter contains the filter options for threat search
 type threatSearchFilter struct {
-	Impacts        string
-	Stride         []string
-	HasControls    *bool
-	ThreatModelId  string
+	Impacts       string
+	Stride        []string
+	HasControls   *bool
+	ThreatModelId string
 }
 
 // searchThreatsGraphQL searches for threats using GraphQL
