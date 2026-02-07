@@ -20,6 +20,7 @@ func testQueryCommand(tb testing.TB) *QueryCommand {
 	}
 
 	_ = os.Setenv("HOME", d)
+	_ = os.Setenv("USERPROFILE", d)
 
 	cfg, _ := spec.LoadSpecConfig()
 

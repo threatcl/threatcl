@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -416,9 +415,9 @@ func findHclFiles(files []string) []string {
 }
 
 func configFileLocation() (string, error) {
-	homeDir := os.Getenv("HOME")
-	if homeDir == "" {
-		return "", errors.New("can't find home directory")
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return "", fmt.Errorf("can't find home directory: %w", err)
 	}
 
 	return filepath.Join(homeDir, ".hcltmrc"), nil
@@ -469,7 +468,7 @@ func outfilePath(outDir, tmName, file, ext string) string {
 	processedFile := filepath.Base(file)
 	processedFile = strings.TrimSuffix(processedFile, filepath.Ext(processedFile))
 
-	return fmt.Sprintf("%s/%s-%s%s", outDir, processedFile, processedTmname, ext)
+	return filepath.Join(outDir, fmt.Sprintf("%s-%s%s", processedFile, processedTmname, ext))
 
 }
 

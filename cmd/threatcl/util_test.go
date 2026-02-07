@@ -2,6 +2,7 @@ package main
 
 import (
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -36,21 +37,25 @@ func TestFindAllFiles(t *testing.T) {
 }
 
 func TestConfigFileLocation(t *testing.T) {
-	_ = os.Setenv("HOME", "/tmp/")
+	d := t.TempDir()
+	_ = os.Setenv("HOME", d)
+	_ = os.Setenv("USERPROFILE", d)
 	f, err := configFileLocation()
 
 	if err != nil {
 		t.Errorf("Error getting cfg location: %s", err)
 	}
 
-	if f != "/tmp/.hcltmrc" {
-		t.Errorf("%s didn't equal '/tmp/.hcltmrc'", f)
+	expected := filepath.Join(d, ".hcltmrc")
+	if f != expected {
+		t.Errorf("%s didn't equal '%s'", f, expected)
 	}
 
 }
 
 func TestNonExistingConfigFileLocation(t *testing.T) {
 	_ = os.Setenv("HOME", "")
+	_ = os.Setenv("USERPROFILE", "")
 	_, err := configFileLocation()
 
 	if err != nil && !strings.Contains(err.Error(), "can't find home directory") {

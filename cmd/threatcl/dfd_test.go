@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -21,6 +22,7 @@ func testDfdCommand(tb testing.TB) *DfdCommand {
 	}
 
 	_ = os.Setenv("HOME", d)
+	_ = os.Setenv("USERPROFILE", d)
 
 	cfg, _ := spec.LoadSpecConfig()
 
@@ -48,7 +50,7 @@ func TestDfd(t *testing.T) {
 
 	out := capturer.CaptureStdout(func() {
 		code = cmd.Run([]string{
-			fmt.Sprintf("-outdir=%s/out", d),
+			fmt.Sprintf("-outdir=%s", filepath.Join(d, "out")),
 			"./testdata/tm3.hcl",
 		})
 	})
@@ -61,7 +63,7 @@ func TestDfd(t *testing.T) {
 		t.Errorf("%s did not contain %s", out, "Successfully created")
 	}
 
-	f, err := os.Open(fmt.Sprintf("%s/out/tm3-tm2onelegacydfd.png", d))
+	f, err := os.Open(filepath.Join(d, "out", "tm3-tm2onelegacydfd.png"))
 	if err != nil {
 		t.Fatalf("Error opening png: %s", err)
 	}
@@ -92,7 +94,7 @@ func TestDfdSvg(t *testing.T) {
 
 	out := capturer.CaptureStdout(func() {
 		code = cmd.Run([]string{
-			fmt.Sprintf("-outdir=%s/out", d),
+			fmt.Sprintf("-outdir=%s", filepath.Join(d, "out")),
 			"-format=svg",
 			"./testdata/tm3.hcl",
 		})
@@ -106,7 +108,7 @@ func TestDfdSvg(t *testing.T) {
 		t.Errorf("%s did not contain %s", out, "Successfully created")
 	}
 
-	f, err := os.Open(fmt.Sprintf("%s/out/tm3-tm2onelegacydfd.svg", d))
+	f, err := os.Open(filepath.Join(d, "out", "tm3-tm2onelegacydfd.svg"))
 	if err != nil {
 		t.Fatalf("Error opening svg: %s", err)
 	}
@@ -137,7 +139,7 @@ func TestDfdDot(t *testing.T) {
 
 	out := capturer.CaptureStdout(func() {
 		code = cmd.Run([]string{
-			fmt.Sprintf("-outdir=%s/out", d),
+			fmt.Sprintf("-outdir=%s", filepath.Join(d, "out")),
 			"-format=dot",
 			"./testdata/tm3.hcl",
 		})
@@ -152,7 +154,7 @@ func TestDfdDot(t *testing.T) {
 	}
 	t.Logf("out: %s", out)
 
-	_, err = os.Open(fmt.Sprintf("%s/out/tm3-tm2onelegacydfd.dot", d))
+	_, err = os.Open(filepath.Join(d, "out", "tm3-tm2onelegacydfd.dot"))
 	if err != nil {
 		t.Fatalf("Error opening dot: %s", err)
 	}
@@ -276,7 +278,7 @@ func TestDfdOverwrite(t *testing.T) {
 		t.Errorf("%s did not contain %s", out, "Successfully created")
 	}
 
-	f, err := os.Open(fmt.Sprintf("%s/tm3-tm2onelegacydfd.png", d))
+	f, err := os.Open(filepath.Join(d, "tm3-tm2onelegacydfd.png"))
 	if err != nil {
 		t.Fatalf("Error opening png: %s", err)
 	}
@@ -364,7 +366,7 @@ func TestDfdNoDfd(t *testing.T) {
 
 	out := capturer.CaptureStdout(func() {
 		code = cmd.Run([]string{
-			fmt.Sprintf("-outdir=%s/out", d),
+			fmt.Sprintf("-outdir=%s", filepath.Join(d, "out")),
 			"./testdata/tm1.hcl",
 		})
 	})
@@ -520,7 +522,7 @@ func TestDfdFoundExisting(t *testing.T) {
 		t.Fatalf("Error creatig tmp dir: %s", err)
 	}
 
-	_, err = os.Create(fmt.Sprintf("%s/out.png", d))
+	_, err = os.Create(filepath.Join(d, "out.png"))
 	if err != nil {
 		t.Fatalf("Error creating existing file: %s", err)
 	}
@@ -531,9 +533,10 @@ func TestDfdFoundExisting(t *testing.T) {
 
 	var code int
 
+	outFile := filepath.Join(d, "out.png")
 	out := capturer.CaptureStdout(func() {
 		code = cmd.Run([]string{
-			fmt.Sprintf("-out=%s/out.png", d),
+			fmt.Sprintf("-out=%s", outFile),
 			"./testdata/tm3.hcl",
 		})
 	})
@@ -542,8 +545,8 @@ func TestDfdFoundExisting(t *testing.T) {
 		t.Errorf("Code did not equal 1: %d", code)
 	}
 
-	if !strings.Contains(out, fmt.Sprintf("'%s/out.png' already exists", d)) {
-		t.Errorf("%s did not contain %s", out, fmt.Sprintf("'%s/out.png' already exists", d))
+	if !strings.Contains(out, fmt.Sprintf("'%s' already exists", outFile)) {
+		t.Errorf("%s did not contain %s", out, fmt.Sprintf("'%s' already exists", outFile))
 	}
 
 }
@@ -560,9 +563,10 @@ func TestDfdSuccessfulOut(t *testing.T) {
 
 	var code int
 
+	outFile := filepath.Join(d, "out.png")
 	out := capturer.CaptureStdout(func() {
 		code = cmd.Run([]string{
-			fmt.Sprintf("-out=%s/out.png", d),
+			fmt.Sprintf("-out=%s", outFile),
 			"./testdata/tm3.hcl",
 		})
 	})
@@ -571,8 +575,8 @@ func TestDfdSuccessfulOut(t *testing.T) {
 		t.Errorf("Code did not equal 0: %d", code)
 	}
 
-	if !strings.Contains(out, fmt.Sprintf("Successfully created '%s/out.png'", d)) {
-		t.Errorf("%s did not contain %s", out, fmt.Sprintf("Successfully created '%s/out.png'", d))
+	if !strings.Contains(out, fmt.Sprintf("Successfully created '%s'", outFile)) {
+		t.Errorf("%s did not contain %s", out, fmt.Sprintf("Successfully created '%s'", outFile))
 	}
 
 }
@@ -591,7 +595,7 @@ func TestDfdUnSuccessfulOutMultiple(t *testing.T) {
 
 	out := capturer.CaptureStdout(func() {
 		code = cmd.Run([]string{
-			fmt.Sprintf("-out=%s/out.png", d),
+			fmt.Sprintf("-out=%s", filepath.Join(d, "out.png")),
 			"./testdata/tm5.hcl",
 		})
 	})
@@ -619,7 +623,7 @@ func TestDfdUnSuccessfulOutMultipleInvalidIndex(t *testing.T) {
 
 	out := capturer.CaptureStdout(func() {
 		code = cmd.Run([]string{
-			fmt.Sprintf("-out=%s/out.png", d),
+			fmt.Sprintf("-out=%s", filepath.Join(d, "out.png")),
 			"-index=100",
 			"./testdata/tm5.hcl",
 		})
@@ -646,9 +650,10 @@ func TestDfdSuccessfulOutMultiple(t *testing.T) {
 
 	var code int
 
+	outFile := filepath.Join(d, "out.png")
 	out := capturer.CaptureStdout(func() {
 		code = cmd.Run([]string{
-			fmt.Sprintf("-out=%s/out.png", d),
+			fmt.Sprintf("-out=%s", outFile),
 			"-index=2",
 			"./testdata/tm5.hcl",
 		})
@@ -658,8 +663,8 @@ func TestDfdSuccessfulOutMultiple(t *testing.T) {
 		t.Errorf("Code did not equal 0: %d", code)
 	}
 
-	if !strings.Contains(out, fmt.Sprintf("Successfully created '%s/out.png'", d)) {
-		t.Errorf("%s did not contain %s", out, fmt.Sprintf("Successfully created '%s/out.png'", d))
+	if !strings.Contains(out, fmt.Sprintf("Successfully created '%s'", outFile)) {
+		t.Errorf("%s did not contain %s", out, fmt.Sprintf("Successfully created '%s'", outFile))
 	}
 
 }
@@ -676,9 +681,10 @@ func TestDfdSuccessfulOutDotMultiple(t *testing.T) {
 
 	var code int
 
+	outFile := filepath.Join(d, "out.dot")
 	out := capturer.CaptureStdout(func() {
 		code = cmd.Run([]string{
-			fmt.Sprintf("-out=%s/out.dot", d),
+			fmt.Sprintf("-out=%s", outFile),
 			"-index=2",
 			"-format=dot",
 			"./testdata/tm5.hcl",
@@ -689,8 +695,8 @@ func TestDfdSuccessfulOutDotMultiple(t *testing.T) {
 		t.Errorf("Code did not equal 0: %d", code)
 	}
 
-	if !strings.Contains(out, fmt.Sprintf("Successfully created '%s/out.dot'", d)) {
-		t.Errorf("%s did not contain %s", out, fmt.Sprintf("Successfully created '%s/out.dot'", d))
+	if !strings.Contains(out, fmt.Sprintf("Successfully created '%s'", outFile)) {
+		t.Errorf("%s did not contain %s", out, fmt.Sprintf("Successfully created '%s'", outFile))
 	}
 
 }
@@ -707,9 +713,10 @@ func TestDfdSuccessfulOutSvgMultiple(t *testing.T) {
 
 	var code int
 
+	outFile := filepath.Join(d, "out.svg")
 	out := capturer.CaptureStdout(func() {
 		code = cmd.Run([]string{
-			fmt.Sprintf("-out=%s/out.svg", d),
+			fmt.Sprintf("-out=%s", outFile),
 			"-index=2",
 			"-format=svg",
 			"./testdata/tm5.hcl",
@@ -720,8 +727,8 @@ func TestDfdSuccessfulOutSvgMultiple(t *testing.T) {
 		t.Errorf("Code did not equal 0: %d", code)
 	}
 
-	if !strings.Contains(out, fmt.Sprintf("Successfully created '%s/out.svg'", d)) {
-		t.Errorf("%s did not contain %s", out, fmt.Sprintf("Successfully created '%s/out.svg'", d))
+	if !strings.Contains(out, fmt.Sprintf("Successfully created '%s'", outFile)) {
+		t.Errorf("%s did not contain %s", out, fmt.Sprintf("Successfully created '%s'", outFile))
 	}
 
 }
@@ -738,9 +745,10 @@ func TestDfdSuccessfulOutSvg(t *testing.T) {
 
 	var code int
 
+	outFile := filepath.Join(d, "out.svg")
 	out := capturer.CaptureStdout(func() {
 		code = cmd.Run([]string{
-			fmt.Sprintf("-out=%s/out.svg", d),
+			fmt.Sprintf("-out=%s", outFile),
 			"-format=svg",
 			"./testdata/tm3.hcl",
 		})
@@ -750,8 +758,8 @@ func TestDfdSuccessfulOutSvg(t *testing.T) {
 		t.Errorf("Code did not equal 0: %d", code)
 	}
 
-	if !strings.Contains(out, fmt.Sprintf("Successfully created '%s/out.svg'", d)) {
-		t.Errorf("%s did not contain %s", out, fmt.Sprintf("Successfully created '%s/out.svg'", d))
+	if !strings.Contains(out, fmt.Sprintf("Successfully created '%s'", outFile)) {
+		t.Errorf("%s did not contain %s", out, fmt.Sprintf("Successfully created '%s'", outFile))
 	}
 
 }
@@ -768,9 +776,10 @@ func TestDfdSuccessfulOutDot(t *testing.T) {
 
 	var code int
 
+	outFile := filepath.Join(d, "out.dot")
 	out := capturer.CaptureStdout(func() {
 		code = cmd.Run([]string{
-			fmt.Sprintf("-out=%s/out.dot", d),
+			fmt.Sprintf("-out=%s", outFile),
 			"-format=dot",
 			"./testdata/tm3.hcl",
 		})
@@ -780,8 +789,8 @@ func TestDfdSuccessfulOutDot(t *testing.T) {
 		t.Errorf("Code did not equal 0: %d", code)
 	}
 
-	if !strings.Contains(out, fmt.Sprintf("Successfully created '%s/out.dot'", d)) {
-		t.Errorf("%s did not contain %s", out, fmt.Sprintf("Successfully created '%s/out.dot'", d))
+	if !strings.Contains(out, fmt.Sprintf("Successfully created '%s'", outFile)) {
+		t.Errorf("%s did not contain %s", out, fmt.Sprintf("Successfully created '%s'", outFile))
 	}
 
 }

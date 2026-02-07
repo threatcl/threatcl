@@ -171,7 +171,7 @@ func (c *DashboardCommand) Run(args []string) int {
 	// We use outfiles to generate a list of output files to validate whether
 	// we're overwriting them or not.
 	outfiles := []string{
-		fmt.Sprintf("%s/%s.%s", c.flagOutDir, c.flagDashboardFilename, outExt),
+		filepath.Join(c.flagOutDir, fmt.Sprintf("%s.%s", c.flagDashboardFilename, outExt)),
 	}
 
 	// Find all the .hcl files we're going to parse
@@ -325,7 +325,7 @@ func (c *DashboardCommand) Run(args []string) int {
 
 	// Now we create the dashboard-index file
 
-	f, err := os.Create(c.flagOutDir + fmt.Sprintf("/%s.%s", c.flagDashboardFilename, outExt))
+	f, err := os.Create(filepath.Join(c.flagOutDir, fmt.Sprintf("%s.%s", c.flagDashboardFilename, outExt)))
 	if err != nil {
 		fmt.Printf("Error creating dashboard file: %s\n", err)
 		return 1

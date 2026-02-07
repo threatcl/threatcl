@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -21,6 +22,7 @@ func testDashboardCommand(tb testing.TB) *DashboardCommand {
 	}
 
 	_ = os.Setenv("HOME", d)
+	_ = os.Setenv("USERPROFILE", d)
 
 	cfg, _ := spec.LoadSpecConfig()
 
@@ -91,9 +93,10 @@ func TestDashboard(t *testing.T) {
 
 	var code int
 
+	outDir := filepath.Join(d, "out")
 	out := capturer.CaptureStdout(func() {
 		code = cmd.Run([]string{
-			fmt.Sprintf("-outdir=%s/out", d),
+			fmt.Sprintf("-outdir=%s", outDir),
 			"./testdata/tm1.hcl",
 		})
 	})
@@ -102,11 +105,11 @@ func TestDashboard(t *testing.T) {
 		t.Errorf("Code did not equal 0: %d", code)
 	}
 
-	if !strings.Contains(out, fmt.Sprintf("Created the '%s/out' directory", d)) {
-		t.Errorf("%s did not contain %s", out, fmt.Sprintf("Created the '%s/out' directory", d))
+	if !strings.Contains(out, fmt.Sprintf("Created the '%s' directory", outDir)) {
+		t.Errorf("%s did not contain %s", out, fmt.Sprintf("Created the '%s' directory", outDir))
 	}
 
-	dbfile, err := os.ReadFile(fmt.Sprintf("%s/out/dashboard.md", d))
+	dbfile, err := os.ReadFile(filepath.Join(d, "out", "dashboard.md"))
 	if err != nil {
 		t.Fatalf("Error opening dashboard file: %s", err)
 	}
@@ -129,9 +132,10 @@ func TestDashboardWithDfd(t *testing.T) {
 
 	var code int
 
+	outDir := filepath.Join(d, "out")
 	out := capturer.CaptureStdout(func() {
 		code = cmd.Run([]string{
-			fmt.Sprintf("-outdir=%s/out", d),
+			fmt.Sprintf("-outdir=%s", outDir),
 			"./testdata/tm3.hcl",
 		})
 	})
@@ -140,11 +144,11 @@ func TestDashboardWithDfd(t *testing.T) {
 		t.Errorf("Code did not equal 0: %d", code)
 	}
 
-	if !strings.Contains(out, fmt.Sprintf("Created the '%s/out' directory", d)) {
-		t.Errorf("%s did not contain %s", out, fmt.Sprintf("Created the '%s/out' directory", d))
+	if !strings.Contains(out, fmt.Sprintf("Created the '%s' directory", outDir)) {
+		t.Errorf("%s did not contain %s", out, fmt.Sprintf("Created the '%s' directory", outDir))
 	}
 
-	dbfile, err := os.ReadFile(fmt.Sprintf("%s/out/dashboard.md", d))
+	dbfile, err := os.ReadFile(filepath.Join(d, "out", "dashboard.md"))
 	if err != nil {
 		t.Fatalf("Error opening dashboard file: %s", err)
 	}
@@ -153,7 +157,7 @@ func TestDashboardWithDfd(t *testing.T) {
 		t.Errorf("Expected %s to contain %s", dbfile, "tm3-tm2one.md")
 	}
 
-	f, err := os.Open(fmt.Sprintf("%s/out/tm3-tm2onelegacydfd.png", d))
+	f, err := os.Open(filepath.Join(d, "out", "tm3-tm2onelegacydfd.png"))
 	if err != nil {
 		t.Fatalf("Error opening png: %s", err)
 	}
@@ -198,7 +202,7 @@ func TestDashboardOverwrite(t *testing.T) {
 		t.Errorf("%s did not contain %s", out, fmt.Sprintf("Writing dashboard markdown files to '%s' and overwriting existing files", d))
 	}
 
-	dbfile, err := os.ReadFile(fmt.Sprintf("%s/dashboard.md", d))
+	dbfile, err := os.ReadFile(filepath.Join(d, "dashboard.md"))
 	if err != nil {
 		t.Fatalf("Error opening dashboard file: %s", err)
 	}
@@ -221,9 +225,10 @@ func TestDashboardCustomExtension(t *testing.T) {
 
 	var code int
 
+	outDir := filepath.Join(d, "out")
 	out := capturer.CaptureStdout(func() {
 		code = cmd.Run([]string{
-			fmt.Sprintf("-outdir=%s/out", d),
+			fmt.Sprintf("-outdir=%s", outDir),
 			"-out-ext=rst",
 			"./testdata/tm1.hcl",
 		})
@@ -233,11 +238,11 @@ func TestDashboardCustomExtension(t *testing.T) {
 		t.Errorf("Code did not equal 0: %d", code)
 	}
 
-	if !strings.Contains(out, fmt.Sprintf("Created the '%s/out' directory", d)) {
-		t.Errorf("%s did not contain %s", out, fmt.Sprintf("Created the '%s/out' directory", d))
+	if !strings.Contains(out, fmt.Sprintf("Created the '%s' directory", outDir)) {
+		t.Errorf("%s did not contain %s", out, fmt.Sprintf("Created the '%s' directory", outDir))
 	}
 
-	dbfile, err := os.ReadFile(fmt.Sprintf("%s/out/dashboard.rst", d))
+	dbfile, err := os.ReadFile(filepath.Join(d, "out", "dashboard.rst"))
 	if err != nil {
 		t.Fatalf("Error opening dashboard file: %s", err)
 	}
@@ -394,7 +399,7 @@ func TestDashboardDbTemplate(t *testing.T) {
 		t.Errorf("%s did not contains %s", out, fmt.Sprintf("Created the '%s'", d))
 	}
 
-	dbfile, err := os.ReadFile(fmt.Sprintf("%s/dashboard.md", d))
+	dbfile, err := os.ReadFile(filepath.Join(d, "dashboard.md"))
 	if err != nil {
 		t.Fatalf("Error opening dashboard file: %s", err)
 	}
@@ -524,7 +529,7 @@ func TestDashboardTmTemplate(t *testing.T) {
 		t.Errorf("%s did not contains %s", out, fmt.Sprintf("Created the '%s'", d))
 	}
 
-	tmfile, err := os.ReadFile(fmt.Sprintf("%s/tm1-tmtm1two.md", d))
+	tmfile, err := os.ReadFile(filepath.Join(d, "tm1-tmtm1two.md"))
 	if err != nil {
 		t.Fatalf("Error opening tm file: %s", err)
 	}
@@ -625,7 +630,7 @@ func TestDashboardValidDashboardfile(t *testing.T) {
 		t.Errorf("%s did not contain %s", out, fmt.Sprintf("Created the '%s'", d))
 	}
 
-	dbfile, err := os.ReadFile(fmt.Sprintf("%s/index.md", d))
+	dbfile, err := os.ReadFile(filepath.Join(d, "index.md"))
 	if err != nil {
 		t.Fatalf("Error opening dashboard file: %s", err)
 	}
@@ -666,7 +671,7 @@ func TestDashboardValidHtmlfile(t *testing.T) {
 		t.Errorf("%s did not contain %s", out, fmt.Sprintf("Created the '%s'", d))
 	}
 
-	dbfile, err := os.ReadFile(fmt.Sprintf("%s/index.html", d))
+	dbfile, err := os.ReadFile(filepath.Join(d, "index.html"))
 	if err != nil {
 		t.Fatalf("Error opening dashboard file: %s", err)
 	}

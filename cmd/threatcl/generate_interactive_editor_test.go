@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -20,6 +21,7 @@ func testGenInteractiveEditorCommand(tb testing.TB) *GenerateInteractiveEditorCo
 	}
 
 	_ = os.Setenv("HOME", d)
+	_ = os.Setenv("USERPROFILE", d)
 	_ = os.Setenv("EDITOR", "cat")
 
 	cfg, _ := spec.LoadSpecConfig()
@@ -129,9 +131,10 @@ func TestGenIntEditorFileout(t *testing.T) {
 	}
 	defer os.RemoveAll(d)
 
+	outFile := filepath.Join(d, "out.hcl")
 	out := capturer.CaptureStdout(func() {
 		code = cmd.Run([]string{
-			fmt.Sprintf("-out=%s/out.hcl", d),
+			fmt.Sprintf("-out=%s", outFile),
 		})
 	})
 
@@ -139,11 +142,11 @@ func TestGenIntEditorFileout(t *testing.T) {
 		t.Errorf("Code did not equal 0: %d", code)
 	}
 
-	if !strings.Contains(out, fmt.Sprintf("Successfully wrote to '%s/out.hcl", d)) {
-		t.Errorf("Expected %s to contains %s", out, fmt.Sprintf("Successfully wrote to '%s/out.hcl", d))
+	if !strings.Contains(out, fmt.Sprintf("Successfully wrote to '%s", outFile)) {
+		t.Errorf("Expected %s to contains %s", out, fmt.Sprintf("Successfully wrote to '%s", outFile))
 	}
 
-	hclFile, err := os.ReadFile(fmt.Sprintf("%s/out.hcl", d))
+	hclFile, err := os.ReadFile(outFile)
 	if err != nil {
 		t.Fatalf("Error reading file: %s", err)
 	}

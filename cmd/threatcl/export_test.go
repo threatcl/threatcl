@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -20,6 +21,7 @@ func testExportCommand(tb testing.TB) *ExportCommand {
 	}
 
 	_ = os.Setenv("HOME", d)
+	_ = os.Setenv("USERPROFILE", d)
 
 	cfg, _ := spec.LoadSpecConfig()
 
@@ -119,7 +121,7 @@ func TestExportBadOverwrite(t *testing.T) {
 		t.Fatalf("Error creating tmp dir: %s", err)
 	}
 
-	_, err = os.Create(fmt.Sprintf("%s/out.json", d))
+	_, err = os.Create(filepath.Join(d, "out.json"))
 	if err != nil {
 		t.Fatalf("Error creating existing file: %s", err)
 	}
@@ -132,7 +134,7 @@ func TestExportBadOverwrite(t *testing.T) {
 
 	out := capturer.CaptureStdout(func() {
 		code = cmd.Run([]string{
-			fmt.Sprintf("-output=%s/out.json", d),
+			fmt.Sprintf("-output=%s", filepath.Join(d, "out.json")),
 			"./testdata/tm1.hcl",
 		})
 	})
@@ -295,7 +297,8 @@ func TestExportGoodOverwrite(t *testing.T) {
 		t.Fatalf("Error creating tmp dir: %s", err)
 	}
 
-	_, err = os.Create(fmt.Sprintf("%s/out.json", d))
+	outFile := filepath.Join(d, "out.json")
+	_, err = os.Create(outFile)
 	if err != nil {
 		t.Fatalf("Error creating existing file: %s", err)
 	}
@@ -308,7 +311,7 @@ func TestExportGoodOverwrite(t *testing.T) {
 
 	out := capturer.CaptureStdout(func() {
 		code = cmd.Run([]string{
-			fmt.Sprintf("-output=%s/out.json", d),
+			fmt.Sprintf("-output=%s", outFile),
 			"-overwrite",
 			"./testdata/tm1.hcl",
 		})
@@ -322,9 +325,9 @@ func TestExportGoodOverwrite(t *testing.T) {
 		t.Errorf("%s did not contain %s", out, "Successfully wrote")
 	}
 
-	fileIn, err := os.ReadFile(fmt.Sprintf("%s/out.json", d))
+	fileIn, err := os.ReadFile(outFile)
 	if err != nil {
-		t.Errorf("Error opening json file %s/out.json: %s", d, err)
+		t.Errorf("Error opening json file %s: %s", outFile, err)
 	}
 
 	if !strings.Contains(string(fileIn), "This is some arbitrary text") {

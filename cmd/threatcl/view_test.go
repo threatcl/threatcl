@@ -19,6 +19,7 @@ func testViewCommand(tb testing.TB) *ViewCommand {
 	}
 
 	_ = os.Setenv("HOME", d)
+	_ = os.Setenv("USERPROFILE", d)
 
 	cfg, _ := spec.LoadSpecConfig()
 
