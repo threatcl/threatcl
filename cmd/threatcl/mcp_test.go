@@ -22,6 +22,7 @@ func testMCPCommand(tb testing.TB) *MCPCommand {
 	}
 
 	_ = os.Setenv("HOME", d)
+	_ = os.Setenv("USERPROFILE", d)
 
 	cfg, _ := spec.LoadSpecConfig()
 

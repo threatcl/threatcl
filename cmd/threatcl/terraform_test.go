@@ -526,6 +526,7 @@ func testTfCommand(tb testing.TB) *TerraformCommand {
 	}
 
 	_ = os.Setenv("HOME", d)
+	_ = os.Setenv("USERPROFILE", d)
 
 	cfg, _ := spec.LoadSpecConfig()
 

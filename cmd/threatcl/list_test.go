@@ -19,6 +19,7 @@ func testListCommand(tb testing.TB) *ListCommand {
 	}
 
 	_ = os.Setenv("HOME", d)
+	_ = os.Setenv("USERPROFILE", d)
 
 	cfg, _ := spec.LoadSpecConfig()
 
