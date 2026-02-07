@@ -1,3 +1,11 @@
+## 0.4.0
+
+### Feb 7, 2026
+
+CHANGES:
+
+* Introduced the beta `cloud` commands
+
 ## 0.3.1
 
 ### Dec 26, 2025

@@ -109,6 +109,209 @@ func Run(args []string) int {
 				specCfg:          cfg,
 			}, nil
 		},
+		"cloud": func() (cli.Command, error) {
+			return &CloudCommand{}, nil
+		},
+		"cloud login": func() (cli.Command, error) {
+			return &CloudLoginCommand{
+				CloudCommandBase: CloudCommandBase{
+					GlobalCmdOptions: globalCmdOptions,
+				},
+			}, nil
+		},
+		"cloud logout": func() (cli.Command, error) {
+			return &CloudLogoutCommand{
+				CloudCommandBase: CloudCommandBase{
+					GlobalCmdOptions: globalCmdOptions,
+				},
+			}, nil
+		},
+		"cloud token": func() (cli.Command, error) {
+			return &CloudTokenCommand{}, nil
+		},
+		"cloud token list": func() (cli.Command, error) {
+			return &CloudTokenListCommand{
+				CloudCommandBase: CloudCommandBase{
+					GlobalCmdOptions: globalCmdOptions,
+				},
+			}, nil
+		},
+		"cloud token add": func() (cli.Command, error) {
+			return &CloudTokenAddCommand{
+				CloudCommandBase: CloudCommandBase{
+					GlobalCmdOptions: globalCmdOptions,
+				},
+			}, nil
+		},
+		"cloud token remove": func() (cli.Command, error) {
+			return &CloudTokenRemoveCommand{
+				CloudCommandBase: CloudCommandBase{
+					GlobalCmdOptions: globalCmdOptions,
+				},
+			}, nil
+		},
+		"cloud token default": func() (cli.Command, error) {
+			return &CloudTokenDefaultCommand{
+				CloudCommandBase: CloudCommandBase{
+					GlobalCmdOptions: globalCmdOptions,
+				},
+			}, nil
+		},
+		"cloud whoami": func() (cli.Command, error) {
+			return &CloudWhoamiCommand{
+				CloudCommandBase: CloudCommandBase{
+					GlobalCmdOptions: globalCmdOptions,
+				},
+			}, nil
+		},
+		"cloud threatmodels": func() (cli.Command, error) {
+			return &CloudThreatmodelsCommand{
+				CloudCommandBase: CloudCommandBase{
+					GlobalCmdOptions: globalCmdOptions,
+				},
+			}, nil
+		},
+		"cloud threatmodel": func() (cli.Command, error) {
+			return &CloudThreatmodelCommand{
+				CloudCommandBase: CloudCommandBase{
+					GlobalCmdOptions: globalCmdOptions,
+				},
+			}, nil
+		},
+		"cloud threatmodel versions": func() (cli.Command, error) {
+			return &CloudThreatmodelVersionsCommand{
+				CloudCommandBase: CloudCommandBase{
+					GlobalCmdOptions: globalCmdOptions,
+				},
+			}, nil
+		},
+		"cloud threatmodel delete": func() (cli.Command, error) {
+			return &CloudThreatmodelDeleteCommand{
+				CloudCommandBase: CloudCommandBase{
+					GlobalCmdOptions: globalCmdOptions,
+				},
+			}, nil
+		},
+		"cloud threatmodel update-status": func() (cli.Command, error) {
+			return &CloudThreatmodelUpdateStatusCommand{
+				CloudCommandBase: CloudCommandBase{
+					GlobalCmdOptions: globalCmdOptions,
+				},
+			}, nil
+		},
+		"cloud upload": func() (cli.Command, error) {
+			return &CloudUploadCommand{
+				CloudCommandBase: CloudCommandBase{
+					GlobalCmdOptions: globalCmdOptions,
+				},
+				specCfg: cfg,
+			}, nil
+		},
+		"cloud create": func() (cli.Command, error) {
+			return &CloudCreateCommand{
+				CloudCommandBase: CloudCommandBase{
+					GlobalCmdOptions: globalCmdOptions,
+				},
+				specCfg: cfg,
+			}, nil
+		},
+		"cloud search": func() (cli.Command, error) {
+			return &CloudSearchCommand{
+				CloudCommandBase: CloudCommandBase{
+					GlobalCmdOptions: globalCmdOptions,
+				},
+			}, nil
+		},
+		"cloud validate": func() (cli.Command, error) {
+			return &CloudValidateCommand{
+				CloudCommandBase: CloudCommandBase{
+					GlobalCmdOptions: globalCmdOptions,
+				},
+				specCfg: cfg,
+			}, nil
+		},
+		"cloud push": func() (cli.Command, error) {
+			return &CloudPushCommand{
+				CloudCommandBase: CloudCommandBase{
+					GlobalCmdOptions: globalCmdOptions,
+				},
+				specCfg: cfg,
+			}, nil
+		},
+		"cloud view": func() (cli.Command, error) {
+			return &CloudViewCommand{
+				CloudCommandBase: CloudCommandBase{
+					GlobalCmdOptions: globalCmdOptions,
+				},
+				specCfg: cfg,
+			}, nil
+		},
+		"cloud library": func() (cli.Command, error) {
+			return &CloudLibraryCommand{}, nil
+		},
+		"cloud library folders": func() (cli.Command, error) {
+			return &CloudLibraryFoldersCommand{
+				CloudCommandBase: CloudCommandBase{
+					GlobalCmdOptions: globalCmdOptions,
+				},
+			}, nil
+		},
+		"cloud library folder": func() (cli.Command, error) {
+			return &CloudLibraryFolderCommand{
+				CloudCommandBase: CloudCommandBase{
+					GlobalCmdOptions: globalCmdOptions,
+				},
+			}, nil
+		},
+		"cloud library threats": func() (cli.Command, error) {
+			return &CloudLibraryThreatsCommand{
+				CloudCommandBase: CloudCommandBase{
+					GlobalCmdOptions: globalCmdOptions,
+				},
+			}, nil
+		},
+		"cloud library threat": func() (cli.Command, error) {
+			return &CloudLibraryThreatCommand{
+				CloudCommandBase: CloudCommandBase{
+					GlobalCmdOptions: globalCmdOptions,
+				},
+			}, nil
+		},
+		"cloud library threat-ref": func() (cli.Command, error) {
+			return &CloudLibraryThreatRefCommand{
+				CloudCommandBase: CloudCommandBase{
+					GlobalCmdOptions: globalCmdOptions,
+				},
+			}, nil
+		},
+		"cloud library controls": func() (cli.Command, error) {
+			return &CloudLibraryControlsCommand{
+				CloudCommandBase: CloudCommandBase{
+					GlobalCmdOptions: globalCmdOptions,
+				},
+			}, nil
+		},
+		"cloud library control": func() (cli.Command, error) {
+			return &CloudLibraryControlCommand{
+				CloudCommandBase: CloudCommandBase{
+					GlobalCmdOptions: globalCmdOptions,
+				},
+			}, nil
+		},
+		"cloud library control-ref": func() (cli.Command, error) {
+			return &CloudLibraryControlRefCommand{
+				CloudCommandBase: CloudCommandBase{
+					GlobalCmdOptions: globalCmdOptions,
+				},
+			}, nil
+		},
+		"cloud library stats": func() (cli.Command, error) {
+			return &CloudLibraryStatsCommand{
+				CloudCommandBase: CloudCommandBase{
+					GlobalCmdOptions: globalCmdOptions,
+				},
+			}, nil
+		},
 	}
 
 	cli := &cli.CLI{
