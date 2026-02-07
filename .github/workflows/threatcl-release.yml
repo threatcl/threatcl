@@ -85,12 +85,19 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: osx-pkg-amd64
+      # - name: Automatic Release
+      #   uses: "marvinpinto/action-automatic-releases@latest"
+      #   with:
+      #     repo_token: "${{ secrets.GITHUB_TOKEN }}"
+      #     prerelease: false
+      #     title: "Release"
+      #     files: |
+      #       threatcl*.tar.gz
       - name: Automatic Release
-        uses: "marvinpinto/action-automatic-releases@latest"
+        uses: softprops/action-gh-release@v2
         with:
-          repo_token: "${{ secrets.GITHUB_TOKEN }}"
           prerelease: false
-          title: "Release"
+          name: "Release"
           files: |
             threatcl*.tar.gz
       - name: Remove artifacts
