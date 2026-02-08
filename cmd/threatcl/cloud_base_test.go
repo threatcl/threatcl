@@ -116,6 +116,116 @@ func TestResolveOrgId(t *testing.T) {
 	}
 }
 
+func TestGetTokenAndOrgId(t *testing.T) {
+	tests := []struct {
+		name           string
+		envToken       string
+		envOrgId       string
+		flagOrgId      string
+		storeToken     bool // whether to set up a token in the store
+		storeOrgId     string
+		storeOrgToken  string
+		expectedToken  string
+		expectedOrgId  string
+		expectError    bool
+	}{
+		{
+			name:          "env token bypasses token store",
+			envToken:      "env-api-token",
+			storeToken:    true,
+			storeOrgId:    "store-org",
+			storeOrgToken: "store-token",
+			expectedToken: "env-api-token",
+			expectedOrgId: "",
+		},
+		{
+			name:          "env token with flag org-id",
+			envToken:      "env-api-token",
+			flagOrgId:     "flag-org-id",
+			expectedToken: "env-api-token",
+			expectedOrgId: "flag-org-id",
+		},
+		{
+			name:          "env token with THREATCL_CLOUD_ORG",
+			envToken:      "env-api-token",
+			envOrgId:      "env-org-id",
+			expectedToken: "env-api-token",
+			expectedOrgId: "env-org-id",
+		},
+		{
+			name:          "env token with flag org-id takes priority over env org",
+			envToken:      "env-api-token",
+			flagOrgId:     "flag-org-id",
+			envOrgId:      "env-org-id",
+			expectedToken: "env-api-token",
+			expectedOrgId: "flag-org-id",
+		},
+		{
+			name:          "env token with no org returns empty orgId",
+			envToken:      "env-api-token",
+			expectedToken: "env-api-token",
+			expectedOrgId: "",
+		},
+		{
+			name:          "no env token falls through to token store",
+			storeToken:    true,
+			storeOrgId:    "store-org",
+			storeOrgToken: "store-token",
+			expectedToken: "store-token",
+			expectedOrgId: "store-org",
+		},
+		{
+			name:        "no env token and no store returns error",
+			expectError: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			keyringSvc := newMockKeyringService()
+			fsSvc := newMockFileSystemService()
+
+			// Set env vars
+			if tt.envToken != "" {
+				fsSvc.setEnv("THREATCL_API_TOKEN", tt.envToken)
+			}
+			if tt.envOrgId != "" {
+				fsSvc.setEnv("THREATCL_CLOUD_ORG", tt.envOrgId)
+			}
+
+			// Set up token store if requested
+			if tt.storeToken {
+				err := setTokenForOrg(tt.storeOrgId, tt.storeOrgToken, "bearer", "Test Org", nil, keyringSvc, fsSvc)
+				if err != nil {
+					t.Fatalf("failed to set up token store: %v", err)
+				}
+			}
+
+			base := &CloudCommandBase{
+				GlobalCmdOptions: &GlobalCmdOptions{},
+			}
+
+			token, orgId, err := base.getTokenAndOrgId(tt.flagOrgId, keyringSvc, fsSvc)
+
+			if tt.expectError {
+				if err == nil {
+					t.Errorf("expected error but got none")
+				}
+			} else {
+				if err != nil {
+					t.Errorf("unexpected error: %v", err)
+				}
+				if token != tt.expectedToken {
+					t.Errorf("expected token %q, got %q", tt.expectedToken, token)
+				}
+				if orgId != tt.expectedOrgId {
+					t.Errorf("expected org ID %q, got %q", tt.expectedOrgId, orgId)
+				}
+			}
+		})
+	}
+}
+
 // containsString checks if s contains substr
 func containsString(s, substr string) bool {
 	return len(s) >= len(substr) && (s == substr || len(substr) == 0 ||

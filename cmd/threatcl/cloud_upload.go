@@ -52,6 +52,10 @@ Environment Variables:
  THREATCL_CLOUD_ORG
    Default organization ID to use when -org-id is not specified.
 
+ THREATCL_API_TOKEN
+   Provide an API token directly, bypassing the local token store.
+   Useful for CI/CD pipelines and automation.
+
 `
 	return strings.TrimSpace(helpText)
 }

@@ -54,6 +54,16 @@ func (b *CloudCommandBase) getTokenWithDeps(keyringSvc KeyringService, fsSvc Fil
 // getTokenAndOrgId resolves the org ID and retrieves the token for that org
 // This is the preferred method for getting tokens in org-scoped token mode
 func (b *CloudCommandBase) getTokenAndOrgId(flagOrgId string, keyringSvc KeyringService, fsSvc FileSystemService) (string, string, error) {
+	// Check for explicit API token from environment (bypasses token store entirely)
+	if envToken := fsSvc.Getenv("THREATCL_API_TOKEN"); envToken != "" {
+		// Resolve org ID from flag or THREATCL_CLOUD_ORG only (no token store)
+		orgId := flagOrgId
+		if orgId == "" {
+			orgId = fsSvc.Getenv("THREATCL_CLOUD_ORG")
+		}
+		return envToken, orgId, nil
+	}
+
 	// Resolve org ID using priority: flag -> env -> default_org -> single token
 	orgId, err := b.resolveOrgIdFromStore(flagOrgId, keyringSvc, fsSvc)
 	if err != nil {

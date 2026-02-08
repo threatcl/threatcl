@@ -1,3 +1,11 @@
+## 0.4.1
+
+### Feb 8, 2026
+
+CHANGES:
+
+* Added API Token Env var for `cloud` commands
+
 ## 0.4.0
 
 ### Feb 7, 2026
