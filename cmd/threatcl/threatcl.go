@@ -312,6 +312,20 @@ func Run(args []string) int {
 				},
 			}, nil
 		},
+		"cloud library export": func() (cli.Command, error) {
+			return &CloudLibraryExportCommand{
+				CloudCommandBase: CloudCommandBase{
+					GlobalCmdOptions: globalCmdOptions,
+				},
+			}, nil
+		},
+		"cloud library import": func() (cli.Command, error) {
+			return &CloudLibraryImportCommand{
+				CloudCommandBase: CloudCommandBase{
+					GlobalCmdOptions: globalCmdOptions,
+				},
+			}, nil
+		},
 	}
 
 	cli := &cli.CLI{

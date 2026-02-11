@@ -17,18 +17,6 @@ Usage: threatcl cloud library <subcommand> [options]
 
   Query threat and control libraries from ThreatCL Cloud.
 
-Subcommands:
-
-  folders      List library folders
-  folder       Get a specific library folder by ID
-  threats      List threat library items
-  threat       Get a specific threat library item by ID
-  threat-ref   Get a threat library item by reference ID
-  controls     List control library items
-  control      Get a specific control library item by ID
-  control-ref  Get a control library item by reference ID
-  stats        Get library usage statistics
-
 Run 'threatcl cloud library <subcommand> -help' for more information on a specific subcommand.
 `
 	return strings.TrimSpace(helpText)

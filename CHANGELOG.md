@@ -1,3 +1,11 @@
+## 0.4.2
+
+### Feb 11, 2026
+
+CHANGES:
+
+* Added `cloud library export` and `cloud library import` commands
+
 ## 0.4.1
 
 ### Feb 8, 2026
