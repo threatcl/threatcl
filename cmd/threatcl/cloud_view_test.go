@@ -87,7 +87,7 @@ threatmodel "Test Model" {
 		{
 			name:         "no file provided",
 			expectedCode: 1,
-			expectedOut:  "file path is required",
+			expectedOut:  "either -model-id or a file path is required",
 		},
 		{
 			name:         "file does not exist",
@@ -984,4 +984,277 @@ func TestEnrichThreatsWithCloudDataNilInputs(t *testing.T) {
 	}
 
 	// Should not panic
+}
+
+func TestCloudViewHelpModelId(t *testing.T) {
+	cmd := &CloudViewCommand{}
+	help := cmd.Help()
+
+	if !strings.Contains(help, "-model-id") {
+		t.Error("Help text should mention -model-id flag")
+	}
+
+	if !strings.Contains(help, "-org-id") {
+		t.Error("Help text should mention -org-id flag")
+	}
+
+	if !strings.Contains(help, "[<file>]") {
+		t.Error("Help text should show file as optional")
+	}
+}
+
+func TestCloudViewModelId(t *testing.T) {
+	validHCL := `
+spec_version = "0.1.10"
+
+backend "threatcl-cloud" {
+  organization = "test-org"
+}
+
+threatmodel "Cloud Model" {
+  author = "test@example.com"
+  description = "A cloud threat model"
+}
+`
+
+	validHCLWithControlRefs := `
+spec_version = "0.1.10"
+
+backend "threatcl-cloud" {
+  organization = "test-org"
+}
+
+threatmodel "Cloud Model" {
+  author = "test@example.com"
+  description = "A cloud threat model"
+
+  threat "Test Threat" {
+    description = "A threat"
+
+    control "Test Control" {
+      ref = "CTRL-001"
+      description = ""
+    }
+  }
+}
+`
+
+	tests := []struct {
+		name         string
+		modelId      string
+		orgId        string
+		dlStatusCode int
+		dlResponse   string
+		meStatusCode int
+		meResponse   string
+		graphQLResp  string
+		token        string
+		expectedCode int
+		expectedOut  string
+		useRaw       bool
+		fileArg      string
+	}{
+		{
+			name:         "successful download and view",
+			modelId:      "my-model",
+			dlStatusCode: http.StatusOK,
+			dlResponse:   validHCL,
+			meStatusCode: http.StatusOK,
+			meResponse: jsonResponse(whoamiResponse{
+				User: userInfo{Email: "test@example.com", FullName: "Test User"},
+				Organizations: []orgMembership{
+					{
+						Organization: orgInfo{
+							ID:   "org-id",
+							Name: "Test Org",
+							Slug: "test-org",
+						},
+						Role: "admin",
+					},
+				},
+			}),
+			token:        "valid-token",
+			expectedCode: 0,
+			expectedOut:  "Cloud Model",
+			useRaw:       true,
+		},
+		{
+			name:         "successful download with control enrichment",
+			modelId:      "my-model",
+			dlStatusCode: http.StatusOK,
+			dlResponse:   validHCLWithControlRefs,
+			meStatusCode: http.StatusOK,
+			meResponse: jsonResponse(whoamiResponse{
+				User: userInfo{Email: "test@example.com", FullName: "Test User"},
+				Organizations: []orgMembership{
+					{
+						Organization: orgInfo{
+							ID:   "org-id",
+							Name: "Test Org",
+							Slug: "test-org",
+						},
+						Role: "admin",
+					},
+				},
+			}),
+			graphQLResp: `{
+				"data": {
+					"controlLibraryItemsByRefs": [{
+						"id": "ctrl-1",
+						"referenceId": "CTRL-001",
+						"name": "Control from Library",
+						"status": "PUBLISHED",
+						"currentVersion": {
+							"version": "1.0",
+							"name": "Control from Library",
+							"description": "Description from cloud",
+							"implementationGuidance": "Do this thing",
+							"defaultRiskReduction": 50
+						}
+					}]
+				}
+			}`,
+			token:        "valid-token",
+			expectedCode: 0,
+			expectedOut:  "Description from cloud",
+			useRaw:       true,
+		},
+		{
+			name:         "download API error (not found)",
+			modelId:      "nonexistent-model",
+			dlStatusCode: http.StatusNotFound,
+			dlResponse:   `{"error":"not found"}`,
+			token:        "valid-token",
+			expectedCode: 1,
+			expectedOut:  "Error downloading threat model",
+		},
+		{
+			name:         "download API error (unauthorized)",
+			modelId:      "my-model",
+			dlStatusCode: http.StatusUnauthorized,
+			dlResponse:   `{"error":"unauthorized"}`,
+			token:        "valid-token",
+			expectedCode: 1,
+			expectedOut:  "Error downloading threat model",
+		},
+		{
+			name:         "model-id with org-id override",
+			modelId:      "my-model",
+			orgId:        "custom-org-id",
+			dlStatusCode: http.StatusOK,
+			dlResponse:   validHCL,
+			meStatusCode: http.StatusOK,
+			meResponse: jsonResponse(whoamiResponse{
+				User: userInfo{Email: "test@example.com", FullName: "Test User"},
+				Organizations: []orgMembership{
+					{
+						Organization: orgInfo{
+							ID:   "custom-org-id",
+							Name: "Custom Org",
+							Slug: "test-org",
+						},
+						Role: "admin",
+					},
+				},
+			}),
+			token:        "valid-token",
+			expectedCode: 0,
+			expectedOut:  "Cloud Model",
+			useRaw:       true,
+		},
+		{
+			name:         "both file and model-id provided",
+			modelId:      "my-model",
+			fileArg:      "some-file.hcl",
+			token:        "valid-token",
+			expectedCode: 1,
+			expectedOut:  "cannot specify both -model-id and a file argument",
+		},
+		{
+			name:         "missing token with model-id",
+			modelId:      "my-model",
+			token:        "",
+			expectedCode: 1,
+			expectedOut:  "no tokens found",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			httpClient := newMockHTTPClient()
+			keyringSvc := newMockKeyringService()
+			fsSvc := newMockFileSystemService()
+
+			if tt.token != "" {
+				if tt.orgId != "" {
+					keyringSvc.setMockToken(tt.token, tt.orgId, "Custom Org")
+				} else {
+					keyringSvc.setMockToken(tt.token, "test-org-id", "Test Org")
+				}
+			}
+
+			// Set up download response
+			if tt.dlStatusCode != 0 {
+				orgIdForURL := "test-org-id"
+				if tt.orgId != "" {
+					orgIdForURL = tt.orgId
+				}
+				downloadPath := "/api/v1/org/" + orgIdForURL + "/models/" + tt.modelId + "/download"
+				httpClient.transport.setResponse("GET", downloadPath, tt.dlStatusCode, tt.dlResponse)
+			}
+
+			// Set up /users/me response
+			if tt.meStatusCode != 0 {
+				httpClient.transport.setResponse("GET", "/api/v1/users/me", tt.meStatusCode, tt.meResponse)
+			}
+
+			// Set up GraphQL response for control refs
+			if tt.graphQLResp != "" {
+				httpClient.transport.setResponse("POST", "/api/v1/graphql", http.StatusOK, tt.graphQLResp)
+			}
+
+			cfg, err := spec.LoadSpecConfig()
+			if err != nil {
+				t.Fatalf("failed to load spec config: %v", err)
+			}
+
+			cmd := &CloudViewCommand{
+				CloudCommandBase: CloudCommandBase{
+					GlobalCmdOptions: &GlobalCmdOptions{},
+					httpClient:       httpClient,
+					keyringSvc:       keyringSvc,
+					fsSvc:            fsSvc,
+				},
+				specCfg: cfg,
+				testEnv: true,
+			}
+
+			var args []string
+			if tt.modelId != "" {
+				args = append(args, "-model-id", tt.modelId)
+			}
+			if tt.orgId != "" {
+				args = append(args, "-org-id", tt.orgId)
+			}
+			if tt.useRaw {
+				args = append(args, "-raw")
+			}
+			if tt.fileArg != "" {
+				args = append(args, tt.fileArg)
+			}
+
+			var code int
+			out := capturer.CaptureOutput(func() {
+				code = cmd.Run(args)
+			})
+
+			if code != tt.expectedCode {
+				t.Errorf("expected exit code %d, got %d\nOutput: %s", tt.expectedCode, code, out)
+			}
+
+			if tt.expectedOut != "" && !strings.Contains(out, tt.expectedOut) {
+				t.Errorf("expected output to contain %q, got %q", tt.expectedOut, out)
+			}
+		})
+	}
 }

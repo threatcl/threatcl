@@ -1,3 +1,11 @@
+## 0.4.3
+
+### Feb 24, 2026
+
+CHANGES:
+
+* Added `cloud view -model-id` mode
+
 ## 0.4.2
 
 ### Feb 11, 2026
