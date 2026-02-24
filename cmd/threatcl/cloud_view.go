@@ -3,7 +3,9 @@ package main
 import (
 	"fmt"
 	"io"
+	"net/url"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -17,12 +19,14 @@ type CloudViewCommand struct {
 	specCfg                  *spec.ThreatmodelSpecConfig
 	flagRawOut               bool
 	flagIgnoreLinkedControls bool
+	flagModelId              string
+	flagOrgId                string
 	testEnv                  bool
 }
 
 func (c *CloudViewCommand) Help() string {
 	helpText := `
-Usage: threatcl cloud view [options] <file>
+Usage: threatcl cloud view [options] [<file>]
 
   View a threat model HCL file with enriched control data from ThreatCL Cloud.
 
@@ -36,6 +40,9 @@ Usage: threatcl cloud view [options] <file>
 
   By default, threats that reference the threat library will also include
   their recommended controls from the library.
+
+  Use -model-id to fetch and view a threat model directly from ThreatCL Cloud
+  without needing a local copy of the HCL file.
 
 Options:
 
@@ -52,6 +59,15 @@ Options:
     If set, will not fetch or display recommended controls linked to threats
     from the threat library. Default: false
 
+  -model-id=<modelId_or_slug>
+    Fetch and view the threat model from ThreatCL Cloud by ID or slug.
+    When set, the <file> argument is not required.
+
+  -org-id=<orgId>
+    Optional organization ID. Used with -model-id to specify which org
+    to download from. If not provided, uses THREATCL_CLOUD_ORG env var
+    or the default from your token store.
+
 Examples:
 
   # View a threat model with enriched controls
@@ -63,6 +79,12 @@ Examples:
   # View without fetching linked controls from threats
   threatcl cloud view -ignore-linked-controls my-threatmodel.hcl
 
+  # View a cloud threat model by ID or slug
+  threatcl cloud view -model-id=my-threat-model
+
+  # View with org override
+  threatcl cloud view -model-id=my-threat-model -org-id=<orgId>
+
 Environment Variables:
 
   THREATCL_API_URL
@@ -71,6 +93,9 @@ Environment Variables:
   THREATCL_API_TOKEN
     Provide an API token directly, bypassing the local token store.
     Useful for CI/CD pipelines and automation.
+
+  THREATCL_CLOUD_ORG
+    Default organization ID to use when -org-id is not specified.
 
 `
 	return strings.TrimSpace(helpText)
@@ -84,21 +109,23 @@ func (c *CloudViewCommand) Run(args []string) int {
 	flagSet := c.GetFlagset("cloud view")
 	flagSet.BoolVar(&c.flagRawOut, "raw", false, "Output raw markdown")
 	flagSet.BoolVar(&c.flagIgnoreLinkedControls, "ignore-linked-controls", false, "Don't fetch recommended controls linked to threats")
+	flagSet.StringVar(&c.flagModelId, "model-id", "", "Threat model ID or slug (fetch from cloud)")
+	flagSet.StringVar(&c.flagOrgId, "org-id", "", "Organization ID (optional, used with -model-id)")
 	flagSet.Parse(args)
 
 	// Get remaining args (the file path)
 	remainingArgs := flagSet.Args()
-	if len(remainingArgs) == 0 {
-		fmt.Fprintf(os.Stderr, "Error: file path is required\n")
+
+	// Validate: need either -model-id or a file argument, but not both
+	if c.flagModelId != "" && len(remainingArgs) > 0 {
+		fmt.Fprintf(os.Stderr, "Error: cannot specify both -model-id and a file argument\n")
 		fmt.Fprintf(os.Stderr, "Run 'threatcl cloud view -help' for usage information.\n")
 		return 1
 	}
 
-	filePath := remainingArgs[0]
-
-	// Check if file exists
-	if _, err := os.Stat(filePath); os.IsNotExist(err) {
-		fmt.Fprintf(os.Stderr, "Error: file %s does not exist\n", filePath)
+	if c.flagModelId == "" && len(remainingArgs) == 0 {
+		fmt.Fprintf(os.Stderr, "Error: either -model-id or a file path is required\n")
+		fmt.Fprintf(os.Stderr, "Run 'threatcl cloud view -help' for usage information.\n")
 		return 1
 	}
 
@@ -113,11 +140,59 @@ func (c *CloudViewCommand) Run(args []string) int {
 
 	// Initialize dependencies
 	httpClient, keyringSvc, fsSvc := c.initDependencies(10 * time.Second)
-	token, _, err := c.getTokenAndOrgId("", keyringSvc, fsSvc)
+	token, orgId, err := c.getTokenAndOrgId(c.flagOrgId, keyringSvc, fsSvc)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %s\n", err)
 		fmt.Fprintf(os.Stderr, "   %s\n", ErrPleaseLogin)
 		return 1
+	}
+
+	// Resolve file path
+	var filePath string
+	var tmpDir string
+
+	if c.flagModelId != "" {
+		// Download from cloud to a temp file
+		apiURL := fmt.Sprintf("%s/api/v1/org/%s/models/%s/download", getAPIBaseURL(fsSvc), url.PathEscape(orgId), url.PathEscape(c.flagModelId))
+		resp, dlErr := makeAuthenticatedRequest("GET", apiURL, token, nil, httpClient)
+		if dlErr != nil {
+			fmt.Fprintf(os.Stderr, "Error downloading threat model: %s\n", dlErr)
+			return 1
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != 200 {
+			errResp := handleAPIErrorResponse(resp)
+			fmt.Fprintf(os.Stderr, "Error downloading threat model: %s\n", errResp)
+			return 1
+		}
+
+		body, readErr := io.ReadAll(resp.Body)
+		if readErr != nil {
+			fmt.Fprintf(os.Stderr, "Error reading download response: %s\n", readErr)
+			return 1
+		}
+
+		tmpDir, err = os.MkdirTemp("", "threatcl-cloud-view-")
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error creating temp directory: %s\n", err)
+			return 1
+		}
+		defer os.RemoveAll(tmpDir)
+
+		filePath = filepath.Join(tmpDir, "model.hcl")
+		if writeErr := os.WriteFile(filePath, body, 0600); writeErr != nil {
+			fmt.Fprintf(os.Stderr, "Error writing temp file: %s\n", writeErr)
+			return 1
+		}
+	} else {
+		filePath = remainingArgs[0]
+
+		// Check if file exists
+		if _, statErr := os.Stat(filePath); os.IsNotExist(statErr) {
+			fmt.Fprintf(os.Stderr, "Error: file %s does not exist\n", filePath)
+			return 1
+		}
 	}
 
 	// Validate threat model (reuse existing validateThreatModel)
