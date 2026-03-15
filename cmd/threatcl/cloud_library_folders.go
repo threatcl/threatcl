@@ -8,6 +8,8 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"github.com/posener/complete"
 )
 
 // CloudLibraryFoldersCommand lists library folders
@@ -68,6 +70,12 @@ Environment Variables:
 
 func (c *CloudLibraryFoldersCommand) Synopsis() string {
 	return "List library folders"
+}
+
+func (c *CloudLibraryFoldersCommand) AutocompleteFlags() complete.Flags {
+	return complete.Flags{
+		"-config": complete.PredictFiles("*.hcl"),
+	}
 }
 
 func (c *CloudLibraryFoldersCommand) Run(args []string) int {

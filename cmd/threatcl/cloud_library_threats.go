@@ -8,6 +8,8 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"github.com/posener/complete"
 )
 
 // CloudLibraryThreatsCommand lists threat library items
@@ -93,6 +95,12 @@ Environment Variables:
 
 func (c *CloudLibraryThreatsCommand) Synopsis() string {
 	return "List threat library items"
+}
+
+func (c *CloudLibraryThreatsCommand) AutocompleteFlags() complete.Flags {
+	return complete.Flags{
+		"-config": complete.PredictFiles("*.hcl"),
+	}
 }
 
 func (c *CloudLibraryThreatsCommand) Run(args []string) int {

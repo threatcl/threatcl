@@ -12,6 +12,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/posener/complete"
 )
 
 const maxImportFileSize = 10 * 1024 * 1024 // 10MB
@@ -102,6 +104,16 @@ Environment Variables:
 
 func (c *CloudLibraryImportCommand) Synopsis() string {
 	return "Import library from HCL file"
+}
+
+func (c *CloudLibraryImportCommand) AutocompleteArgs() complete.Predictor {
+	return complete.PredictFiles("*.json")
+}
+
+func (c *CloudLibraryImportCommand) AutocompleteFlags() complete.Flags {
+	return complete.Flags{
+		"-config": complete.PredictFiles("*.hcl"),
+	}
 }
 
 func (c *CloudLibraryImportCommand) Run(args []string) int {

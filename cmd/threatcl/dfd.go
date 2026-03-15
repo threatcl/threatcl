@@ -5,6 +5,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/posener/complete"
 	"github.com/threatcl/spec"
 )
 
@@ -464,4 +465,13 @@ func (c *DfdCommand) Run(args []string) int {
 
 func (c *DfdCommand) Synopsis() string {
 	return "Generate Data Flow Diagram PNG or DOT files from existing HCL threatmodel file(s)"
+}
+
+func (c *DfdCommand) AutocompleteArgs() complete.Predictor { return hclFiles }
+func (c *DfdCommand) AutocompleteFlags() complete.Flags {
+	return complete.Flags{
+		"-config":    complete.PredictFiles("*.hcl"),
+		"-outdir":    complete.PredictDirs("*"),
+		"-format":    complete.PredictSet("png", "dot", "svg"),
+	}
 }

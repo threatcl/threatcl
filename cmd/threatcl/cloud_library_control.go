@@ -8,6 +8,8 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"github.com/posener/complete"
 )
 
 // CloudLibraryControlCommand gets a specific control library item by ID
@@ -68,6 +70,12 @@ Environment Variables:
 
 func (c *CloudLibraryControlCommand) Synopsis() string {
 	return "Get a specific control library item by ID"
+}
+
+func (c *CloudLibraryControlCommand) AutocompleteFlags() complete.Flags {
+	return complete.Flags{
+		"-config": complete.PredictFiles("*.hcl"),
+	}
 }
 
 func (c *CloudLibraryControlCommand) Run(args []string) int {

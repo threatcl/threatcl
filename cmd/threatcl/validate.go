@@ -7,6 +7,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/posener/complete"
 	"github.com/threatcl/spec"
 )
 
@@ -155,4 +156,11 @@ func (c *ValidateCommand) Run(args []string) int {
 
 func (c *ValidateCommand) Synopsis() string {
 	return "Validate existing HCL Threatmodel file(s)"
+}
+
+func (c *ValidateCommand) AutocompleteArgs() complete.Predictor { return hclFiles }
+func (c *ValidateCommand) AutocompleteFlags() complete.Flags {
+	return complete.Flags{
+		"-config":    complete.PredictFiles("*.hcl"),
+	}
 }

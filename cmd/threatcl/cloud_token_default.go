@@ -5,6 +5,8 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"github.com/posener/complete"
 )
 
 type CloudTokenDefaultCommand struct {
@@ -49,6 +51,12 @@ Examples:
 
 func (c *CloudTokenDefaultCommand) Synopsis() string {
 	return "Get or set the default organization"
+}
+
+func (c *CloudTokenDefaultCommand) AutocompleteFlags() complete.Flags {
+	return complete.Flags{
+		"-config": complete.PredictFiles("*.hcl"),
+	}
 }
 
 func (c *CloudTokenDefaultCommand) Run(args []string) int {

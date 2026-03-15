@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/glamour"
+	"github.com/posener/complete"
 	"github.com/threatcl/spec"
 )
 
@@ -142,4 +143,11 @@ func (c *ViewCommand) RenderMd(md string) (string, error) {
 
 func (c *ViewCommand) Synopsis() string {
 	return "View existing HCL Threatmodel file(s)"
+}
+
+func (c *ViewCommand) AutocompleteArgs() complete.Predictor { return hclFiles }
+func (c *ViewCommand) AutocompleteFlags() complete.Flags {
+	return complete.Flags{
+		"-config": complete.PredictFiles("*.hcl"),
+	}
 }

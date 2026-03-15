@@ -5,6 +5,8 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"github.com/posener/complete"
 )
 
 type CloudWhoamiCommand struct {
@@ -46,6 +48,12 @@ Environment Variables:
 
 func (c *CloudWhoamiCommand) Synopsis() string {
 	return "Display current authenticated user information"
+}
+
+func (c *CloudWhoamiCommand) AutocompleteFlags() complete.Flags {
+	return complete.Flags{
+		"-config": complete.PredictFiles("*.hcl"),
+	}
 }
 
 func (c *CloudWhoamiCommand) Run(args []string) int {

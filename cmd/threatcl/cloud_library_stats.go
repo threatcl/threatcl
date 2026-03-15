@@ -8,6 +8,8 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"github.com/posener/complete"
 )
 
 // CloudLibraryStatsCommand gets library usage statistics
@@ -61,6 +63,12 @@ Environment Variables:
 
 func (c *CloudLibraryStatsCommand) Synopsis() string {
 	return "Get library usage statistics"
+}
+
+func (c *CloudLibraryStatsCommand) AutocompleteFlags() complete.Flags {
+	return complete.Flags{
+		"-config": complete.PredictFiles("*.hcl"),
+	}
 }
 
 func (c *CloudLibraryStatsCommand) Run(args []string) int {

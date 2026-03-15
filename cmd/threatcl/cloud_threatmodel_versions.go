@@ -6,6 +6,8 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"github.com/posener/complete"
 )
 
 type CloudThreatmodelVersionsCommand struct {
@@ -69,6 +71,13 @@ Environment Variables:
 
 func (c *CloudThreatmodelVersionsCommand) Synopsis() string {
 	return "Display information about the versions of a single threat model"
+}
+
+func (c *CloudThreatmodelVersionsCommand) AutocompleteFlags() complete.Flags {
+	return complete.Flags{
+		"-config":   complete.PredictFiles("*.hcl"),
+		"-download": complete.PredictFiles("*"),
+	}
 }
 
 func (c *CloudThreatmodelVersionsCommand) Run(args []string) int {

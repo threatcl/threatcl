@@ -5,6 +5,8 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"github.com/posener/complete"
 )
 
 type CloudTokenRemoveCommand struct {
@@ -44,6 +46,12 @@ Examples:
 
 func (c *CloudTokenRemoveCommand) Synopsis() string {
 	return "Remove a token for a specific organization"
+}
+
+func (c *CloudTokenRemoveCommand) AutocompleteFlags() complete.Flags {
+	return complete.Flags{
+		"-config": complete.PredictFiles("*.hcl"),
+	}
 }
 
 func (c *CloudTokenRemoveCommand) Run(args []string) int {

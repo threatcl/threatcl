@@ -8,6 +8,8 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"github.com/posener/complete"
 )
 
 // CloudLibraryExportCommand exports the organization's library as HCL
@@ -100,6 +102,14 @@ Environment Variables:
 
 func (c *CloudLibraryExportCommand) Synopsis() string {
 	return "Export library as HCL"
+}
+
+func (c *CloudLibraryExportCommand) AutocompleteFlags() complete.Flags {
+	return complete.Flags{
+		"-config": complete.PredictFiles("*.hcl"),
+		"-output": complete.PredictFiles("*"),
+		"-o":      complete.PredictFiles("*"),
+	}
 }
 
 func (c *CloudLibraryExportCommand) Run(args []string) int {

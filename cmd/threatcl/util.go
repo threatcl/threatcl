@@ -10,7 +10,14 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/posener/complete"
 	"github.com/threatcl/spec"
+)
+
+var hclFiles = complete.PredictOr(
+	complete.PredictFiles("*.hcl"),
+	complete.PredictFiles("*.json"),
+	complete.PredictDirs("*"),
 )
 
 const (
@@ -217,7 +224,7 @@ EOT
   }
 
   // For more advanced importing of controls, you can also define
-  // expanded "control" "components" in an external file. This allows you to 
+  // expanded "control" "components" in an external file. This allows you to
   // define all the attributes of a control, centrally, and import
   // them.
 

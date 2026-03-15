@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/charmbracelet/glamour"
+	"github.com/posener/complete"
 	"github.com/threatcl/spec"
 )
 
@@ -103,6 +104,13 @@ Environment Variables:
 
 func (c *CloudViewCommand) Synopsis() string {
 	return "View a threat model with enriched cloud control data"
+}
+
+func (c *CloudViewCommand) AutocompleteArgs() complete.Predictor { return hclFiles }
+func (c *CloudViewCommand) AutocompleteFlags() complete.Flags {
+	return complete.Flags{
+		"-config": complete.PredictFiles("*.hcl"),
+	}
 }
 
 func (c *CloudViewCommand) Run(args []string) int {

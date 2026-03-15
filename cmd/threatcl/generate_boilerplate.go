@@ -5,6 +5,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/posener/complete"
 	"github.com/threatcl/spec"
 )
 
@@ -91,4 +92,11 @@ func (c *GenerateBoilerplateCommand) Run(args []string) int {
 
 func (c *GenerateBoilerplateCommand) Synopsis() string {
 	return "Generate a generic HCL threatmodel that you can edit later"
+}
+
+func (c *GenerateBoilerplateCommand) AutocompleteFlags() complete.Flags {
+	return complete.Flags{
+		"-config": complete.PredictFiles("*.hcl"),
+		"-out":    complete.PredictFiles("*"),
+	}
 }
