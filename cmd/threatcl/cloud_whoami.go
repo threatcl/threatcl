@@ -52,7 +52,7 @@ func (c *CloudWhoamiCommand) Synopsis() string {
 
 func (c *CloudWhoamiCommand) AutocompleteFlags() complete.Flags {
 	return complete.Flags{
-		"-config": complete.PredictFiles("*.hcl"),
+		"-config": predictHCL,
 	}
 }
 

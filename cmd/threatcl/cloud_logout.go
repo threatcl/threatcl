@@ -55,7 +55,7 @@ func (c *CloudLogoutCommand) Synopsis() string {
 
 func (c *CloudLogoutCommand) AutocompleteFlags() complete.Flags {
 	return complete.Flags{
-		"-config": complete.PredictFiles("*.hcl"),
+		"-config": predictHCL,
 	}
 }
 

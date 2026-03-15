@@ -107,12 +107,12 @@ func (c *CloudLibraryImportCommand) Synopsis() string {
 }
 
 func (c *CloudLibraryImportCommand) AutocompleteArgs() complete.Predictor {
-	return complete.PredictFiles("*.json")
+	return predictJSON
 }
 
 func (c *CloudLibraryImportCommand) AutocompleteFlags() complete.Flags {
 	return complete.Flags{
-		"-config": complete.PredictFiles("*.hcl"),
+		"-config": predictHCL,
 	}
 }
 

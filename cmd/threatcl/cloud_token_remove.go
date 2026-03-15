@@ -50,7 +50,7 @@ func (c *CloudTokenRemoveCommand) Synopsis() string {
 
 func (c *CloudTokenRemoveCommand) AutocompleteFlags() complete.Flags {
 	return complete.Flags{
-		"-config": complete.PredictFiles("*.hcl"),
+		"-config": predictHCL,
 	}
 }
 

@@ -202,7 +202,7 @@ func (c *GenerateInteractiveEditorCommand) Synopsis() string {
 
 func (c *GenerateInteractiveEditorCommand) AutocompleteFlags() complete.Flags {
 	return complete.Flags{
-		"-config":          complete.PredictFiles("*.hcl"),
+		"-config":          predictHCL,
 		"-out":             complete.PredictFiles("*"),
 	}
 }

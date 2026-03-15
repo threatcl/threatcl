@@ -56,10 +56,10 @@ func (c *CloudValidateCommand) Synopsis() string {
 	return "Validate a threat model file for ThreatCL Cloud"
 }
 
-func (c *CloudValidateCommand) AutocompleteArgs() complete.Predictor { return hclFiles }
+func (c *CloudValidateCommand) AutocompleteArgs() complete.Predictor { return predictHCLOrJSON }
 func (c *CloudValidateCommand) AutocompleteFlags() complete.Flags {
 	return complete.Flags{
-		"-config": complete.PredictFiles("*.hcl"),
+		"-config": predictHCL,
 	}
 }
 

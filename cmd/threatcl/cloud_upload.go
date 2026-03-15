@@ -65,10 +65,10 @@ func (c *CloudUploadCommand) Synopsis() string {
 	return "Upload a threat model HCL file to ThreatCL Cloud"
 }
 
-func (c *CloudUploadCommand) AutocompleteArgs() complete.Predictor { return hclFiles }
+func (c *CloudUploadCommand) AutocompleteArgs() complete.Predictor { return predictHCLOrJSON }
 func (c *CloudUploadCommand) AutocompleteFlags() complete.Flags {
 	return complete.Flags{
-		"-config": complete.PredictFiles("*.hcl"),
+		"-config": predictHCL,
 	}
 }
 

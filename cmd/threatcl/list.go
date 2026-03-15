@@ -220,9 +220,9 @@ func (c *ListCommand) Synopsis() string {
 	return "List Threatmodels found in HCL file(s)"
 }
 
-func (c *ListCommand) AutocompleteArgs() complete.Predictor { return hclFiles }
+func (c *ListCommand) AutocompleteArgs() complete.Predictor { return predictHCLOrJSON }
 func (c *ListCommand) AutocompleteFlags() complete.Flags {
 	return complete.Flags{
-		"-config":   complete.PredictFiles("*.hcl"),
+		"-config":   predictHCL,
 	}
 }

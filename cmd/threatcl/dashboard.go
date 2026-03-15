@@ -354,12 +354,12 @@ func (c *DashboardCommand) Synopsis() string {
 	return "Generate markdown files from existing HCL threatmodel file(s)"
 }
 
-func (c *DashboardCommand) AutocompleteArgs() complete.Predictor { return hclFiles }
+func (c *DashboardCommand) AutocompleteArgs() complete.Predictor { return predictHCLOrJSON }
 func (c *DashboardCommand) AutocompleteFlags() complete.Flags {
 	return complete.Flags{
-		"-config":              complete.PredictFiles("*.hcl"),
+		"-config":              predictHCL,
 		"-outdir":              complete.PredictDirs("*"),
-		"-dashboard-template":  complete.PredictFiles("*.tpl"),
-		"-threatmodel-template": complete.PredictFiles("*.tpl"),
+		"-dashboard-template":  predictTpl,
+		"-threatmodel-template": predictTpl,
 	}
 }

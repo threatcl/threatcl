@@ -207,12 +207,12 @@ func (e *ExportCommand) Synopsis() string {
 	return "Export threat models into other formats"
 }
 
-func (c *ExportCommand) AutocompleteArgs() complete.Predictor { return hclFiles }
+func (c *ExportCommand) AutocompleteArgs() complete.Predictor { return predictHCLOrJSON }
 func (c *ExportCommand) AutocompleteFlags() complete.Flags {
 	return complete.Flags{
-		"-config":    complete.PredictFiles("*.hcl"),
+		"-config":    predictHCL,
 		"-format":    complete.PredictSet("json", "otm", "hcl"),
 		"-output":    complete.PredictFiles("*"),
-		"-template":  complete.PredictFiles("*.tpl"),
+		"-template":  predictTpl,
 	}
 }

@@ -106,10 +106,10 @@ func (c *CloudViewCommand) Synopsis() string {
 	return "View a threat model with enriched cloud control data"
 }
 
-func (c *CloudViewCommand) AutocompleteArgs() complete.Predictor { return hclFiles }
+func (c *CloudViewCommand) AutocompleteArgs() complete.Predictor { return predictHCLOrJSON }
 func (c *CloudViewCommand) AutocompleteFlags() complete.Flags {
 	return complete.Flags{
-		"-config": complete.PredictFiles("*.hcl"),
+		"-config": predictHCL,
 	}
 }
 

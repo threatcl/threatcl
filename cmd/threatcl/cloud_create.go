@@ -79,8 +79,8 @@ func (c *CloudCreateCommand) Synopsis() string {
 
 func (c *CloudCreateCommand) AutocompleteFlags() complete.Flags {
 	return complete.Flags{
-		"-config": complete.PredictFiles("*.hcl"),
-		"-upload": hclFiles,
+		"-config": predictHCL,
+		"-upload": predictHCLOrJSON,
 	}
 }
 

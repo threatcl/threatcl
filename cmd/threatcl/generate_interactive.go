@@ -643,7 +643,7 @@ func (c *GenerateInteractiveCommand) Synopsis() string {
 
 func (c *GenerateInteractiveCommand) AutocompleteFlags() complete.Flags {
 	return complete.Flags{
-		"-config": complete.PredictFiles("*.hcl"),
+		"-config": predictHCL,
 		"-out":    complete.PredictFiles("*"),
 	}
 }

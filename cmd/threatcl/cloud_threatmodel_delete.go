@@ -59,7 +59,7 @@ func (c *CloudThreatmodelDeleteCommand) Synopsis() string {
 
 func (c *CloudThreatmodelDeleteCommand) AutocompleteFlags() complete.Flags {
 	return complete.Flags{
-		"-config": complete.PredictFiles("*.hcl"),
+		"-config": predictHCL,
 	}
 }
 

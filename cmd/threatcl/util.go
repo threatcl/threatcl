@@ -14,9 +14,30 @@ import (
 	"github.com/threatcl/spec"
 )
 
-var hclFiles = complete.PredictOr(
+// Autocomplete predictors for files and directories
+var predictHCLOrJSON = complete.PredictOr(
 	complete.PredictFiles("*.hcl"),
 	complete.PredictFiles("*.json"),
+	complete.PredictDirs("*"),
+)
+
+var predictHCL = complete.PredictOr(
+	complete.PredictFiles("*.hcl"),
+	complete.PredictDirs("*"),
+)
+
+var predictJSON = complete.PredictOr(
+	complete.PredictFiles("*.json"),
+	complete.PredictDirs("*"),
+)
+
+var predictTpl = complete.PredictOr(
+	complete.PredictFiles("*.tpl"),
+	complete.PredictDirs("*"),
+)
+
+var predictGraphQL = complete.PredictOr(
+	complete.PredictFiles("*.graphql"),
 	complete.PredictDirs("*"),
 )
 

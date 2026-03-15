@@ -106,7 +106,7 @@ func (c *CloudLibraryExportCommand) Synopsis() string {
 
 func (c *CloudLibraryExportCommand) AutocompleteFlags() complete.Flags {
 	return complete.Flags{
-		"-config": complete.PredictFiles("*.hcl"),
+		"-config": predictHCL,
 		"-output": complete.PredictFiles("*"),
 		"-o":      complete.PredictFiles("*"),
 	}

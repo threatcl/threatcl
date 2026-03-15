@@ -332,13 +332,13 @@ func (c *TerraformCommand) Synopsis() string {
 }
 
 func (c *TerraformCommand) AutocompleteArgs() complete.Predictor {
-	return complete.PredictFiles("*.json")
+	return predictJSON
 }
 
 func (c *TerraformCommand) AutocompleteFlags() complete.Flags {
 	return complete.Flags{
-		"-config":                 complete.PredictFiles("*.hcl"),
-		"-add-to-existing":        complete.PredictFiles("*.hcl"),
-		"-tf-collection":          complete.PredictFiles("*.json"),
+		"-config":                 predictHCL,
+		"-add-to-existing":        predictHCL,
+		"-tf-collection":          predictJSON,
 	}
 }

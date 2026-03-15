@@ -75,7 +75,7 @@ func (c *ServerCommand) Synopsis() string {
 
 func (c *ServerCommand) AutocompleteFlags() complete.Flags {
 	return complete.Flags{
-		"-config": complete.PredictFiles("*.hcl"),
+		"-config": predictHCL,
 		"-dir":    complete.PredictDirs("*"),
 	}
 }

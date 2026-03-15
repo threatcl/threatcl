@@ -158,9 +158,9 @@ func (c *ValidateCommand) Synopsis() string {
 	return "Validate existing HCL Threatmodel file(s)"
 }
 
-func (c *ValidateCommand) AutocompleteArgs() complete.Predictor { return hclFiles }
+func (c *ValidateCommand) AutocompleteArgs() complete.Predictor { return predictHCLOrJSON }
 func (c *ValidateCommand) AutocompleteFlags() complete.Flags {
 	return complete.Flags{
-		"-config":    complete.PredictFiles("*.hcl"),
+		"-config":    predictHCL,
 	}
 }

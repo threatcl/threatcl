@@ -467,10 +467,10 @@ func (c *DfdCommand) Synopsis() string {
 	return "Generate Data Flow Diagram PNG or DOT files from existing HCL threatmodel file(s)"
 }
 
-func (c *DfdCommand) AutocompleteArgs() complete.Predictor { return hclFiles }
+func (c *DfdCommand) AutocompleteArgs() complete.Predictor { return predictHCLOrJSON }
 func (c *DfdCommand) AutocompleteFlags() complete.Flags {
 	return complete.Flags{
-		"-config":    complete.PredictFiles("*.hcl"),
+		"-config":    predictHCL,
 		"-outdir":    complete.PredictDirs("*"),
 		"-format":    complete.PredictSet("png", "dot", "svg"),
 	}

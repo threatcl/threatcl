@@ -124,9 +124,9 @@ func (c *QueryCommand) Synopsis() string {
 
 func (c *QueryCommand) AutocompleteFlags() complete.Flags {
 	return complete.Flags{
-		"-config":   complete.PredictFiles("*.hcl"),
+		"-config":   predictHCL,
 		"-dir":      complete.PredictDirs("*"),
-		"-file":     complete.PredictFiles("*.graphql"),
+		"-file":     predictGraphQL,
 		"-output":   complete.PredictSet("pretty", "json", "compact"),
 	}
 }

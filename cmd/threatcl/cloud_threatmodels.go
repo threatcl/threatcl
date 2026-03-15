@@ -56,7 +56,7 @@ func (c *CloudThreatmodelsCommand) Synopsis() string {
 
 func (c *CloudThreatmodelsCommand) AutocompleteFlags() complete.Flags {
 	return complete.Flags{
-		"-config": complete.PredictFiles("*.hcl"),
+		"-config": predictHCL,
 	}
 }
 
