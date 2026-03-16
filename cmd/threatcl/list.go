@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/posener/complete"
 	"github.com/ryanuber/columnize"
 	"github.com/threatcl/spec"
 )
@@ -217,4 +218,11 @@ func (c *ListCommand) Run(args []string) int {
 
 func (c *ListCommand) Synopsis() string {
 	return "List Threatmodels found in HCL file(s)"
+}
+
+func (c *ListCommand) AutocompleteArgs() complete.Predictor { return predictHCLOrJSON }
+func (c *ListCommand) AutocompleteFlags() complete.Flags {
+	return complete.Flags{
+		"-config":   predictHCL,
+	}
 }

@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	shellquote "github.com/kballard/go-shellquote"
+	"github.com/posener/complete"
 	"github.com/threatcl/spec"
 )
 
@@ -197,4 +198,11 @@ func (c *GenerateInteractiveEditorCommand) Run(args []string) int {
 
 func (c *GenerateInteractiveEditorCommand) Synopsis() string {
 	return "Interactively generate a HCL threatmodel using your $EDITOR"
+}
+
+func (c *GenerateInteractiveEditorCommand) AutocompleteFlags() complete.Flags {
+	return complete.Flags{
+		"-config":          predictHCL,
+		"-out":             complete.PredictFiles("*"),
+	}
 }

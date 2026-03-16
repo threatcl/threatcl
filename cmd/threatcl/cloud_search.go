@@ -8,6 +8,8 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"github.com/posener/complete"
 )
 
 type CloudSearchCommand struct {
@@ -106,6 +108,12 @@ Environment Variables:
 
 func (c *CloudSearchCommand) Synopsis() string {
 	return "Search for threats and controls across threat models"
+}
+
+func (c *CloudSearchCommand) AutocompleteFlags() complete.Flags {
+	return complete.Flags{
+		"-config": predictHCL,
+	}
 }
 
 func (c *CloudSearchCommand) Run(args []string) int {

@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/posener/complete"
 	"github.com/threatcl/spec"
 )
 
@@ -351,4 +352,14 @@ func unixToTime(unixtime int64) string {
 // Synopsis returns the synopsis for the "threatcl dashboard" command
 func (c *DashboardCommand) Synopsis() string {
 	return "Generate markdown files from existing HCL threatmodel file(s)"
+}
+
+func (c *DashboardCommand) AutocompleteArgs() complete.Predictor { return predictHCLOrJSON }
+func (c *DashboardCommand) AutocompleteFlags() complete.Flags {
+	return complete.Flags{
+		"-config":              predictHCL,
+		"-outdir":              complete.PredictDirs("*"),
+		"-dashboard-template":  predictTpl,
+		"-threatmodel-template": predictTpl,
+	}
 }

@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/posener/complete"
 	"github.com/threatcl/spec"
 
 	"encoding/base64"
@@ -644,6 +645,13 @@ func (c *MCPCommand) handleWriteDfdPngFile(ctx context.Context, req mcp.CallTool
 
 func (c *MCPCommand) Synopsis() string {
 	return "Model Context Protocol (MCP) server for threatcl"
+}
+
+func (c *MCPCommand) AutocompleteFlags() complete.Flags {
+	return complete.Flags{
+		"-config": predictHCL,
+		"-dir":    complete.PredictDirs("*"),
+	}
 }
 
 func (c *MCPCommand) errPrint(msg string) {

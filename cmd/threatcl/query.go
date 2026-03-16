@@ -10,6 +10,8 @@ import (
 	"os"
 	"strings"
 
+	"github.com/posener/complete"
+
 	gqlgen "github.com/99designs/gqlgen/graphql"
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/threatcl/spec"
@@ -118,6 +120,15 @@ Options:
 
 func (c *QueryCommand) Synopsis() string {
 	return "Execute GraphQL queries against threat model data"
+}
+
+func (c *QueryCommand) AutocompleteFlags() complete.Flags {
+	return complete.Flags{
+		"-config":   predictHCL,
+		"-dir":      complete.PredictDirs("*"),
+		"-file":     predictGraphQL,
+		"-output":   complete.PredictSet("pretty", "json", "compact"),
+	}
 }
 
 func (c *QueryCommand) Run(args []string) int {

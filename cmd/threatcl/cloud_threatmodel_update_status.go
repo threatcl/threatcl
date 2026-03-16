@@ -5,6 +5,8 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"github.com/posener/complete"
 )
 
 type CloudThreatmodelUpdateStatusCommand struct {
@@ -59,6 +61,12 @@ Environment Variables:
 
 func (c *CloudThreatmodelUpdateStatusCommand) Synopsis() string {
 	return "Update the status of a threat model"
+}
+
+func (c *CloudThreatmodelUpdateStatusCommand) AutocompleteFlags() complete.Flags {
+	return complete.Flags{
+		"-config": predictHCL,
+	}
 }
 
 func (c *CloudThreatmodelUpdateStatusCommand) Run(args []string) int {

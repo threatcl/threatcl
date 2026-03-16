@@ -10,7 +10,35 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/posener/complete"
 	"github.com/threatcl/spec"
+)
+
+// Autocomplete predictors for files and directories
+var predictHCLOrJSON = complete.PredictOr(
+	complete.PredictFiles("*.hcl"),
+	complete.PredictFiles("*.json"),
+	complete.PredictDirs("*"),
+)
+
+var predictHCL = complete.PredictOr(
+	complete.PredictFiles("*.hcl"),
+	complete.PredictDirs("*"),
+)
+
+var predictJSON = complete.PredictOr(
+	complete.PredictFiles("*.json"),
+	complete.PredictDirs("*"),
+)
+
+var predictTpl = complete.PredictOr(
+	complete.PredictFiles("*.tpl"),
+	complete.PredictDirs("*"),
+)
+
+var predictGraphQL = complete.PredictOr(
+	complete.PredictFiles("*.graphql"),
+	complete.PredictDirs("*"),
 )
 
 const (
@@ -217,7 +245,7 @@ EOT
   }
 
   // For more advanced importing of controls, you can also define
-  // expanded "control" "components" in an external file. This allows you to 
+  // expanded "control" "components" in an external file. This allows you to
   // define all the attributes of a control, centrally, and import
   // them.
 

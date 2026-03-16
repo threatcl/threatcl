@@ -5,6 +5,8 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"github.com/posener/complete"
 )
 
 type CloudTokenListCommand struct {
@@ -36,6 +38,12 @@ Environment Variables:
 
 func (c *CloudTokenListCommand) Synopsis() string {
 	return "List all stored tokens"
+}
+
+func (c *CloudTokenListCommand) AutocompleteFlags() complete.Flags {
+	return complete.Flags{
+		"-config": predictHCL,
+	}
 }
 
 func (c *CloudTokenListCommand) Run(args []string) int {

@@ -11,6 +11,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/posener/complete"
+
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/fsnotify/fsnotify"
@@ -69,6 +71,13 @@ Examples:
 
 func (c *ServerCommand) Synopsis() string {
 	return "Start a GraphQL API server for threat models"
+}
+
+func (c *ServerCommand) AutocompleteFlags() complete.Flags {
+	return complete.Flags{
+		"-config": predictHCL,
+		"-dir":    complete.PredictDirs("*"),
+	}
 }
 
 func (c *ServerCommand) Run(args []string) int {

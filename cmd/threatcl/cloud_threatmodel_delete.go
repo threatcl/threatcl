@@ -5,6 +5,8 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"github.com/posener/complete"
 )
 
 type CloudThreatmodelDeleteCommand struct {
@@ -53,6 +55,12 @@ Environment Variables:
 
 func (c *CloudThreatmodelDeleteCommand) Synopsis() string {
 	return "Delete a threat model from ThreatCL Cloud"
+}
+
+func (c *CloudThreatmodelDeleteCommand) AutocompleteFlags() complete.Flags {
+	return complete.Flags{
+		"-config": predictHCL,
+	}
 }
 
 func (c *CloudThreatmodelDeleteCommand) Run(args []string) int {

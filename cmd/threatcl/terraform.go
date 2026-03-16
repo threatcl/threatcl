@@ -7,6 +7,8 @@ import (
 	"os"
 	"strings"
 
+	"github.com/posener/complete"
+
 	"github.com/hashicorp/hcl/v2/gohcl"
 	"github.com/hashicorp/hcl/v2/hclwrite"
 	tf "github.com/hashicorp/terraform-json"
@@ -327,4 +329,16 @@ func (c *TerraformCommand) out(asset *spec.InformationAsset, out *os.File) error
 
 func (c *TerraformCommand) Synopsis() string {
 	return "Parse output from 'terraform show -json'"
+}
+
+func (c *TerraformCommand) AutocompleteArgs() complete.Predictor {
+	return predictJSON
+}
+
+func (c *TerraformCommand) AutocompleteFlags() complete.Flags {
+	return complete.Flags{
+		"-config":                 predictHCL,
+		"-add-to-existing":        predictHCL,
+		"-tf-collection":          predictJSON,
+	}
 }

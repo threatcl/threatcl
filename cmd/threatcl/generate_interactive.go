@@ -6,6 +6,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/posener/complete"
+
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/AlecAivazis/survey/v2/terminal"
 	"github.com/threatcl/spec"
@@ -637,6 +639,13 @@ func (c *GenerateInteractiveCommand) out(tmParser *spec.ThreatmodelParser, tm sp
 
 func (c *GenerateInteractiveCommand) Synopsis() string {
 	return "Interactively generate a HCL threatmodel"
+}
+
+func (c *GenerateInteractiveCommand) AutocompleteFlags() complete.Flags {
+	return complete.Flags{
+		"-config": predictHCL,
+		"-out":    complete.PredictFiles("*"),
+	}
 }
 
 func (c *GenerateInteractiveCommand) infoAssetExists(tm *spec.Threatmodel, iaName string) bool {

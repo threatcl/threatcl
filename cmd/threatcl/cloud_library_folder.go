@@ -8,6 +8,8 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"github.com/posener/complete"
 )
 
 // CloudLibraryFolderCommand gets a specific library folder by ID
@@ -68,6 +70,12 @@ Environment Variables:
 
 func (c *CloudLibraryFolderCommand) Synopsis() string {
 	return "Get a specific library folder by ID"
+}
+
+func (c *CloudLibraryFolderCommand) AutocompleteFlags() complete.Flags {
+	return complete.Flags{
+		"-config": predictHCL,
+	}
 }
 
 func (c *CloudLibraryFolderCommand) Run(args []string) int {

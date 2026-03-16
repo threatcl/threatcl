@@ -9,6 +9,8 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"github.com/posener/complete"
 )
 
 type CloudLoginCommand struct {
@@ -51,6 +53,12 @@ Environment Variables:
 
 func (c *CloudLoginCommand) Synopsis() string {
 	return "Authenticate with ThreatCL Cloud"
+}
+
+func (c *CloudLoginCommand) AutocompleteFlags() complete.Flags {
+	return complete.Flags{
+		"-config": predictHCL,
+	}
 }
 
 func (c *CloudLoginCommand) Run(args []string) int {

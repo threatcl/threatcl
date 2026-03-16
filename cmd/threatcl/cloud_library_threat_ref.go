@@ -5,6 +5,8 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"github.com/posener/complete"
 )
 
 // CloudLibraryThreatRefCommand gets a threat library item by reference ID
@@ -65,6 +67,12 @@ Environment Variables:
 
 func (c *CloudLibraryThreatRefCommand) Synopsis() string {
 	return "Get a threat library item by reference ID"
+}
+
+func (c *CloudLibraryThreatRefCommand) AutocompleteFlags() complete.Flags {
+	return complete.Flags{
+		"-config": predictHCL,
+	}
 }
 
 func (c *CloudLibraryThreatRefCommand) Run(args []string) int {

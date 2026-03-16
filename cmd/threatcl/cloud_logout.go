@@ -5,6 +5,8 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"github.com/posener/complete"
 )
 
 type CloudLogoutCommand struct {
@@ -49,6 +51,12 @@ Examples:
 
 func (c *CloudLogoutCommand) Synopsis() string {
 	return "Remove authentication tokens"
+}
+
+func (c *CloudLogoutCommand) AutocompleteFlags() complete.Flags {
+	return complete.Flags{
+		"-config": predictHCL,
+	}
 }
 
 func (c *CloudLogoutCommand) Run(args []string) int {

@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/posener/complete"
 	"github.com/threatcl/spec"
 )
 
@@ -62,6 +63,13 @@ Environment Variables:
 
 func (c *CloudUploadCommand) Synopsis() string {
 	return "Upload a threat model HCL file to ThreatCL Cloud"
+}
+
+func (c *CloudUploadCommand) AutocompleteArgs() complete.Predictor { return predictHCLOrJSON }
+func (c *CloudUploadCommand) AutocompleteFlags() complete.Flags {
+	return complete.Flags{
+		"-config": predictHCL,
+	}
 }
 
 func (c *CloudUploadCommand) Run(args []string) int {
