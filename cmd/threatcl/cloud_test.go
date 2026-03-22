@@ -499,6 +499,141 @@ func testCloudCreateCommand(t testing.TB, httpClient HTTPClient, keyringSvc Keyr
 	}
 }
 
+func testCloudPoliciesCommand(t testing.TB, httpClient HTTPClient, keyringSvc KeyringService, fsSvc FileSystemService) *CloudPoliciesCommand {
+	t.Helper()
+
+	global := &GlobalCmdOptions{}
+
+	return &CloudPoliciesCommand{
+		CloudCommandBase: CloudCommandBase{
+			GlobalCmdOptions: global,
+			httpClient:       httpClient,
+			keyringSvc:       keyringSvc,
+			fsSvc:            fsSvc,
+		},
+	}
+}
+
+func testCloudPolicyCommand(t testing.TB, httpClient HTTPClient, keyringSvc KeyringService, fsSvc FileSystemService) *CloudPolicyCommand {
+	t.Helper()
+
+	global := &GlobalCmdOptions{}
+
+	return &CloudPolicyCommand{
+		CloudCommandBase: CloudCommandBase{
+			GlobalCmdOptions: global,
+			httpClient:       httpClient,
+			keyringSvc:       keyringSvc,
+			fsSvc:            fsSvc,
+		},
+	}
+}
+
+func testCloudPolicyCreateCommand(t testing.TB, httpClient HTTPClient, keyringSvc KeyringService, fsSvc FileSystemService) *CloudPolicyCreateCommand {
+	t.Helper()
+
+	global := &GlobalCmdOptions{}
+
+	return &CloudPolicyCreateCommand{
+		CloudCommandBase: CloudCommandBase{
+			GlobalCmdOptions: global,
+			httpClient:       httpClient,
+			keyringSvc:       keyringSvc,
+			fsSvc:            fsSvc,
+		},
+	}
+}
+
+func testCloudPolicyUpdateCommand(t testing.TB, httpClient HTTPClient, keyringSvc KeyringService, fsSvc FileSystemService) *CloudPolicyUpdateCommand {
+	t.Helper()
+
+	global := &GlobalCmdOptions{}
+
+	return &CloudPolicyUpdateCommand{
+		CloudCommandBase: CloudCommandBase{
+			GlobalCmdOptions: global,
+			httpClient:       httpClient,
+			keyringSvc:       keyringSvc,
+			fsSvc:            fsSvc,
+		},
+	}
+}
+
+func testCloudPolicyDeleteCommand(t testing.TB, httpClient HTTPClient, keyringSvc KeyringService, fsSvc FileSystemService) *CloudPolicyDeleteCommand {
+	t.Helper()
+
+	global := &GlobalCmdOptions{}
+
+	return &CloudPolicyDeleteCommand{
+		CloudCommandBase: CloudCommandBase{
+			GlobalCmdOptions: global,
+			httpClient:       httpClient,
+			keyringSvc:       keyringSvc,
+			fsSvc:            fsSvc,
+		},
+	}
+}
+
+func testCloudPolicyValidateCommand(t testing.TB, httpClient HTTPClient, keyringSvc KeyringService, fsSvc FileSystemService) *CloudPolicyValidateCommand {
+	t.Helper()
+
+	global := &GlobalCmdOptions{}
+
+	return &CloudPolicyValidateCommand{
+		CloudCommandBase: CloudCommandBase{
+			GlobalCmdOptions: global,
+			httpClient:       httpClient,
+			keyringSvc:       keyringSvc,
+			fsSvc:            fsSvc,
+		},
+	}
+}
+
+func testCloudPolicyEvaluateCommand(t testing.TB, httpClient HTTPClient, keyringSvc KeyringService, fsSvc FileSystemService) *CloudPolicyEvaluateCommand {
+	t.Helper()
+
+	global := &GlobalCmdOptions{}
+
+	return &CloudPolicyEvaluateCommand{
+		CloudCommandBase: CloudCommandBase{
+			GlobalCmdOptions: global,
+			httpClient:       httpClient,
+			keyringSvc:       keyringSvc,
+			fsSvc:            fsSvc,
+		},
+	}
+}
+
+func testCloudPolicyEvaluationsCommand(t testing.TB, httpClient HTTPClient, keyringSvc KeyringService, fsSvc FileSystemService) *CloudPolicyEvaluationsCommand {
+	t.Helper()
+
+	global := &GlobalCmdOptions{}
+
+	return &CloudPolicyEvaluationsCommand{
+		CloudCommandBase: CloudCommandBase{
+			GlobalCmdOptions: global,
+			httpClient:       httpClient,
+			keyringSvc:       keyringSvc,
+			fsSvc:            fsSvc,
+		},
+	}
+}
+
+func testCloudPolicyEvaluationCommand(t testing.TB, httpClient HTTPClient, keyringSvc KeyringService, fsSvc FileSystemService) *CloudPolicyEvaluationCommand {
+	t.Helper()
+
+	global := &GlobalCmdOptions{}
+
+	return &CloudPolicyEvaluationCommand{
+		CloudCommandBase: CloudCommandBase{
+			GlobalCmdOptions: global,
+			httpClient:       httpClient,
+			keyringSvc:       keyringSvc,
+			fsSvc:            fsSvc,
+		},
+	}
+}
+
 // Helper function to create JSON response body
 func jsonResponse(data interface{}) string {
 	jsonData, _ := json.Marshal(data)

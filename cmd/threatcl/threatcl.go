@@ -326,6 +326,69 @@ func Run(args []string) int {
 				},
 			}, nil
 		},
+		"cloud policies": func() (cli.Command, error) {
+			return &CloudPoliciesCommand{
+				CloudCommandBase: CloudCommandBase{
+					GlobalCmdOptions: globalCmdOptions,
+				},
+			}, nil
+		},
+		"cloud policy": func() (cli.Command, error) {
+			return &CloudPolicyCommand{
+				CloudCommandBase: CloudCommandBase{
+					GlobalCmdOptions: globalCmdOptions,
+				},
+			}, nil
+		},
+		"cloud policy create": func() (cli.Command, error) {
+			return &CloudPolicyCreateCommand{
+				CloudCommandBase: CloudCommandBase{
+					GlobalCmdOptions: globalCmdOptions,
+				},
+			}, nil
+		},
+		"cloud policy update": func() (cli.Command, error) {
+			return &CloudPolicyUpdateCommand{
+				CloudCommandBase: CloudCommandBase{
+					GlobalCmdOptions: globalCmdOptions,
+				},
+			}, nil
+		},
+		"cloud policy delete": func() (cli.Command, error) {
+			return &CloudPolicyDeleteCommand{
+				CloudCommandBase: CloudCommandBase{
+					GlobalCmdOptions: globalCmdOptions,
+				},
+			}, nil
+		},
+		"cloud policy validate": func() (cli.Command, error) {
+			return &CloudPolicyValidateCommand{
+				CloudCommandBase: CloudCommandBase{
+					GlobalCmdOptions: globalCmdOptions,
+				},
+			}, nil
+		},
+		"cloud policy evaluate": func() (cli.Command, error) {
+			return &CloudPolicyEvaluateCommand{
+				CloudCommandBase: CloudCommandBase{
+					GlobalCmdOptions: globalCmdOptions,
+				},
+			}, nil
+		},
+		"cloud policy evaluations": func() (cli.Command, error) {
+			return &CloudPolicyEvaluationsCommand{
+				CloudCommandBase: CloudCommandBase{
+					GlobalCmdOptions: globalCmdOptions,
+				},
+			}, nil
+		},
+		"cloud policy evaluation": func() (cli.Command, error) {
+			return &CloudPolicyEvaluationCommand{
+				CloudCommandBase: CloudCommandBase{
+					GlobalCmdOptions: globalCmdOptions,
+				},
+			}, nil
+		},
 	}
 
 	cli := &cli.CLI{

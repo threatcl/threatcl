@@ -1,7 +1,7 @@
 package version
 
 const (
-	Version string = "0.4.3"
+	Version string = "0.4.4"
 )
 
 func GetVersion() string {
