@@ -112,7 +112,10 @@ func (c *CloudSearchCommand) Synopsis() string {
 
 func (c *CloudSearchCommand) AutocompleteFlags() complete.Flags {
 	return complete.Flags{
-		"-config": predictHCL,
+		"-config":       predictHCL,
+		"-type":         complete.PredictSet("threats", "controls"),
+		"-has-controls": complete.PredictSet("true", "false"),
+		"-implemented":  complete.PredictSet("true", "false"),
 	}
 }
 

@@ -109,6 +109,7 @@ func (c *CloudLibraryExportCommand) AutocompleteFlags() complete.Flags {
 		"-config": predictHCL,
 		"-output": complete.PredictFiles("*"),
 		"-o":      complete.PredictFiles("*"),
+		"-type":   complete.PredictSet("threats", "controls"),
 	}
 }
 

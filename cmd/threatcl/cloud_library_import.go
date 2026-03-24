@@ -113,6 +113,8 @@ func (c *CloudLibraryImportCommand) AutocompleteArgs() complete.Predictor {
 func (c *CloudLibraryImportCommand) AutocompleteFlags() complete.Flags {
 	return complete.Flags{
 		"-config": predictHCL,
+		"-mode":   complete.PredictSet("create-only", "update", "replace"),
+		"-m":      complete.PredictSet("create-only", "update", "replace"),
 	}
 }
 

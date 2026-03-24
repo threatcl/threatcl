@@ -92,6 +92,7 @@ func (c *CloudPolicyCreateCommand) AutocompleteFlags() complete.Flags {
 	return complete.Flags{
 		"-config":    predictHCL,
 		"-rego-file": complete.PredictFiles("*.rego"),
+		"-severity":  complete.PredictSet("error", "warning", "info"),
 	}
 }
 

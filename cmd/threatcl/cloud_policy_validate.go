@@ -64,7 +64,8 @@ func (c *CloudPolicyValidateCommand) AutocompleteArgs() complete.Predictor {
 
 func (c *CloudPolicyValidateCommand) AutocompleteFlags() complete.Flags {
 	return complete.Flags{
-		"-config": predictHCL,
+		"-config":    predictHCL,
+		"-rego-file": complete.PredictFiles("*.rego"),
 	}
 }
 
