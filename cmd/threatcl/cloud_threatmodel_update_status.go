@@ -66,6 +66,7 @@ func (c *CloudThreatmodelUpdateStatusCommand) Synopsis() string {
 func (c *CloudThreatmodelUpdateStatusCommand) AutocompleteFlags() complete.Flags {
 	return complete.Flags{
 		"-config": predictHCL,
+		"-status": complete.PredictSet("draft", "in_review", "approved", "archived"),
 	}
 }
 

@@ -1,3 +1,13 @@
+## 0.4.4
+
+### Mar 24, 2026
+
+CHANGES:
+
+* Improved auto-completion - thanks Kabir!
+* Added Cloud Policy commands
+* Other dependency bumps
+
 ## 0.4.3
 
 ### Feb 24, 2026

@@ -75,6 +75,7 @@ func (c *CloudLibraryFoldersCommand) Synopsis() string {
 func (c *CloudLibraryFoldersCommand) AutocompleteFlags() complete.Flags {
 	return complete.Flags{
 		"-config": predictHCL,
+		"-type":   complete.PredictSet("THREAT", "CONTROL"),
 	}
 }
 
