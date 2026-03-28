@@ -106,7 +106,7 @@ Download the latest version from [releases](https://github.com/threatcl/threatcl
 The following will add a local tap, and install `threatcl` with [Homebrew](https://brew.sh/)
 
 ```bash
-brew install threatcl/repo/threatcl
+brew install threatcl
 ```
 
 ## Run with Docker
