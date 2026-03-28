@@ -16,7 +16,7 @@ var (
 	InteractiveEditorDraft = fmt.Sprintf(`spec_version = "%s"
 
 threatmodel "threatmodel_name" {
-  description = "Describe your threat model. Refer to https://threatcl.github.io/ for the full spec"
+  description = "Describe your threat model. Refer to https://threatcl.dev/ for the full spec"
 
   author = "your_name"
 
@@ -202,7 +202,7 @@ func (c *GenerateInteractiveEditorCommand) Synopsis() string {
 
 func (c *GenerateInteractiveEditorCommand) AutocompleteFlags() complete.Flags {
 	return complete.Flags{
-		"-config":          predictHCL,
-		"-out":             complete.PredictFiles("*"),
+		"-config": predictHCL,
+		"-out":    complete.PredictFiles("*"),
 	}
 }

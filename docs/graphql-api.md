@@ -736,4 +736,4 @@ Solution: Verify the -dir path exists and contains .hcl or .json files
 
 For issues, feature requests, or questions:
 - GitHub Issues: https://github.com/threatcl/threatcl/issues
-- Documentation: https://threatcl.github.io/
+- Documentation: https://threatcl.dev/
