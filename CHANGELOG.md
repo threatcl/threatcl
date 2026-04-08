@@ -1,3 +1,11 @@
+## 0.4.5
+
+### Apr 9, 2026
+
+CHANGES:
+
+* Bumped a bunch of dependencies
+
 ## 0.4.4
 
 ### Mar 24, 2026
