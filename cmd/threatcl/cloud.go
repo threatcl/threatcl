@@ -145,6 +145,7 @@ type threatModel struct {
 	CreatedBy                 string   `json:"created_by"`
 	CreatedAt                 string   `json:"created_at"`
 	UpdatedAt                 string   `json:"updated_at"`
+	URL                       string   `json:"url,omitempty"`
 }
 
 type threatModelVersion struct {

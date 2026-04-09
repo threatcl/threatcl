@@ -1,3 +1,11 @@
+## 0.4.6
+
+### Apr 10, 2026
+
+CHANGES:
+
+* Cloud `threatcl cloud threatmodel` command now fetches model URL
+
 ## 0.4.5
 
 ### Apr 9, 2026

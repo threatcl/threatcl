@@ -286,11 +286,13 @@ func TestCloudThreatmodelFetchThreatModel(t *testing.T) {
 	httpClient := newMockHTTPClient()
 	fsSvc := newMockFileSystemService()
 
+	expectedURL := "https://app.threatcl.com/org/org123/models/threat-model-1"
 	threatModel := threatModel{
 		ID:     "tm1",
 		Name:   "Threat Model 1",
 		Slug:   "threat-model-1",
 		Status: "active",
+		URL:    expectedURL,
 	}
 	httpClient.transport.setResponse("GET", "/api/v1/org/org123/models/tm1", http.StatusOK, jsonResponse(threatModel))
 
@@ -312,6 +314,10 @@ func TestCloudThreatmodelFetchThreatModel(t *testing.T) {
 
 	if model.ID != "tm1" {
 		t.Errorf("expected model ID %q, got %q", "tm1", model.ID)
+	}
+
+	if model.URL != expectedURL {
+		t.Errorf("expected model URL %q, got %q", expectedURL, model.URL)
 	}
 }
 
@@ -365,6 +371,7 @@ func TestCloudThreatmodelDisplayThreatModel(t *testing.T) {
 		CreatedBy:                 "user123",
 		CreatedAt:                 "2024-01-01T00:00:00Z",
 		UpdatedAt:                 "2024-01-02T00:00:00Z",
+		URL:                       "https://app.threatcl.com/org/org123/models/threat-model-1",
 	}
 
 	cmd := testCloudThreatmodelCommand(t, nil, nil, nil)
@@ -388,6 +395,32 @@ func TestCloudThreatmodelDisplayThreatModel(t *testing.T) {
 
 	if !strings.Contains(out, "1.0") {
 		t.Errorf("expected '1.0' in output, got %q", out)
+	}
+
+	if !strings.Contains(out, "URL:") {
+		t.Errorf("expected 'URL:' label in output, got %q", out)
+	}
+
+	if !strings.Contains(out, "https://app.threatcl.com/org/org123/models/threat-model-1") {
+		t.Errorf("expected URL value in output, got %q", out)
+	}
+}
+
+func TestCloudThreatmodelDisplayThreatModelOmitsEmptyURL(t *testing.T) {
+	threatModel := &threatModel{
+		ID:   "tm1",
+		Name: "Threat Model 1",
+		Slug: "threat-model-1",
+	}
+
+	cmd := testCloudThreatmodelCommand(t, nil, nil, nil)
+
+	out := capturer.CaptureStdout(func() {
+		cmd.displayThreatModel(threatModel)
+	})
+
+	if strings.Contains(out, "URL:") {
+		t.Errorf("expected 'URL:' line to be omitted when URL is empty, got %q", out)
 	}
 }
 
