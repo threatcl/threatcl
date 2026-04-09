@@ -161,5 +161,8 @@ func (c *CloudThreatmodelCommand) displayThreatModel(tm *threatModel) {
 	if tm.UpdatedAt != "" {
 		fmt.Printf("Updated At:      %s\n", tm.UpdatedAt)
 	}
+	if tm.URL != "" {
+		fmt.Printf("URL:             %s\n", tm.URL)
+	}
 	fmt.Println()
 }
