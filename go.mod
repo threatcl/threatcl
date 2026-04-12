@@ -1,6 +1,6 @@
 module github.com/threatcl/threatcl
 
-go 1.25.8
+go 1.25.9
 
 require (
 	github.com/99designs/gqlgen v0.17.55

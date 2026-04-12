@@ -1,4 +1,4 @@
-FROM golang:1.25.1-alpine3.21 AS builder
+FROM golang:1.25.9-alpine3.23 AS builder
 
 RUN apk update
 RUN apk upgrade
@@ -8,7 +8,7 @@ COPY . .
 ENV CGO_ENABLED=1
 RUN go build -o threatcl ./cmd/threatcl
 
-FROM alpine:3.21 AS threatcl
+FROM alpine:3.23 AS threatcl
 
 MAINTAINER Christian Frichot <xntrik@gmail.com>
 LABEL org.opencontainers.image.authors="Christian Frichot <xntrik@gmail.com>"

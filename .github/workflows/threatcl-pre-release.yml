@@ -40,11 +40,11 @@ jobs:
         goarch: [amd64]
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Setup Go
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v6
         with:
-          go-version: '1.25.1'
+          go-version: '1.25.9'
       - name: Set BUILD_TIME
         run: echo BUILD_TIME=$(date -u +%Y%m%d-%H%M) >> ${GITHUB_ENV}
       - name: Go build
@@ -52,7 +52,7 @@ jobs:
           CGO_ENABLED=1 GOARCH=${{ matrix.goarch }} GOOS=${{ matrix.goos }} go build -o threatcl ./cmd/threatcl
           tar -zcvf threatcl-${{ env.BUILD_TIME }}-${{ matrix.goos }}-${{ matrix.goarch }}.tar.gz threatcl
       - name: Upload Linux Package
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: linux-pkg-${{ matrix.goarch }}
           path: threatcl-${{ env.BUILD_TIME }}-${{ matrix.goos }}-${{ matrix.goarch }}.tar.gz
@@ -68,11 +68,11 @@ jobs:
         goarch: [amd64, arm64]
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Setup Go
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v6
         with:
-          go-version: '1.25.1'
+          go-version: '1.25.9'
       - name: Set BUILD_TIME
         run: echo BUILD_TIME=$(date -u +%Y%m%d-%H%M) >> ${GITHUB_ENV}
       - name: Go build
@@ -80,7 +80,7 @@ jobs:
           CGO_ENABLED=1 GOARCH=${{ matrix.goarch }} GOOS=${{ matrix.goos }} go build -o threatcl ./cmd/threatcl
           tar -zcvf threatcl-${{ env.BUILD_TIME }}-${{ matrix.goos }}-${{ matrix.goarch }}.tar.gz threatcl
       - name: Upload OSX Package
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: osx-pkg-${{ matrix.goarch }}
           path: threatcl-${{ env.BUILD_TIME }}-${{ matrix.goos }}-${{ matrix.goarch }}.tar.gz
@@ -97,11 +97,11 @@ jobs:
         goarch: [amd64]
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Setup Go
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v6
         with:
-          go-version: '1.25.1'
+          go-version: '1.25.9'
       - name: Set BUILD_TIME
         shell: bash
         run: echo BUILD_TIME=$(date -u +%Y%m%d-%H%M) >> ${GITHUB_ENV}
@@ -114,7 +114,7 @@ jobs:
         run: |
           7z a threatcl-${{ env.BUILD_TIME }}-${{ matrix.goos }}-${{ matrix.goarch }}.zip threatcl.exe
       - name: Upload Windows Package
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: windows-pkg-${{ matrix.goarch }}
           path: threatcl-${{ env.BUILD_TIME }}-${{ matrix.goos }}-${{ matrix.goarch }}.zip
@@ -126,19 +126,19 @@ jobs:
     needs: [build-macos-dev, build-dev-linux, build-windows-dev]
     steps:
       - name: Download linux packages
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: linux-pkg-amd64
       - name: Download osx arm64
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: osx-pkg-arm64
       - name: Download osx amd64
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: osx-pkg-amd64
       - name: Download windows amd64
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: windows-pkg-amd64
       # - name: Automatic pre-release
@@ -177,7 +177,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v2
