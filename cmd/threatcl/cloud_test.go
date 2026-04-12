@@ -651,7 +651,7 @@ func TestGetAPIBaseURL(t *testing.T) {
 		{
 			name:     "default URL",
 			envValue: "",
-			expected: "https://api.threatcl.com",
+			expected: defaultAPIBaseURL,
 		},
 		{
 			name:     "custom URL",

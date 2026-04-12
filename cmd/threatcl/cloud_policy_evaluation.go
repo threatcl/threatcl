@@ -51,7 +51,7 @@ Options:
 Environment Variables:
 
  THREATCL_API_URL
-   Override the API base URL (default: https://api.threatcl.com)
+   Override the API base URL (default: ` + defaultAPIBaseURL + `)
 
  THREATCL_CLOUD_ORG
    Default organization ID to use when -org-id is not specified.

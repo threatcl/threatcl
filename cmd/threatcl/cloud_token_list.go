@@ -30,7 +30,7 @@ Options:
 Environment Variables:
 
  THREATCL_API_URL
-   Override the API base URL (default: https://api.threatcl.com)
+   Override the API base URL (default: ` + defaultAPIBaseURL + `)
 
 `
 	return strings.TrimSpace(helpText)

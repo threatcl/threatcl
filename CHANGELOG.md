@@ -1,3 +1,11 @@
+## 0.4.7
+
+### Apr 12, 2026
+
+CHANGES:
+
+* Adjusted default API endpoint for `threatcl cloud` commands
+
 ## 0.4.6
 
 ### Apr 10, 2026
