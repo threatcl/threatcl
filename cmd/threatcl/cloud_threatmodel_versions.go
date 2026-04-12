@@ -55,7 +55,7 @@ Options:
 Environment Variables:
 
  THREATCL_API_URL
-   Override the API base URL (default: https://api.threatcl.com)
+   Override the API base URL (default: ` + defaultAPIBaseURL + `)
    Example: THREATCL_API_URL=http://localhost:8080 threatcl cloud threatmodel versions -model-id=my-model
 
  THREATCL_CLOUD_ORG

@@ -69,6 +69,9 @@ type orgTokenData struct {
 	OrgName     string `json:"org_name,omitempty"`
 }
 
+// defaultAPIBaseURL is the default API base URL for the threatcl cloud service
+const defaultAPIBaseURL = "https://beta-api.threatcl.com"
+
 // tokenStoreVersion is the current version of the token store format
 const tokenStoreVersion = 2
 
@@ -338,7 +341,7 @@ func getAPIBaseURL(fsSvc FileSystemService) string {
 		// Remove trailing slash if present
 		return strings.TrimSuffix(apiURL, "/")
 	}
-	return "https://api.threatcl.com"
+	return defaultAPIBaseURL
 }
 
 // getToken retrieves the access token from keyring or file
