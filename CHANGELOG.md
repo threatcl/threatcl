@@ -1,3 +1,11 @@
+## 0.4.8
+
+### May 5, 2026
+
+CHANGES:
+
+* Minor adjustment to dev bootstrap dependencies
+
 ## 0.4.7
 
 ### Apr 12, 2026
