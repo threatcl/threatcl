@@ -137,6 +137,7 @@ $ threatcl
 Usage: threatcl [--version] [--help] <command> [<args>]
 
 Available commands are:
+    cloud        Interact with ThreatCL Cloud services
     dashboard    Generate markdown files from existing HCL threatmodel file(s)
     dfd          Generate Data Flow Diagram PNG or DOT files from existing HCL threatmodel file(s)
     export       Export threat models into other formats
@@ -148,6 +149,7 @@ Available commands are:
     terraform    Parse output from 'terraform show -json'
     validate     Validate existing HCL Threatmodel file(s)
     view         View existing HCL Threatmodel file(s)
+
 ```
 
 ## (Optional) Config file
@@ -177,6 +179,10 @@ default_uptime_dep_classification = "N"
 ```
 
 If you modify these attributes, you'll need to remember to provide the config file for other operations, as this may impact validation or dashboard creation.
+
+## Cloud commands
+
+Visit https://threatcl.dev/cloud/overview/ to read more about the `cloud` sub-commands.
 
 ## List and View
 

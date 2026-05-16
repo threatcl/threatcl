@@ -317,6 +317,10 @@ EOT
     flow "https" {
       from = "user"
       to = "update data"
+
+      // flows can optionally have a protocol attribute. Output rendering is
+      // controlled via the cli dfd protocol rendering flag
+      protocol = "http"
     }
 
     flow "https" {

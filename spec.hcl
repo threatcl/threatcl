@@ -1,5 +1,5 @@
 // To cater for multiple spec versions we specify this in our HCL files
-spec_version = "0.2.3"
+spec_version = "0.2.5"
 
 // You can include variables outside your threatmodel blocks
 
@@ -183,7 +183,7 @@ threatmodel "threatmodel name" {
 
   // An example of what may be in controls.hcl:
   //
-  // spec_version = "0.2.3"
+  // spec_version = "0.2.5"
   // component "control" "control_name" {
   //   description = "A control that can be used in multiple places"
   // }
@@ -206,7 +206,7 @@ EOT
   }
 
   // For more advanced importing of controls, you can also define
-  // expanded "control" "components" in an external file. This allows you to 
+  // expanded "control" "components" in an external file. This allows you to
   // define all the attributes of a control, centrally, and import
   // them.
 
@@ -216,7 +216,7 @@ EOT
   // (note, a single external file can include both expanded controls and
   // regular controls.)
 
-  // spec_version = "0.2.3"
+  // spec_version = "0.2.5"
   // component "control" "authentication_control" {
   //  description = "Multi-factor authentication required"
   //  implemented = true
@@ -278,6 +278,10 @@ EOT
     flow "https" {
       from = "user"
       to = "update data"
+
+      // flows can optionally have a protocol attribute. Output rendering is
+      // controlled via the cli dfd protocol rendering flag
+      protocol = "http"
     }
 
     flow "https" {
