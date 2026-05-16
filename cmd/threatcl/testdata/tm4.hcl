@@ -1,2 +1,2 @@
- spec_version = "0.2.3"
+ spec_version = "0.2.5"
 

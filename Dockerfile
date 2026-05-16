@@ -5,7 +5,7 @@ RUN apk upgrade
 RUN apk add --update git gcc libc-dev libgcc make
 WORKDIR /src
 COPY . .
-ENV CGO_ENABLED=1
+ENV CGO_ENABLED=0
 RUN go build -o threatcl ./cmd/threatcl
 
 FROM alpine:3.23 AS threatcl

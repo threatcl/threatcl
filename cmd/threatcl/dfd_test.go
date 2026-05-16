@@ -419,8 +419,8 @@ func TestDfdInvalidFormat(t *testing.T) {
 		t.Errorf("Code did not equal 1: %d", code)
 	}
 
-	if !strings.Contains(out, "format must be png, dot or svg") {
-		t.Errorf("%s did not contain %s", out, "format must be png, dot or svg")
+	if !strings.Contains(out, "format must be png, dot, svg, mermaid or d2") {
+		t.Errorf("%s did not contain %s", out, "format must be png, dot, svg, mermaid or d2")
 	}
 
 }
@@ -762,6 +762,281 @@ func TestDfdSuccessfulOutSvg(t *testing.T) {
 		t.Errorf("%s did not contain %s", out, fmt.Sprintf("Successfully created '%s'", outFile))
 	}
 
+}
+
+func TestDfdMermaid(t *testing.T) {
+	d, err := os.MkdirTemp("", "")
+	if err != nil {
+		t.Fatalf("Error creatig tmp dir: %s", err)
+	}
+
+	defer os.RemoveAll(d)
+
+	cmd := testDfdCommand(t)
+
+	var code int
+
+	out := capturer.CaptureStdout(func() {
+		code = cmd.Run([]string{
+			fmt.Sprintf("-outdir=%s", filepath.Join(d, "out")),
+			"-format=mermaid",
+			"./testdata/tm3.hcl",
+		})
+	})
+
+	if code != 0 {
+		t.Errorf("Code did not equal 0: %d", code)
+	}
+
+	if !strings.Contains(out, "Successfully created") {
+		t.Errorf("%s did not contain %s", out, "Successfully created")
+	}
+
+	contents, err := os.ReadFile(filepath.Join(d, "out", "tm3-tm2onelegacydfd.mermaid"))
+	if err != nil {
+		t.Fatalf("Error opening mermaid: %s", err)
+	}
+
+	if !strings.Contains(string(contents), "flowchart LR") {
+		t.Errorf("mermaid output missing 'flowchart LR': %s", contents)
+	}
+}
+
+func TestDfdMermaidStdout(t *testing.T) {
+	cmd := testDfdCommand(t)
+
+	var code int
+
+	out := capturer.CaptureStdout(func() {
+		code = cmd.Run([]string{
+			"-format=mermaid",
+			"-stdout",
+			"./testdata/tm3.hcl",
+		})
+	})
+
+	if code != 0 {
+		t.Errorf("Code did not equal 0: %d", code)
+	}
+
+	if !strings.Contains(out, "flowchart LR") {
+		t.Errorf("%s did not contain %s", out, "flowchart LR")
+	}
+}
+
+func TestDfdMermaidStdoutMultipleNoIndex(t *testing.T) {
+	cmd := testDfdCommand(t)
+
+	var code int
+
+	out := capturer.CaptureStdout(func() {
+		code = cmd.Run([]string{
+			"-format=mermaid",
+			"-stdout",
+			"./testdata/tm5.hcl",
+		})
+	})
+
+	if code != 1 {
+		t.Errorf("Code did not equal 1: %d", code)
+	}
+
+	if !strings.Contains(out, "there's too many DFDs") {
+		t.Errorf("%s did not contain %s", out, "there's too many DFDs")
+	}
+}
+
+func TestDfdSuccessfulOutMermaid(t *testing.T) {
+	d, err := os.MkdirTemp("", "")
+	if err != nil {
+		t.Fatalf("Error creatig tmp dir: %s", err)
+	}
+
+	defer os.RemoveAll(d)
+
+	cmd := testDfdCommand(t)
+
+	var code int
+
+	outFile := filepath.Join(d, "out.mermaid")
+	out := capturer.CaptureStdout(func() {
+		code = cmd.Run([]string{
+			fmt.Sprintf("-out=%s", outFile),
+			"-format=mermaid",
+			"./testdata/tm3.hcl",
+		})
+	})
+
+	if code != 0 {
+		t.Errorf("Code did not equal 0: %d", code)
+	}
+
+	if !strings.Contains(out, fmt.Sprintf("Successfully created '%s'", outFile)) {
+		t.Errorf("%s did not contain %s", out, fmt.Sprintf("Successfully created '%s'", outFile))
+	}
+}
+
+func TestDfdD2(t *testing.T) {
+	d, err := os.MkdirTemp("", "")
+	if err != nil {
+		t.Fatalf("Error creatig tmp dir: %s", err)
+	}
+
+	defer os.RemoveAll(d)
+
+	cmd := testDfdCommand(t)
+
+	var code int
+
+	out := capturer.CaptureStdout(func() {
+		code = cmd.Run([]string{
+			fmt.Sprintf("-outdir=%s", filepath.Join(d, "out")),
+			"-format=d2",
+			"./testdata/tm3.hcl",
+		})
+	})
+
+	if code != 0 {
+		t.Errorf("Code did not equal 0: %d", code)
+	}
+
+	if !strings.Contains(out, "Successfully created") {
+		t.Errorf("%s did not contain %s", out, "Successfully created")
+	}
+
+	contents, err := os.ReadFile(filepath.Join(d, "out", "tm3-tm2onelegacydfd.d2"))
+	if err != nil {
+		t.Fatalf("Error opening d2: %s", err)
+	}
+
+	if !strings.Contains(string(contents), "direction: right") {
+		t.Errorf("d2 output missing 'direction: right': %s", contents)
+	}
+}
+
+func TestDfdD2Stdout(t *testing.T) {
+	cmd := testDfdCommand(t)
+
+	var code int
+
+	out := capturer.CaptureStdout(func() {
+		code = cmd.Run([]string{
+			"-format=d2",
+			"-stdout",
+			"./testdata/tm3.hcl",
+		})
+	})
+
+	if code != 0 {
+		t.Errorf("Code did not equal 0: %d", code)
+	}
+
+	if !strings.Contains(out, "direction: right") {
+		t.Errorf("%s did not contain %s", out, "direction: right")
+	}
+}
+
+func TestDfdSuccessfulOutD2(t *testing.T) {
+	d, err := os.MkdirTemp("", "")
+	if err != nil {
+		t.Fatalf("Error creatig tmp dir: %s", err)
+	}
+
+	defer os.RemoveAll(d)
+
+	cmd := testDfdCommand(t)
+
+	var code int
+
+	outFile := filepath.Join(d, "out.d2")
+	out := capturer.CaptureStdout(func() {
+		code = cmd.Run([]string{
+			fmt.Sprintf("-out=%s", outFile),
+			"-format=d2",
+			"./testdata/tm3.hcl",
+		})
+	})
+
+	if code != 0 {
+		t.Errorf("Code did not equal 0: %d", code)
+	}
+
+	if !strings.Contains(out, fmt.Sprintf("Successfully created '%s'", outFile)) {
+		t.Errorf("%s did not contain %s", out, fmt.Sprintf("Successfully created '%s'", outFile))
+	}
+}
+
+func TestDfdProtocolStyleValid(t *testing.T) {
+	styles := []string{"label", "color", "both", "none"}
+	for _, style := range styles {
+		t.Run(style, func(t *testing.T) {
+			cmd := testDfdCommand(t)
+
+			var code int
+
+			out := capturer.CaptureStdout(func() {
+				code = cmd.Run([]string{
+					"-format=dot",
+					"-stdout",
+					fmt.Sprintf("-protocol-style=%s", style),
+					"./testdata/tm3.hcl",
+				})
+			})
+
+			if code != 0 {
+				t.Errorf("Code did not equal 0 for style=%s: %d", style, code)
+			}
+
+			if !strings.Contains(out, "digraph") {
+				t.Errorf("style=%s output missing 'digraph': %s", style, out)
+			}
+		})
+	}
+}
+
+func TestDfdProtocolStyleInvalid(t *testing.T) {
+	cmd := testDfdCommand(t)
+
+	var code int
+
+	out := capturer.CaptureStdout(func() {
+		code = cmd.Run([]string{
+			"-format=dot",
+			"-stdout",
+			"-protocol-style=bogus",
+			"./testdata/tm3.hcl",
+		})
+	})
+
+	if code != 1 {
+		t.Errorf("Code did not equal 1: %d", code)
+	}
+
+	if !strings.Contains(out, "-protocol-style must be label, color, both, or none") {
+		t.Errorf("%s did not contain expected validation error", out)
+	}
+}
+
+func TestDfdProtocolStyleDefault(t *testing.T) {
+	cmd := testDfdCommand(t)
+
+	var code int
+
+	out := capturer.CaptureStdout(func() {
+		code = cmd.Run([]string{
+			"-format=dot",
+			"-stdout",
+			"./testdata/tm3.hcl",
+		})
+	})
+
+	if code != 0 {
+		t.Errorf("Code did not equal 0: %d", code)
+	}
+
+	if !strings.Contains(out, "digraph") {
+		t.Errorf("%s did not contain 'digraph'", out)
+	}
 }
 
 func TestDfdSuccessfulOutDot(t *testing.T) {

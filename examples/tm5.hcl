@@ -1,4 +1,4 @@
- spec_version = "0.2.3"
+ spec_version = "0.2.5"
 
  threatmodel "Demonstrate control_imports" {
    imports = ["control-library/expanded-controls.hcl"]

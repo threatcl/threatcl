@@ -1,3 +1,14 @@
+## 0.4.9
+
+### May 16, 2026
+
+CHANGES:
+
+* Bumping to support `spec` 0.2.5
+* New `protocol` optional attribute inside of dfd flow's
+* New `dfd` cli flags to support optional rendering for flow protocols
+* New `dfd` cli flags to support outputting in mermaid or d2 text formats
+
 ## 0.4.8
 
 ### May 5, 2026
