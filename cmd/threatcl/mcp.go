@@ -309,7 +309,7 @@ func (c *MCPCommand) handlePngDfdViewFromTmString(ctx context.Context, req mcp.C
 	dfd := tmParser.GetWrapped().Threatmodels[0].DataFlowDiagrams[0]
 	tmName := tmParser.GetWrapped().Threatmodels[0].Name
 
-	pngBytes, err := dfd.GenerateDfdPngBytes(tmName)
+	pngBytes, err := dfd.GenerateDfdPngBytes(tmName, spec.DfdRenderOptions{})
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("error generating dfd png bytes: %s", err)), nil
 	}
@@ -625,7 +625,7 @@ func (c *MCPCommand) handleWriteDfdPngFile(ctx context.Context, req mcp.CallTool
 	tmName := tmParser.GetWrapped().Threatmodels[0].Name
 
 	// Generate the PNG bytes
-	pngBytes, err := dfd.GenerateDfdPngBytes(tmName)
+	pngBytes, err := dfd.GenerateDfdPngBytes(tmName, spec.DfdRenderOptions{})
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("error generating dfd png bytes: %s", err)), nil
 	}

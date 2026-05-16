@@ -234,7 +234,7 @@ func (c *DashboardCommand) Run(args []string) int {
 			if !c.flagNoDfd && len(tm.DataFlowDiagrams) > 0 {
 				for _, adfd := range tm.DataFlowDiagrams {
 					dfdPath := outfilePath(c.flagOutDir, fmt.Sprintf("%s_%s", tm.Name, adfd.Name), file, ".png")
-					err = adfd.GenerateDfdPng(dfdPath, tm.Name)
+					err = adfd.GenerateDfdPng(dfdPath, tm.Name, spec.DfdRenderOptions{})
 					if err != nil {
 						fmt.Printf("Error generating DFD: %s\n", err)
 						return 1
@@ -357,9 +357,9 @@ func (c *DashboardCommand) Synopsis() string {
 func (c *DashboardCommand) AutocompleteArgs() complete.Predictor { return predictHCLOrJSON }
 func (c *DashboardCommand) AutocompleteFlags() complete.Flags {
 	return complete.Flags{
-		"-config":              predictHCL,
-		"-outdir":              complete.PredictDirs("*"),
-		"-dashboard-template":  predictTpl,
+		"-config":               predictHCL,
+		"-outdir":               complete.PredictDirs("*"),
+		"-dashboard-template":   predictTpl,
 		"-threatmodel-template": predictTpl,
 	}
 }
