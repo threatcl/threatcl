@@ -32,7 +32,7 @@ jobs:
         run: echo BUILD_TIME=$(date -u +%Y%m%d-%H%M) >> ${GITHUB_ENV}
       - name: Go build
         run: |
-          CGO_ENABLED=1 GOARCH=${{ matrix.goarch }} GOOS=${{ matrix.goos }} go build -o threatcl ./cmd/threatcl
+          CGO_ENABLED=0 GOARCH=${{ matrix.goarch }} GOOS=${{ matrix.goos }} go build -o threatcl ./cmd/threatcl
           tar -zcvf threatcl-${{ env.BUILD_TIME }}-${{ matrix.goos }}-${{ matrix.goarch }}.tar.gz threatcl
       - name: Upload Linux Package
         uses: actions/upload-artifact@v7
@@ -59,7 +59,7 @@ jobs:
         run: echo BUILD_TIME=$(date -u +%Y%m%d-%H%M) >> ${GITHUB_ENV}
       - name: Go build
         run: |
-          CGO_ENABLED=1 GOARCH=${{ matrix.goarch }} GOOS=${{ matrix.goos }} go build -o threatcl ./cmd/threatcl
+          CGO_ENABLED=0 GOARCH=${{ matrix.goarch }} GOOS=${{ matrix.goos }} go build -o threatcl ./cmd/threatcl
           tar -zcvf threatcl-${{ env.BUILD_TIME }}-${{ matrix.goos }}-${{ matrix.goarch }}.tar.gz threatcl
       - name: Upload OSX Package
         uses: actions/upload-artifact@v7
@@ -88,7 +88,7 @@ jobs:
       - name: Go build
         shell: bash
         run: |
-          CGO_ENABLED=1 GOARCH=${{ matrix.goarch }} GOOS=${{ matrix.goos }} go build -o threatcl.exe ./cmd/threatcl
+          CGO_ENABLED=0 GOARCH=${{ matrix.goarch }} GOOS=${{ matrix.goos }} go build -o threatcl.exe ./cmd/threatcl
       - name: Package
         shell: bash
         run: |
