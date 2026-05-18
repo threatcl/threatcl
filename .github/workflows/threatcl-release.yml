@@ -20,7 +20,7 @@ jobs:
     strategy:
       matrix:
         goos: [linux]
-        goarch: [amd64]
+        goarch: [amd64, arm64]
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -105,10 +105,14 @@ jobs:
     runs-on: ubuntu-latest
     needs: [build-linux, build-macos, build-windows]
     steps:
-      - name: Download linux packages
+      - name: Download linux amd64
         uses: actions/download-artifact@v8
         with:
           name: linux-pkg-amd64
+      - name: Download linux arm64
+        uses: actions/download-artifact@v8
+        with:
+          name: linux-pkg-arm64
       - name: Download osx arm64
         uses: actions/download-artifact@v8
         with:
@@ -142,6 +146,7 @@ jobs:
         with:
           name: |
             linux-pkg-amd64
+            linux-pkg-arm64
             osx-pkg-arm64
             osx-pkg-amd64
             windows-pkg-amd64
