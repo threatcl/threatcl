@@ -1,3 +1,11 @@
+## 0.4.10
+
+### May 19, 2026
+
+CHANGES:
+
+* Minor bump to CI to release linux / arm binary
+
 ## 0.4.9
 
 ### May 16, 2026
