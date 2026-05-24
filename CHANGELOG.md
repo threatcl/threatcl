@@ -1,3 +1,12 @@
+## 0.4.11
+
+### May 24, 2026
+
+CHANGES:
+
+* Bumped to `spec` 0.2.6
+* Introduced `cloud export` command
+
 ## 0.4.10
 
 ### May 19, 2026

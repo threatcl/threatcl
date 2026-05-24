@@ -1,14 +1,11 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
-	"io"
 	"os"
 	"strings"
 
 	"github.com/posener/complete"
-	"github.com/threatcl/go-otm/pkg/otm"
 	"github.com/threatcl/spec"
 )
 
@@ -89,90 +86,10 @@ func (e *ExportCommand) Run(args []string) int {
 
 		}
 
-		var outputString string
-
-		switch e.flagFormat {
-		case "json":
-
-			tmJson, err := json.Marshal(AllTms)
-			if err != nil {
-				fmt.Printf("Error parsing into json: %s\n", err)
-				return 1
-			}
-
-			outputString = string(tmJson)
-
-		case "otm":
-			allOtms := []otm.OtmSchemaJson{}
-			for _, tm := range AllTms {
-				tmOtm, err := tm.RenderOtm()
-				if err != nil {
-					fmt.Printf("Error parsing into otm: %s\n", err)
-					return 1
-				}
-
-				allOtms = append(allOtms, tmOtm)
-			}
-
-			var otmJson []byte
-			var err error
-
-			if len(AllTms) > 1 {
-				otmJson, err = json.Marshal(allOtms)
-				if err != nil {
-					fmt.Printf("Error parsing into otm: %s\n", err)
-					return 1
-				}
-			} else if len(AllTms) == 1 {
-				otmJson, err = json.Marshal(allOtms[0])
-				if err != nil {
-					fmt.Printf("Error parsing into otm: %s\n", err)
-					return 1
-				}
-			}
-
-			outputString = string(otmJson)
-
-		case "hcl":
-			outputString = tmParser.HclString()
-			// allHclStrings := []string{}
-			// for _, tm := range AllTms {
-			// 	allHclStrings = append(allHclStrings, tm.HclString())
-			// }
-			//
-			// outputString = strings.Join(allHclStrings, "\n\n")
-
-		case "md":
-			tmTemplate := ""
-			if e.flagTemplate != "" {
-				var errTemplate error
-				tmTemplate, errTemplate = readTemplateFile(e.flagTemplate)
-				if errTemplate != nil {
-					fmt.Printf("Error reading template file: %s\n", errTemplate)
-					return 1
-				}
-			}
-			if tmTemplate == "" {
-				tmTemplate = spec.TmMDTemplate
-			}
-			for _, tm := range AllTms {
-				tmReader, err := tm.RenderMarkdown(tmTemplate)
-				if err != nil {
-					fmt.Printf("Error parsing into md: %s\n", err)
-					return 1
-				}
-				tmBytes, err := io.ReadAll(tmReader)
-				if err != nil {
-					fmt.Printf("Error reading markdown: %s\n", err)
-					return 1
-				}
-				outputString = outputString + string(tmBytes)
-			}
-		default:
-
-			fmt.Printf("Incorrect -format option\n")
+		outputString, err := renderThreatmodels(AllTms, tmParser, e.flagFormat, e.flagTemplate)
+		if err != nil {
+			fmt.Printf("%s\n", err)
 			return 1
-
 		}
 
 		if e.flagOutput == "" {
