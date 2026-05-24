@@ -113,7 +113,28 @@ func uploadFile(token, orgId, modelIdOrSlug, filePath string, ignoreLinkedContro
 	return nil
 }
 
-// downloadFile downloads a threat model file from the API
+// downloadFileContent downloads a threat model file from the API and returns
+// its bytes without touching the filesystem.
+func downloadFileContent(apiURL, token string, httpClient HTTPClient) ([]byte, error) {
+	resp, err := makeAuthenticatedRequest("GET", apiURL, token, nil, httpClient)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, handleAPIErrorResponse(resp)
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response body: %w", err)
+	}
+
+	return body, nil
+}
+
+// downloadFile downloads a threat model file from the API and writes it to disk
 func downloadFile(apiURL, token, downloadPath string, overwrite bool, httpClient HTTPClient, fsSvc FileSystemService) error {
 	// Check if file exists and overwrite flag is not set
 	if !overwrite {
@@ -122,24 +143,12 @@ func downloadFile(apiURL, token, downloadPath string, overwrite bool, httpClient
 		}
 	}
 
-	resp, err := makeAuthenticatedRequest("GET", apiURL, token, nil, httpClient)
+	body, err := downloadFileContent(apiURL, token, httpClient)
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		return handleAPIErrorResponse(resp)
-	}
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return fmt.Errorf("failed to read response body: %w", err)
-	}
-
-	// Write the response body to the file
-	err = fsSvc.WriteFile(downloadPath, body, 0644)
-	if err != nil {
+	if err := fsSvc.WriteFile(downloadPath, body, 0644); err != nil {
 		return fmt.Errorf("%s: %w", ErrFailedToWriteFile, err)
 	}
 
@@ -1107,4 +1116,104 @@ func validateThreatRefs(token, orgId string, refs []string, includeRecommendedCo
 	}
 
 	return found, missing, nil
+}
+
+// controlFromLibraryItem creates a new spec.Control populated from a cloud
+// control library item. Used when appending library-recommended controls to a
+// hydrated threat.
+func controlFromLibraryItem(item *controlLibraryItem) *spec.Control {
+	if item == nil {
+		return nil
+	}
+	ctrl := &spec.Control{
+		Name: item.Name,
+		Ref:  item.ReferenceID,
+	}
+	if item.CurrentVersion != nil {
+		ctrl.Description = item.CurrentVersion.Description
+		ctrl.ImplementationNotes = item.CurrentVersion.ImplementationGuidance
+		ctrl.RiskReduction = item.CurrentVersion.DefaultRiskReduction
+	}
+	return ctrl
+}
+
+// hydrateLibraryRefs fills in description/impact/stride/risk fields on threats
+// and controls in a parsed threat model from cloud library items. Local values
+// always win — only empty fields are populated. When includeRecommended is
+// true, library-recommended controls for each resolved threat ref are appended
+// to that threat's controls (deduped by ref).
+func hydrateLibraryRefs(
+	wrapped *spec.ThreatmodelWrapped,
+	threatItems map[string]*threatLibraryItem,
+	controlItems map[string]*controlLibraryItem,
+	includeRecommended bool,
+) {
+	if wrapped == nil {
+		return
+	}
+
+	for tmIdx := range wrapped.Threatmodels {
+		tm := &wrapped.Threatmodels[tmIdx]
+		for _, threat := range tm.Threats {
+			if threat == nil {
+				continue
+			}
+
+			if threat.Ref != "" {
+				if item, ok := threatItems[threat.Ref]; ok && item != nil && item.CurrentVersion != nil {
+					v := item.CurrentVersion
+					if threat.Description == "" {
+						threat.Description = v.Description
+					}
+					if len(threat.ImpactType) == 0 && len(v.Impacts) > 0 {
+						threat.ImpactType = append(threat.ImpactType, v.Impacts...)
+					}
+					if len(threat.Stride) == 0 && len(v.Stride) > 0 {
+						threat.Stride = append(threat.Stride, v.Stride...)
+					}
+
+					if includeRecommended && len(v.RecommendedControls) > 0 {
+						existing := make(map[string]bool)
+						for _, c := range threat.Controls {
+							if c != nil && c.Ref != "" {
+								existing[c.Ref] = true
+							}
+						}
+						for _, rec := range v.RecommendedControls {
+							if rec == nil || rec.ReferenceID == "" {
+								continue
+							}
+							if existing[rec.ReferenceID] {
+								continue
+							}
+							if added := controlFromLibraryItem(rec); added != nil {
+								threat.Controls = append(threat.Controls, added)
+								existing[rec.ReferenceID] = true
+							}
+						}
+					}
+				}
+			}
+
+			for _, ctrl := range threat.Controls {
+				if ctrl == nil || ctrl.Ref == "" {
+					continue
+				}
+				item, ok := controlItems[ctrl.Ref]
+				if !ok || item == nil || item.CurrentVersion == nil {
+					continue
+				}
+				v := item.CurrentVersion
+				if ctrl.Description == "" {
+					ctrl.Description = v.Description
+				}
+				if ctrl.ImplementationNotes == "" {
+					ctrl.ImplementationNotes = v.ImplementationGuidance
+				}
+				if ctrl.RiskReduction == 0 {
+					ctrl.RiskReduction = v.DefaultRiskReduction
+				}
+			}
+		}
+	}
 }

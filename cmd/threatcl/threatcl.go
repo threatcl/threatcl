@@ -199,6 +199,14 @@ func Run(args []string) int {
 				},
 			}, nil
 		},
+		"cloud export": func() (cli.Command, error) {
+			return &CloudExportCommand{
+				CloudCommandBase: CloudCommandBase{
+					GlobalCmdOptions: globalCmdOptions,
+				},
+				specCfg: cfg,
+			}, nil
+		},
 		"cloud upload": func() (cli.Command, error) {
 			return &CloudUploadCommand{
 				CloudCommandBase: CloudCommandBase{
