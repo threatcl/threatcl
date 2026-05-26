@@ -26,6 +26,12 @@ func Run(args []string) int {
 	// initialize global command flag options
 	globalCmdOptions := &GlobalCmdOptions{}
 
+	// base returns a CloudCommandBase wired with the shared global options.
+	// Used by every cloud subcommand to avoid repeating the struct literal.
+	base := func() CloudCommandBase {
+		return CloudCommandBase{GlobalCmdOptions: globalCmdOptions}
+	}
+
 	// define all the commands
 	Commands := map[string]cli.CommandFactory{
 		"dashboard": func() (cli.Command, error) {
@@ -109,293 +115,134 @@ func Run(args []string) int {
 				specCfg:          cfg,
 			}, nil
 		},
+
+		// Cloud commands. Parent/grouping commands carry no shared state;
+		// leaf commands embed base() and optionally the spec config.
 		"cloud": func() (cli.Command, error) {
 			return &CloudCommand{}, nil
 		},
 		"cloud login": func() (cli.Command, error) {
-			return &CloudLoginCommand{
-				CloudCommandBase: CloudCommandBase{
-					GlobalCmdOptions: globalCmdOptions,
-				},
-			}, nil
+			return &CloudLoginCommand{CloudCommandBase: base()}, nil
 		},
 		"cloud logout": func() (cli.Command, error) {
-			return &CloudLogoutCommand{
-				CloudCommandBase: CloudCommandBase{
-					GlobalCmdOptions: globalCmdOptions,
-				},
-			}, nil
+			return &CloudLogoutCommand{CloudCommandBase: base()}, nil
 		},
 		"cloud token": func() (cli.Command, error) {
 			return &CloudTokenCommand{}, nil
 		},
 		"cloud token list": func() (cli.Command, error) {
-			return &CloudTokenListCommand{
-				CloudCommandBase: CloudCommandBase{
-					GlobalCmdOptions: globalCmdOptions,
-				},
-			}, nil
+			return &CloudTokenListCommand{CloudCommandBase: base()}, nil
 		},
 		"cloud token add": func() (cli.Command, error) {
-			return &CloudTokenAddCommand{
-				CloudCommandBase: CloudCommandBase{
-					GlobalCmdOptions: globalCmdOptions,
-				},
-			}, nil
+			return &CloudTokenAddCommand{CloudCommandBase: base()}, nil
 		},
 		"cloud token remove": func() (cli.Command, error) {
-			return &CloudTokenRemoveCommand{
-				CloudCommandBase: CloudCommandBase{
-					GlobalCmdOptions: globalCmdOptions,
-				},
-			}, nil
+			return &CloudTokenRemoveCommand{CloudCommandBase: base()}, nil
 		},
 		"cloud token default": func() (cli.Command, error) {
-			return &CloudTokenDefaultCommand{
-				CloudCommandBase: CloudCommandBase{
-					GlobalCmdOptions: globalCmdOptions,
-				},
-			}, nil
+			return &CloudTokenDefaultCommand{CloudCommandBase: base()}, nil
 		},
 		"cloud whoami": func() (cli.Command, error) {
-			return &CloudWhoamiCommand{
-				CloudCommandBase: CloudCommandBase{
-					GlobalCmdOptions: globalCmdOptions,
-				},
-			}, nil
+			return &CloudWhoamiCommand{CloudCommandBase: base()}, nil
 		},
 		"cloud threatmodels": func() (cli.Command, error) {
-			return &CloudThreatmodelsCommand{
-				CloudCommandBase: CloudCommandBase{
-					GlobalCmdOptions: globalCmdOptions,
-				},
-			}, nil
+			return &CloudThreatmodelsCommand{CloudCommandBase: base()}, nil
 		},
 		"cloud threatmodel": func() (cli.Command, error) {
-			return &CloudThreatmodelCommand{
-				CloudCommandBase: CloudCommandBase{
-					GlobalCmdOptions: globalCmdOptions,
-				},
-			}, nil
+			return &CloudThreatmodelCommand{CloudCommandBase: base()}, nil
 		},
 		"cloud threatmodel versions": func() (cli.Command, error) {
-			return &CloudThreatmodelVersionsCommand{
-				CloudCommandBase: CloudCommandBase{
-					GlobalCmdOptions: globalCmdOptions,
-				},
-			}, nil
+			return &CloudThreatmodelVersionsCommand{CloudCommandBase: base()}, nil
 		},
 		"cloud threatmodel delete": func() (cli.Command, error) {
-			return &CloudThreatmodelDeleteCommand{
-				CloudCommandBase: CloudCommandBase{
-					GlobalCmdOptions: globalCmdOptions,
-				},
-			}, nil
+			return &CloudThreatmodelDeleteCommand{CloudCommandBase: base()}, nil
 		},
 		"cloud threatmodel update-status": func() (cli.Command, error) {
-			return &CloudThreatmodelUpdateStatusCommand{
-				CloudCommandBase: CloudCommandBase{
-					GlobalCmdOptions: globalCmdOptions,
-				},
-			}, nil
+			return &CloudThreatmodelUpdateStatusCommand{CloudCommandBase: base()}, nil
 		},
 		"cloud export": func() (cli.Command, error) {
-			return &CloudExportCommand{
-				CloudCommandBase: CloudCommandBase{
-					GlobalCmdOptions: globalCmdOptions,
-				},
-				specCfg: cfg,
-			}, nil
+			return &CloudExportCommand{CloudCommandBase: base(), specCfg: cfg}, nil
 		},
 		"cloud upload": func() (cli.Command, error) {
-			return &CloudUploadCommand{
-				CloudCommandBase: CloudCommandBase{
-					GlobalCmdOptions: globalCmdOptions,
-				},
-				specCfg: cfg,
-			}, nil
+			return &CloudUploadCommand{CloudCommandBase: base(), specCfg: cfg}, nil
 		},
 		"cloud create": func() (cli.Command, error) {
-			return &CloudCreateCommand{
-				CloudCommandBase: CloudCommandBase{
-					GlobalCmdOptions: globalCmdOptions,
-				},
-				specCfg: cfg,
-			}, nil
+			return &CloudCreateCommand{CloudCommandBase: base(), specCfg: cfg}, nil
 		},
 		"cloud search": func() (cli.Command, error) {
-			return &CloudSearchCommand{
-				CloudCommandBase: CloudCommandBase{
-					GlobalCmdOptions: globalCmdOptions,
-				},
-			}, nil
+			return &CloudSearchCommand{CloudCommandBase: base()}, nil
 		},
 		"cloud validate": func() (cli.Command, error) {
-			return &CloudValidateCommand{
-				CloudCommandBase: CloudCommandBase{
-					GlobalCmdOptions: globalCmdOptions,
-				},
-				specCfg: cfg,
-			}, nil
+			return &CloudValidateCommand{CloudCommandBase: base(), specCfg: cfg}, nil
 		},
 		"cloud push": func() (cli.Command, error) {
-			return &CloudPushCommand{
-				CloudCommandBase: CloudCommandBase{
-					GlobalCmdOptions: globalCmdOptions,
-				},
-				specCfg: cfg,
-			}, nil
+			return &CloudPushCommand{CloudCommandBase: base(), specCfg: cfg}, nil
 		},
 		"cloud view": func() (cli.Command, error) {
-			return &CloudViewCommand{
-				CloudCommandBase: CloudCommandBase{
-					GlobalCmdOptions: globalCmdOptions,
-				},
-				specCfg: cfg,
-			}, nil
+			return &CloudViewCommand{CloudCommandBase: base(), specCfg: cfg}, nil
 		},
 		"cloud library": func() (cli.Command, error) {
 			return &CloudLibraryCommand{}, nil
 		},
 		"cloud library folders": func() (cli.Command, error) {
-			return &CloudLibraryFoldersCommand{
-				CloudCommandBase: CloudCommandBase{
-					GlobalCmdOptions: globalCmdOptions,
-				},
-			}, nil
+			return &CloudLibraryFoldersCommand{CloudCommandBase: base()}, nil
 		},
 		"cloud library folder": func() (cli.Command, error) {
-			return &CloudLibraryFolderCommand{
-				CloudCommandBase: CloudCommandBase{
-					GlobalCmdOptions: globalCmdOptions,
-				},
-			}, nil
+			return &CloudLibraryFolderCommand{CloudCommandBase: base()}, nil
 		},
 		"cloud library threats": func() (cli.Command, error) {
-			return &CloudLibraryThreatsCommand{
-				CloudCommandBase: CloudCommandBase{
-					GlobalCmdOptions: globalCmdOptions,
-				},
-			}, nil
+			return &CloudLibraryThreatsCommand{CloudCommandBase: base()}, nil
 		},
 		"cloud library threat": func() (cli.Command, error) {
-			return &CloudLibraryThreatCommand{
-				CloudCommandBase: CloudCommandBase{
-					GlobalCmdOptions: globalCmdOptions,
-				},
-			}, nil
+			return &CloudLibraryThreatCommand{CloudCommandBase: base()}, nil
 		},
 		"cloud library threat-ref": func() (cli.Command, error) {
-			return &CloudLibraryThreatRefCommand{
-				CloudCommandBase: CloudCommandBase{
-					GlobalCmdOptions: globalCmdOptions,
-				},
-			}, nil
+			return &CloudLibraryThreatRefCommand{CloudCommandBase: base()}, nil
 		},
 		"cloud library controls": func() (cli.Command, error) {
-			return &CloudLibraryControlsCommand{
-				CloudCommandBase: CloudCommandBase{
-					GlobalCmdOptions: globalCmdOptions,
-				},
-			}, nil
+			return &CloudLibraryControlsCommand{CloudCommandBase: base()}, nil
 		},
 		"cloud library control": func() (cli.Command, error) {
-			return &CloudLibraryControlCommand{
-				CloudCommandBase: CloudCommandBase{
-					GlobalCmdOptions: globalCmdOptions,
-				},
-			}, nil
+			return &CloudLibraryControlCommand{CloudCommandBase: base()}, nil
 		},
 		"cloud library control-ref": func() (cli.Command, error) {
-			return &CloudLibraryControlRefCommand{
-				CloudCommandBase: CloudCommandBase{
-					GlobalCmdOptions: globalCmdOptions,
-				},
-			}, nil
+			return &CloudLibraryControlRefCommand{CloudCommandBase: base()}, nil
 		},
 		"cloud library stats": func() (cli.Command, error) {
-			return &CloudLibraryStatsCommand{
-				CloudCommandBase: CloudCommandBase{
-					GlobalCmdOptions: globalCmdOptions,
-				},
-			}, nil
+			return &CloudLibraryStatsCommand{CloudCommandBase: base()}, nil
 		},
 		"cloud library export": func() (cli.Command, error) {
-			return &CloudLibraryExportCommand{
-				CloudCommandBase: CloudCommandBase{
-					GlobalCmdOptions: globalCmdOptions,
-				},
-			}, nil
+			return &CloudLibraryExportCommand{CloudCommandBase: base()}, nil
 		},
 		"cloud library import": func() (cli.Command, error) {
-			return &CloudLibraryImportCommand{
-				CloudCommandBase: CloudCommandBase{
-					GlobalCmdOptions: globalCmdOptions,
-				},
-			}, nil
+			return &CloudLibraryImportCommand{CloudCommandBase: base()}, nil
 		},
 		"cloud policies": func() (cli.Command, error) {
-			return &CloudPoliciesCommand{
-				CloudCommandBase: CloudCommandBase{
-					GlobalCmdOptions: globalCmdOptions,
-				},
-			}, nil
+			return &CloudPoliciesCommand{CloudCommandBase: base()}, nil
 		},
 		"cloud policy": func() (cli.Command, error) {
-			return &CloudPolicyCommand{
-				CloudCommandBase: CloudCommandBase{
-					GlobalCmdOptions: globalCmdOptions,
-				},
-			}, nil
+			return &CloudPolicyCommand{CloudCommandBase: base()}, nil
 		},
 		"cloud policy create": func() (cli.Command, error) {
-			return &CloudPolicyCreateCommand{
-				CloudCommandBase: CloudCommandBase{
-					GlobalCmdOptions: globalCmdOptions,
-				},
-			}, nil
+			return &CloudPolicyCreateCommand{CloudCommandBase: base()}, nil
 		},
 		"cloud policy update": func() (cli.Command, error) {
-			return &CloudPolicyUpdateCommand{
-				CloudCommandBase: CloudCommandBase{
-					GlobalCmdOptions: globalCmdOptions,
-				},
-			}, nil
+			return &CloudPolicyUpdateCommand{CloudCommandBase: base()}, nil
 		},
 		"cloud policy delete": func() (cli.Command, error) {
-			return &CloudPolicyDeleteCommand{
-				CloudCommandBase: CloudCommandBase{
-					GlobalCmdOptions: globalCmdOptions,
-				},
-			}, nil
+			return &CloudPolicyDeleteCommand{CloudCommandBase: base()}, nil
 		},
 		"cloud policy validate": func() (cli.Command, error) {
-			return &CloudPolicyValidateCommand{
-				CloudCommandBase: CloudCommandBase{
-					GlobalCmdOptions: globalCmdOptions,
-				},
-			}, nil
+			return &CloudPolicyValidateCommand{CloudCommandBase: base()}, nil
 		},
 		"cloud policy evaluate": func() (cli.Command, error) {
-			return &CloudPolicyEvaluateCommand{
-				CloudCommandBase: CloudCommandBase{
-					GlobalCmdOptions: globalCmdOptions,
-				},
-			}, nil
+			return &CloudPolicyEvaluateCommand{CloudCommandBase: base()}, nil
 		},
 		"cloud policy evaluations": func() (cli.Command, error) {
-			return &CloudPolicyEvaluationsCommand{
-				CloudCommandBase: CloudCommandBase{
-					GlobalCmdOptions: globalCmdOptions,
-				},
-			}, nil
+			return &CloudPolicyEvaluationsCommand{CloudCommandBase: base()}, nil
 		},
 		"cloud policy evaluation": func() (cli.Command, error) {
-			return &CloudPolicyEvaluationCommand{
-				CloudCommandBase: CloudCommandBase{
-					GlobalCmdOptions: globalCmdOptions,
-				},
-			}, nil
+			return &CloudPolicyEvaluationCommand{CloudCommandBase: base()}, nil
 		},
 	}
 
