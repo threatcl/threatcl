@@ -26,13 +26,7 @@ Options:
 
  -config=<file>
    Optional config file
-
-Environment Variables:
-
- THREATCL_API_URL
-   Override the API base URL (default: ` + defaultAPIBaseURL + `)
-
-`
+` + cloudEnvVarHelpNoOrg()
 	return strings.TrimSpace(helpText)
 }
 

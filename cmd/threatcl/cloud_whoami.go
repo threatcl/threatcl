@@ -29,20 +29,7 @@ Options:
 
  -config=<file>
    Optional config file
-
-Environment Variables:
-
- THREATCL_API_URL
-   Override the API base URL (default: ` + defaultAPIBaseURL + `)
-
- THREATCL_CLOUD_ORG
-   Default organization ID (used when -org-id is not specified)
-
- THREATCL_API_TOKEN
-   Provide an API token directly, bypassing the local token store.
-   Useful for CI/CD pipelines and automation.
-
-`
+` + cloudEnvVarHelp()
 	return strings.TrimSpace(helpText)
 }
 

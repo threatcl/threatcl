@@ -41,21 +41,7 @@ Options:
  -org-id=<orgId>
    Optional organization ID. If not provided, uses THREATCL_CLOUD_ORG env var
    or the first organization from your user profile.
-
-Environment Variables:
-
- THREATCL_API_URL
-   Override the API base URL (default: ` + defaultAPIBaseURL + `)
-   Example: THREATCL_API_URL=http://localhost:8080 threatcl cloud threatmodel update-status -model-id=my-model -status=approved
-
- THREATCL_CLOUD_ORG
-   Default organization ID to use when -org-id is not specified.
-
- THREATCL_API_TOKEN
-   Provide an API token directly, bypassing the local token store.
-   Useful for CI/CD pipelines and automation.
-
-`
+` + cloudEnvVarHelp()
 	return strings.TrimSpace(helpText)
 }
 

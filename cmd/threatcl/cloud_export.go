@@ -14,15 +14,15 @@ import (
 
 type CloudExportCommand struct {
 	CloudCommandBase
-	specCfg                 *spec.ThreatmodelSpecConfig
-	flagOrgId               string
-	flagModelId             string
-	flagFormat              string
-	flagOutput              string
-	flagTemplate            string
-	flagOverwrite           bool
-	flagKeepBackend         bool
-	flagIncludeRecommended  bool
+	specCfg                *spec.ThreatmodelSpecConfig
+	flagOrgId              string
+	flagModelId            string
+	flagFormat             string
+	flagOutput             string
+	flagTemplate           string
+	flagOverwrite          bool
+	flagKeepBackend        bool
+	flagIncludeRecommended bool
 }
 
 func (c *CloudExportCommand) Help() string {
@@ -70,18 +70,7 @@ Options:
 
  -config=<file>
    Optional config file.
-
-Environment Variables:
-
- THREATCL_API_URL
-   Override the API base URL (default: ` + defaultAPIBaseURL + `)
-
- THREATCL_CLOUD_ORG
-   Default organization ID to use when -org-id is not specified.
-
- THREATCL_API_TOKEN
-   Provide an API token directly, bypassing the local token store.
-`
+` + cloudEnvVarHelp()
 	return strings.TrimSpace(helpText)
 }
 
