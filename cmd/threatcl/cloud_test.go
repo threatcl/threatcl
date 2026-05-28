@@ -31,6 +31,7 @@ type mockRoundTripper struct {
 	responseSequence map[string][]mockResponseData
 	errors           map[string]error
 	callCounts       map[string]int
+	requestBodies    map[string][]string
 }
 
 func newMockRoundTripper() *mockRoundTripper {
@@ -40,6 +41,7 @@ func newMockRoundTripper() *mockRoundTripper {
 		responseSequence: make(map[string][]mockResponseData),
 		errors:           make(map[string]error),
 		callCounts:       make(map[string]int),
+		requestBodies:    make(map[string][]string),
 	}
 }
 
@@ -50,6 +52,13 @@ func (m *mockRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) 
 	key := fmt.Sprintf("%s %s", req.Method, req.URL.Path)
 	callIndex := m.callCounts[key]
 	m.callCounts[key]++
+
+	// Capture the request body so tests can assert on the outgoing payload
+	if req.Body != nil {
+		if body, err := io.ReadAll(req.Body); err == nil {
+			m.requestBodies[key] = append(m.requestBodies[key], string(body))
+		}
+	}
 
 	// Check for errors first
 	if err, ok := m.errors[key]; ok {
@@ -112,6 +121,16 @@ func (m *mockRoundTripper) setResponseSequence(method, path string, responses []
 
 	key := fmt.Sprintf("%s %s", method, path)
 	m.responseSequence[key] = responses
+}
+
+// getRequestBodies returns the captured request bodies for a given method and path,
+// in the order they were received
+func (m *mockRoundTripper) getRequestBodies(method, path string) []string {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	key := fmt.Sprintf("%s %s", method, path)
+	return m.requestBodies[key]
 }
 
 // setError sets a mock error for a given method and path

@@ -21,6 +21,7 @@ type CloudSearchCommand struct {
 	flagHasControls   string
 	flagImplemented   string
 	flagThreatModelId string
+	flagTerm          string
 }
 
 func (c *CloudSearchCommand) Help() string {
@@ -54,6 +55,9 @@ Options:
    Filter controls by implementation status.
    (Only valid when -type=controls)
 
+ -term=<value>
+   Free-text search on name and description (case-insensitive).
+
  -threatmodel-id=<uuid>
    Scope search to a specific threat model.
 
@@ -83,6 +87,12 @@ Examples:
 
  # Search implemented controls only
  threatcl cloud search -type controls -implemented=true
+
+ # Free-text search threats by name or description
+ threatcl cloud search -type threats -term "sql injection"
+
+ # Free-text search implemented controls
+ threatcl cloud search -type controls -term "encryption" -implemented=true
 
  # Search within a specific threat model
  threatcl cloud search -threatmodel-id "550e8400-e29b-41d4-a716-446655440000"
@@ -114,6 +124,7 @@ func (c *CloudSearchCommand) Run(args []string) int {
 	flagSet.StringVar(&c.flagHasControls, "has-controls", "", "Filter threats by whether they have controls (true/false)")
 	flagSet.StringVar(&c.flagImplemented, "implemented", "", "Filter controls by implementation status (true/false)")
 	flagSet.StringVar(&c.flagThreatModelId, "threatmodel-id", "", "Scope search to a specific threat model")
+	flagSet.StringVar(&c.flagTerm, "term", "", "Free-text search on name and description (case-insensitive)")
 	flagSet.StringVar(&c.flagOrgId, "org-id", "", "Organization ID (optional)")
 	flagSet.Parse(args)
 
@@ -396,6 +407,7 @@ type threatSearchFilter struct {
 	Stride        []string
 	HasControls   *bool
 	ThreatModelId string
+	Search        string
 }
 
 // searchThreatsGraphQL searches for threats using GraphQL
@@ -436,6 +448,9 @@ func (c *CloudSearchCommand) searchThreatsGraphQL(token, orgId string, filter th
 	}
 	if filter.ThreatModelId != "" {
 		filterMap["threatModelId"] = filter.ThreatModelId
+	}
+	if filter.Search != "" {
+		filterMap["search"] = filter.Search
 	}
 
 	reqBody := graphQLRequest{
@@ -485,6 +500,7 @@ func (c *CloudSearchCommand) searchThreatsGraphQL(token, orgId string, filter th
 type controlSearchFilter struct {
 	Implemented   *bool
 	ThreatModelId string
+	Search        string
 }
 
 // searchControlsGraphQL searches for controls using GraphQL
@@ -512,6 +528,9 @@ func (c *CloudSearchCommand) searchControlsGraphQL(token, orgId string, filter c
 	}
 	if filter.ThreatModelId != "" {
 		filterMap["threatModelId"] = filter.ThreatModelId
+	}
+	if filter.Search != "" {
+		filterMap["search"] = filter.Search
 	}
 
 	reqBody := graphQLRequest{
@@ -564,6 +583,7 @@ func (c *CloudSearchCommand) searchAndDisplayThreats(token string, orgIds []stri
 		Stride:        strideCategories,
 		HasControls:   hasControls,
 		ThreatModelId: c.flagThreatModelId,
+		Search:        c.flagTerm,
 	}
 
 	var allThreats []graphQLThreat
@@ -590,6 +610,7 @@ func (c *CloudSearchCommand) searchAndDisplayControls(token string, orgIds []str
 	filter := controlSearchFilter{
 		Implemented:   implemented,
 		ThreatModelId: c.flagThreatModelId,
+		Search:        c.flagTerm,
 	}
 
 	var allControls []graphQLControl
@@ -629,6 +650,9 @@ func (c *CloudSearchCommand) buildFilterDescription() string {
 	}
 	if c.flagThreatModelId != "" {
 		parts = append(parts, fmt.Sprintf("threatmodel-id: %s", c.flagThreatModelId))
+	}
+	if c.flagTerm != "" {
+		parts = append(parts, fmt.Sprintf("term: %s", c.flagTerm))
 	}
 
 	if len(parts) == 0 {
