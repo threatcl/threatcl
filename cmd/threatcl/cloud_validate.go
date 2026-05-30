@@ -12,7 +12,8 @@ import (
 
 type CloudValidateCommand struct {
 	CloudCommandBase
-	specCfg *spec.ThreatmodelSpecConfig
+	specCfg  *spec.ThreatmodelSpecConfig
+	flagDiff bool
 }
 
 func (c *CloudValidateCommand) Help() string {
@@ -34,10 +35,19 @@ Options:
  -config=<file>
    Optional config file
 
+ -diff
+   When the local file does not match the latest cloud version of the
+   threat model, download the cloud version and print a semantic summary
+   of the differences followed by a unified (git-style) text diff.
+
 Examples:
 
  # Validate a threat model file
  threatcl cloud validate my-threatmodel.hcl
+
+ # Validate and show a diff against the latest cloud version
+ threatcl cloud validate -diff my-threatmodel.hcl
+
 ` + cloudEnvVarHelpNoOrg()
 	return strings.TrimSpace(helpText)
 }
@@ -50,11 +60,13 @@ func (c *CloudValidateCommand) AutocompleteArgs() complete.Predictor { return pr
 func (c *CloudValidateCommand) AutocompleteFlags() complete.Flags {
 	return complete.Flags{
 		"-config": predictHCL,
+		"-diff":   complete.PredictNothing,
 	}
 }
 
 func (c *CloudValidateCommand) Run(args []string) int {
 	flagSet := c.GetFlagset("cloud validate")
+	flagSet.BoolVar(&c.flagDiff, "diff", false, "Show a semantic + unified diff when the local file doesn't match the latest cloud version")
 	flagSet.Parse(args)
 
 	// Get remaining args (the file path)
@@ -94,10 +106,22 @@ func (c *CloudValidateCommand) Run(args []string) int {
 
 	if tmFileMatchesVersion != "" {
 		fmt.Printf("✓ Local Threat model file matches the latest version of the cloud threat model at org-id: %s, model-id: %s, version: %s\n", orgValid, tmNameValid, tmFileMatchesVersion)
+		if c.flagDiff {
+			fmt.Println("  (-diff: local file already matches the latest version; nothing to diff)")
+		}
 	} else if tmNameValid != "" {
 		fmt.Printf("✓ Local Threat model file (org-id: %s, model-id: %s) matches a cloud threat model, but doesn't match the latest version\nConsider running 'threatcl cloud push' to update the local file to the latest version.\n", orgValid, tmNameValid)
+		if c.flagDiff {
+			if diffErr := runCloudValidateDiff(token, orgValid, tmNameValid, filePath, wrapped, httpClient, fsSvc, c.specCfg); diffErr != nil {
+				// Non-fatal: the validation result itself is unchanged.
+				fmt.Fprintf(os.Stderr, "⚠ Warning: could not produce diff: %s\n", diffErr)
+			}
+		}
 	} else if orgValid != "" {
 		fmt.Println("✓ Organization is valid")
+		if c.flagDiff {
+			fmt.Println("  (-diff: no 'threatmodel' slug in the backend block — nothing to diff against)")
+		}
 	} else {
 		fmt.Println("Invalid organization")
 		return 1
