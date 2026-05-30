@@ -1,3 +1,14 @@
+## 0.4.12
+
+### May 30, 2026
+
+CHANGES:
+
+* Bumped to `spec` 0.2.6 - now supports information_asset ref attributes
+* Tidied up some of the cloud commands
+* Introduced new cloud library commands associated with asset refs
+* Adjusted other cloud commands to support as well
+
 ## 0.4.11
 
 ### May 24, 2026
