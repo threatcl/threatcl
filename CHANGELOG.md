@@ -8,6 +8,7 @@ CHANGES:
 * Tidied up some of the cloud commands
 * Introduced new cloud library commands associated with asset refs
 * Adjusted other cloud commands to support as well
+* Added `-diff` flag to `cloud validate`
 
 ## 0.4.11
 
