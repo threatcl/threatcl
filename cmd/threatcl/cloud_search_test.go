@@ -66,6 +66,26 @@ func TestCloudSearchRun(t *testing.T) {
 		}
 	}`
 
+	controlsResponse := `{
+		"data": {
+			"controls": [
+				{
+					"id": "control-1",
+					"name": "Encryption at rest",
+					"description": "Encrypt sensitive data at rest",
+					"implemented": true,
+					"threatModel": {
+						"id": "tm-1",
+						"name": "Web Application",
+						"description": "Main web app threat model",
+						"status": "active",
+						"version": "1.0.0"
+					}
+				}
+			]
+		}
+	}`
+
 	tests := []struct {
 		name         string
 		args         []string
@@ -136,6 +156,30 @@ func TestCloudSearchRun(t *testing.T) {
 			threatResp:   threatsResponse,
 			expectedCode: 0,
 			expectedOut:  "SQL Injection",
+		},
+		{
+			name:         "successful threat search with free-text term filter",
+			args:         []string{"-term", "sql injection"},
+			token:        "valid-token",
+			useSequence:  true,
+			orgsStatus:   http.StatusOK,
+			orgsResponse: orgsResponse,
+			threatStatus: http.StatusOK,
+			threatResp:   threatsResponse,
+			expectedCode: 0,
+			expectedOut:  "term: sql injection",
+		},
+		{
+			name:         "successful control search with free-text term filter",
+			args:         []string{"-type", "controls", "-term", "encryption", "-implemented", "true"},
+			token:        "valid-token",
+			useSequence:  true,
+			orgsStatus:   http.StatusOK,
+			orgsResponse: orgsResponse,
+			threatStatus: http.StatusOK,
+			threatResp:   controlsResponse,
+			expectedCode: 0,
+			expectedOut:  "term: encryption",
 		},
 		{
 			name:         "invalid impacts value",
@@ -561,6 +605,91 @@ func TestCloudSearchSearchControlsGraphQL(t *testing.T) {
 	}
 }
 
+func TestCloudSearchFilterConstruction(t *testing.T) {
+	threatsResp := `{"data": {"threats": []}}`
+	controlsResp := `{"data": {"controls": []}}`
+
+	t.Run("threat filter includes search when set", func(t *testing.T) {
+		httpClient := newMockHTTPClient()
+		fsSvc := newMockFileSystemService()
+		httpClient.transport.setResponse("POST", "/api/v1/graphql", http.StatusOK, threatsResp)
+
+		cmd := testCloudSearchCommand(t, httpClient, nil, fsSvc)
+		filter := threatSearchFilter{Search: "sql injection"}
+		if _, err := cmd.searchThreatsGraphQL("test-token", "org-123", filter, httpClient, fsSvc); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		bodies := httpClient.transport.getRequestBodies("POST", "/api/v1/graphql")
+		if len(bodies) != 1 {
+			t.Fatalf("expected 1 request, got %d", len(bodies))
+		}
+		if !strings.Contains(bodies[0], `"search":"sql injection"`) {
+			t.Errorf("expected request body to contain search filter, got %q", bodies[0])
+		}
+	})
+
+	t.Run("threat filter omits search when empty", func(t *testing.T) {
+		httpClient := newMockHTTPClient()
+		fsSvc := newMockFileSystemService()
+		httpClient.transport.setResponse("POST", "/api/v1/graphql", http.StatusOK, threatsResp)
+
+		cmd := testCloudSearchCommand(t, httpClient, nil, fsSvc)
+		filter := threatSearchFilter{Impacts: "Integrity"}
+		if _, err := cmd.searchThreatsGraphQL("test-token", "org-123", filter, httpClient, fsSvc); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		bodies := httpClient.transport.getRequestBodies("POST", "/api/v1/graphql")
+		if len(bodies) != 1 {
+			t.Fatalf("expected 1 request, got %d", len(bodies))
+		}
+		if strings.Contains(bodies[0], `"search"`) {
+			t.Errorf("expected request body to omit search filter, got %q", bodies[0])
+		}
+	})
+
+	t.Run("control filter includes search when set", func(t *testing.T) {
+		httpClient := newMockHTTPClient()
+		fsSvc := newMockFileSystemService()
+		httpClient.transport.setResponse("POST", "/api/v1/graphql", http.StatusOK, controlsResp)
+
+		cmd := testCloudSearchCommand(t, httpClient, nil, fsSvc)
+		filter := controlSearchFilter{Search: "encryption"}
+		if _, err := cmd.searchControlsGraphQL("test-token", "org-123", filter, httpClient, fsSvc); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		bodies := httpClient.transport.getRequestBodies("POST", "/api/v1/graphql")
+		if len(bodies) != 1 {
+			t.Fatalf("expected 1 request, got %d", len(bodies))
+		}
+		if !strings.Contains(bodies[0], `"search":"encryption"`) {
+			t.Errorf("expected request body to contain search filter, got %q", bodies[0])
+		}
+	})
+
+	t.Run("control filter omits search when empty", func(t *testing.T) {
+		httpClient := newMockHTTPClient()
+		fsSvc := newMockFileSystemService()
+		httpClient.transport.setResponse("POST", "/api/v1/graphql", http.StatusOK, controlsResp)
+
+		cmd := testCloudSearchCommand(t, httpClient, nil, fsSvc)
+		filter := controlSearchFilter{}
+		if _, err := cmd.searchControlsGraphQL("test-token", "org-123", filter, httpClient, fsSvc); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		bodies := httpClient.transport.getRequestBodies("POST", "/api/v1/graphql")
+		if len(bodies) != 1 {
+			t.Fatalf("expected 1 request, got %d", len(bodies))
+		}
+		if strings.Contains(bodies[0], `"search"`) {
+			t.Errorf("expected request body to omit search filter, got %q", bodies[0])
+		}
+	})
+}
+
 func TestCloudSearchDisplayThreatResults(t *testing.T) {
 	threats := []graphQLThreat{
 		{
@@ -703,6 +832,7 @@ func TestCloudSearchHelp(t *testing.T) {
 		"-has-controls",
 		"-implemented",
 		"-threatmodel-id",
+		"-term",
 		"-org-id",
 		"Integrity",
 		"Confidentiality",

@@ -1,5 +1,5 @@
 // To cater for multiple spec versions we specify this in our HCL files
-spec_version = "0.2.6"
+spec_version = "0.2.7"
 
 // You can include variables outside your threatmodel blocks
 
@@ -183,7 +183,7 @@ threatmodel "threatmodel name" {
 
   // An example of what may be in controls.hcl:
   //
-  // spec_version = "0.2.6"
+  // spec_version = "0.2.7"
   // component "control" "control_name" {
   //   description = "A control that can be used in multiple places"
   // }
@@ -216,7 +216,7 @@ EOT
   // (note, a single external file can include both expanded controls and
   // regular controls.)
 
-  // spec_version = "0.2.6"
+  // spec_version = "0.2.7"
   // component "control" "authentication_control" {
   //  description = "Multi-factor authentication required"
   //  implemented = true

@@ -15,7 +15,7 @@ func (c *CloudLibraryCommand) Help() string {
 	helpText := `
 Usage: threatcl cloud library <subcommand> [options]
 
-  Query threat and control libraries from ThreatCL Cloud.
+  Query threat, control, and information asset libraries from ThreatCL Cloud.
 
 Run 'threatcl cloud library <subcommand> -help' for more information on a specific subcommand.
 `
@@ -23,7 +23,7 @@ Run 'threatcl cloud library <subcommand> -help' for more information on a specif
 }
 
 func (c *CloudLibraryCommand) Synopsis() string {
-	return "Query threat and control libraries"
+	return "Query threat, control, and information asset libraries"
 }
 
 func (c *CloudLibraryCommand) Run(args []string) int {
@@ -102,6 +102,30 @@ type controlLibraryVersion struct {
 	DefaultRiskReduction   int              `json:"defaultRiskReduction"`
 }
 
+// Information Asset Library types
+type informationAssetLibraryItem struct {
+	ID             string                           `json:"id"`
+	ReferenceID    string                           `json:"referenceId"`
+	Name           string                           `json:"name"`
+	Status         string                           `json:"status"`
+	CurrentVersion *informationAssetLibraryVersion  `json:"currentVersion"`
+	Versions       []informationAssetLibraryVersion `json:"versions"`
+	UsageCount     int                              `json:"usageCount"`
+	UsedByModels   []libraryUsedByModel             `json:"usedByModels"`
+}
+
+type informationAssetLibraryVersion struct {
+	Version                   string `json:"version"`
+	VersionNumber             int    `json:"versionNumber"`
+	IsPublished               bool   `json:"isPublished"`
+	Name                      string `json:"name"`
+	Description               string `json:"description"`
+	InformationClassification string `json:"informationClassification"`
+	Source                    string `json:"source"`
+	ChangeSummary             string `json:"changeSummary"`
+	CreatedAt                 string `json:"createdAt"`
+}
+
 // libraryItemRef represents a reference to a library item (threat or control)
 type libraryItemRef struct {
 	ReferenceID string `json:"referenceId"`
@@ -115,12 +139,15 @@ type libraryUsedByModel struct {
 
 // Library stats types
 type libraryUsageStats struct {
-	TotalThreatItems      int               `json:"totalThreatItems"`
-	TotalControlItems     int               `json:"totalControlItems"`
-	PublishedThreatItems  int               `json:"publishedThreatItems"`
-	PublishedControlItems int               `json:"publishedControlItems"`
-	MostUsedThreats       []libraryStatItem `json:"mostUsedThreats"`
-	MostUsedControls      []libraryStatItem `json:"mostUsedControls"`
+	TotalThreatItems               int               `json:"totalThreatItems"`
+	TotalControlItems              int               `json:"totalControlItems"`
+	TotalInformationAssetItems     int               `json:"totalInformationAssetItems"`
+	PublishedThreatItems           int               `json:"publishedThreatItems"`
+	PublishedControlItems          int               `json:"publishedControlItems"`
+	PublishedInformationAssetItems int               `json:"publishedInformationAssetItems"`
+	MostUsedThreats                []libraryStatItem `json:"mostUsedThreats"`
+	MostUsedControls               []libraryStatItem `json:"mostUsedControls"`
+	MostUsedInformationAssets      []libraryStatItem `json:"mostUsedInformationAssets"`
 }
 
 type libraryStatItem struct {
@@ -141,6 +168,7 @@ var validLibraryStatuses = map[string]bool{
 var validFolderTypes = map[string]bool{
 	"THREAT":  true,
 	"CONTROL": true,
+	"ASSET":   true,
 }
 
 // validateLibraryStatus checks if a status value is valid

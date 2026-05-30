@@ -683,6 +683,31 @@ func extractThreatRefs(wrapped *spec.ThreatmodelWrapped) []string {
 	return refs
 }
 
+// extractInformationAssetRefs extracts all unique information_asset refs from a
+// wrapped threatmodel.
+func extractInformationAssetRefs(wrapped *spec.ThreatmodelWrapped) []string {
+	if wrapped == nil {
+		return nil
+	}
+
+	seen := make(map[string]bool)
+	var refs []string
+
+	for _, tm := range wrapped.Threatmodels {
+		for _, asset := range tm.InformationAssets {
+			if asset == nil {
+				continue
+			}
+			if asset.Ref != "" && !seen[asset.Ref] {
+				seen[asset.Ref] = true
+				refs = append(refs, asset.Ref)
+			}
+		}
+	}
+
+	return refs
+}
+
 // validateControlRefs validates that control refs exist in the library
 // Returns a map of ref -> *controlLibraryItem (for found items), a slice of missing refs, and an error
 func validateControlRefs(token, orgId string, refs []string, httpClient HTTPClient, fsSvc FileSystemService) (map[string]*controlLibraryItem, []string, error) {
@@ -1118,6 +1143,198 @@ func validateThreatRefs(token, orgId string, refs []string, includeRecommendedCo
 	return found, missing, nil
 }
 
+// fetchInformationAssetLibraryItemByRef retrieves an information-asset library
+// item by its reference ID.
+func fetchInformationAssetLibraryItemByRef(token, orgId, refId string, httpClient HTTPClient, fsSvc FileSystemService) (*informationAssetLibraryItem, error) {
+	query := `query informationAssetLibraryItemByRef($orgId: ID!, $referenceId: String!) {
+  informationAssetLibraryItemByRef(orgId: $orgId, referenceId: $referenceId) {
+    id
+    referenceId
+    name
+    status
+    currentVersion {
+      version
+      versionNumber
+      isPublished
+      name
+      description
+      informationClassification
+      source
+      changeSummary
+      createdAt
+    }
+    versions {
+      version
+      versionNumber
+      isPublished
+      name
+      createdAt
+    }
+    usageCount
+    usedByModels {
+      id
+      name
+    }
+  }
+}`
+
+	reqBody := graphQLRequest{
+		Query: query,
+		Variables: map[string]any{
+			"orgId":       orgId,
+			"referenceId": refId,
+		},
+	}
+
+	jsonData, err := json.Marshal(reqBody)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
+	}
+
+	url := fmt.Sprintf("%s/api/v1/graphql", getAPIBaseURL(fsSvc))
+	resp, err := makeAuthenticatedRequest("POST", url, token, bytes.NewReader(jsonData), httpClient)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, handleAPIErrorResponse(resp)
+	}
+
+	var gqlResp graphQLResponse
+	if err := decodeJSONResponse(resp, &gqlResp); err != nil {
+		return nil, err
+	}
+
+	if len(gqlResp.Errors) > 0 {
+		return nil, fmt.Errorf("GraphQL error: %s", gqlResp.Errors[0].Message)
+	}
+
+	var data struct {
+		InformationAssetLibraryItemByRef *informationAssetLibraryItem `json:"informationAssetLibraryItemByRef"`
+	}
+	if err := json.Unmarshal(gqlResp.Data, &data); err != nil {
+		return nil, fmt.Errorf("failed to parse information asset library item: %w", err)
+	}
+
+	if data.InformationAssetLibraryItemByRef == nil {
+		return nil, fmt.Errorf(ErrLibraryAssetNotFound, refId)
+	}
+
+	return data.InformationAssetLibraryItemByRef, nil
+}
+
+// fetchInformationAssetLibraryItemsByRefs retrieves multiple information-asset
+// library items by their reference IDs.
+func fetchInformationAssetLibraryItemsByRefs(token, orgId string, refIds []string, httpClient HTTPClient, fsSvc FileSystemService) ([]*informationAssetLibraryItem, error) {
+	query := `query informationAssetLibraryItemsByRefs($orgId: ID!, $referenceIds: [String!]!) {
+  informationAssetLibraryItemsByRefs(orgId: $orgId, referenceIds: $referenceIds) {
+    id
+    referenceId
+    name
+    status
+    currentVersion {
+      version
+      versionNumber
+      isPublished
+      name
+      description
+      informationClassification
+      source
+      changeSummary
+      createdAt
+    }
+    versions {
+      version
+      versionNumber
+      isPublished
+      name
+      createdAt
+    }
+    usageCount
+    usedByModels {
+      id
+      name
+    }
+  }
+}`
+
+	reqBody := graphQLRequest{
+		Query: query,
+		Variables: map[string]any{
+			"orgId":        orgId,
+			"referenceIds": refIds,
+		},
+	}
+
+	jsonData, err := json.Marshal(reqBody)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
+	}
+
+	url := fmt.Sprintf("%s/api/v1/graphql", getAPIBaseURL(fsSvc))
+	resp, err := makeAuthenticatedRequest("POST", url, token, bytes.NewReader(jsonData), httpClient)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, handleAPIErrorResponse(resp)
+	}
+
+	var gqlResp graphQLResponse
+	if err := decodeJSONResponse(resp, &gqlResp); err != nil {
+		return nil, err
+	}
+
+	if len(gqlResp.Errors) > 0 {
+		return nil, fmt.Errorf("GraphQL error: %s", gqlResp.Errors[0].Message)
+	}
+
+	var data struct {
+		InformationAssetLibraryItemsByRefs []*informationAssetLibraryItem `json:"informationAssetLibraryItemsByRefs"`
+	}
+	if err := json.Unmarshal(gqlResp.Data, &data); err != nil {
+		return nil, fmt.Errorf("failed to parse information asset library items: %w", err)
+	}
+
+	return data.InformationAssetLibraryItemsByRefs, nil
+}
+
+// validateInformationAssetRefs validates that information-asset refs exist in
+// the library. Returns a map of ref -> *informationAssetLibraryItem (for found
+// items), a slice of missing refs, and an error.
+func validateInformationAssetRefs(token, orgId string, refs []string, httpClient HTTPClient, fsSvc FileSystemService) (map[string]*informationAssetLibraryItem, []string, error) {
+	if len(refs) == 0 {
+		return nil, nil, nil
+	}
+
+	items, err := fetchInformationAssetLibraryItemsByRefs(token, orgId, refs, httpClient, fsSvc)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// Build lookup map of found items
+	found := make(map[string]*informationAssetLibraryItem)
+	for _, item := range items {
+		if item != nil {
+			found[item.ReferenceID] = item
+		}
+	}
+
+	// Find missing refs
+	var missing []string
+	for _, ref := range refs {
+		if found[ref] == nil {
+			missing = append(missing, ref)
+		}
+	}
+
+	return found, missing, nil
+}
+
 // controlFromLibraryItem creates a new spec.Control populated from a cloud
 // control library item. Used when appending library-recommended controls to a
 // hydrated threat.
@@ -1138,14 +1355,20 @@ func controlFromLibraryItem(item *controlLibraryItem) *spec.Control {
 }
 
 // hydrateLibraryRefs fills in description/impact/stride/risk fields on threats
-// and controls in a parsed threat model from cloud library items. Local values
-// always win — only empty fields are populated. When includeRecommended is
-// true, library-recommended controls for each resolved threat ref are appended
-// to that threat's controls (deduped by ref).
+// and controls, and description/classification/source on information assets,
+// in a parsed threat model from cloud library items. Local values always
+// win — only empty fields are populated. When includeRecommended is true,
+// library-recommended controls for each resolved threat ref are appended to
+// that threat's controls (deduped by ref).
+//
+// The information asset's label (Name) is never overlaid — other blocks
+// (threat.information_asset_refs, dfd data_store.information_asset) reference
+// assets by that label.
 func hydrateLibraryRefs(
 	wrapped *spec.ThreatmodelWrapped,
 	threatItems map[string]*threatLibraryItem,
 	controlItems map[string]*controlLibraryItem,
+	assetItems map[string]*informationAssetLibraryItem,
 	includeRecommended bool,
 ) {
 	if wrapped == nil {
@@ -1214,6 +1437,28 @@ func hydrateLibraryRefs(
 					ctrl.RiskReduction = v.DefaultRiskReduction
 				}
 			}
+		}
+
+		for _, asset := range tm.InformationAssets {
+			if asset == nil || asset.Ref == "" {
+				continue
+			}
+			item, ok := assetItems[asset.Ref]
+			if !ok || item == nil || item.CurrentVersion == nil {
+				continue
+			}
+			v := item.CurrentVersion
+			if asset.Description == "" {
+				asset.Description = v.Description
+			}
+			if asset.InformationClassification == "" {
+				asset.InformationClassification = v.InformationClassification
+			}
+			if asset.Source == "" {
+				asset.Source = v.Source
+			}
+			// Name (label) intentionally NOT overlaid — it is the join key
+			// for threat.information_asset_refs and DFD data_store.information_asset.
 		}
 	}
 }

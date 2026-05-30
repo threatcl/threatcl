@@ -12,24 +12,22 @@ import (
 	"github.com/posener/complete"
 )
 
-// CloudLibraryThreatsCommand lists threat library items
-type CloudLibraryThreatsCommand struct {
+// CloudLibraryAssetsCommand lists information asset library items
+type CloudLibraryAssetsCommand struct {
 	CloudCommandBase
-	flagFolder   string
-	flagStatus   string
-	flagSeverity string
-	flagStride   string
-	flagTags     string
-	flagSearch   string
-	flagOrgId    string
-	flagJSON     bool
+	flagFolder         string
+	flagStatus         string
+	flagClassification string
+	flagSearch         string
+	flagOrgId          string
+	flagJSON           bool
 }
 
-func (c *CloudLibraryThreatsCommand) Help() string {
+func (c *CloudLibraryAssetsCommand) Help() string {
 	helpText := `
-Usage: threatcl cloud library threats [options]
+Usage: threatcl cloud library assets [options]
 
-  List threat library items from ThreatCL Cloud.
+  List information asset library items from ThreatCL Cloud.
 
 Options:
 
@@ -39,19 +37,11 @@ Options:
   -status=<status>
       Filter by status: DRAFT, PUBLISHED, ARCHIVED, or DEPRECATED
 
-  -severity=<level>
-      Filter by severity level
-
-  -stride=<categories>
-      Filter by STRIDE categories (comma-separated)
-      Example: -stride=Spoofing,Tampering
-
-  -tags=<tags>
-      Filter by tags (comma-separated)
-      Example: -tags=owasp,injection
+  -classification=<value>
+      Filter by information classification (e.g. Confidential, Restricted)
 
   -search=<text>
-      Free-text search
+      Free-text search across name and description
 
   -org-id=<id>
       Organization ID (optional, uses THREATCL_CLOUD_ORG env var or defaults
@@ -65,38 +55,36 @@ Options:
 
 Examples:
 
-  # List all threat library items
-  threatcl cloud library threats
+  # List all information asset library items
+  threatcl cloud library assets
 
-  # List published threats with high severity
-  threatcl cloud library threats -status=PUBLISHED -severity=High
+  # List published assets classified as Confidential
+  threatcl cloud library assets -status=PUBLISHED -classification=Confidential
 
-  # Search for injection-related threats
-  threatcl cloud library threats -search=injection
+  # Search for assets containing "user"
+  threatcl cloud library assets -search=user
 
   # Output as JSON
-  threatcl cloud library threats -json
+  threatcl cloud library assets -json
 ` + cloudEnvVarHelp()
 	return strings.TrimSpace(helpText)
 }
 
-func (c *CloudLibraryThreatsCommand) Synopsis() string {
-	return "List threat library items"
+func (c *CloudLibraryAssetsCommand) Synopsis() string {
+	return "List information asset library items"
 }
 
-func (c *CloudLibraryThreatsCommand) AutocompleteFlags() complete.Flags {
+func (c *CloudLibraryAssetsCommand) AutocompleteFlags() complete.Flags {
 	return complete.Flags{
 		"-config": predictHCL,
 	}
 }
 
-func (c *CloudLibraryThreatsCommand) Run(args []string) int {
-	flagSet := c.GetFlagset("cloud library threats")
+func (c *CloudLibraryAssetsCommand) Run(args []string) int {
+	flagSet := c.GetFlagset("cloud library assets")
 	flagSet.StringVar(&c.flagFolder, "folder", "", "Filter by folder ID")
 	flagSet.StringVar(&c.flagStatus, "status", "", "Filter by status (DRAFT, PUBLISHED, ARCHIVED, DEPRECATED)")
-	flagSet.StringVar(&c.flagSeverity, "severity", "", "Filter by severity level")
-	flagSet.StringVar(&c.flagStride, "stride", "", "Filter by STRIDE categories (comma-separated)")
-	flagSet.StringVar(&c.flagTags, "tags", "", "Filter by tags (comma-separated)")
+	flagSet.StringVar(&c.flagClassification, "classification", "", "Filter by information classification")
 	flagSet.StringVar(&c.flagSearch, "search", "", "Free-text search")
 	flagSet.StringVar(&c.flagOrgId, "org-id", "", "Organization ID (optional)")
 	flagSet.BoolVar(&c.flagJSON, "json", false, "Output as JSON")
@@ -123,27 +111,27 @@ func (c *CloudLibraryThreatsCommand) Run(args []string) int {
 	// Build filter
 	filter := c.buildFilter()
 
-	// Fetch threats
-	threats, err := c.fetchThreatLibraryItems(token, orgId, filter, httpClient, fsSvc)
+	// Fetch assets
+	assets, err := c.fetchInformationAssetLibraryItems(token, orgId, filter, httpClient, fsSvc)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error fetching threat library items: %s\n", err)
+		fmt.Fprintf(os.Stderr, "Error fetching information asset library items: %s\n", err)
 		return 1
 	}
 
 	// Output results
 	if c.flagJSON {
-		if err := outputLibraryJSON(threats); err != nil {
+		if err := outputLibraryJSON(assets); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %s\n", err)
 			return 1
 		}
 		return 0
 	}
 
-	c.displayThreats(threats)
+	c.displayInformationAssets(assets)
 	return 0
 }
 
-func (c *CloudLibraryThreatsCommand) buildFilter() map[string]interface{} {
+func (c *CloudLibraryAssetsCommand) buildFilter() map[string]interface{} {
 	filter := make(map[string]interface{})
 
 	if c.flagFolder != "" {
@@ -152,14 +140,8 @@ func (c *CloudLibraryThreatsCommand) buildFilter() map[string]interface{} {
 	if c.flagStatus != "" {
 		filter["status"] = c.flagStatus
 	}
-	if c.flagSeverity != "" {
-		filter["severity"] = c.flagSeverity
-	}
-	if stride := splitCommaSeparated(c.flagStride); stride != nil {
-		filter["stride"] = stride
-	}
-	if tags := splitCommaSeparated(c.flagTags); tags != nil {
-		filter["tags"] = tags
+	if c.flagClassification != "" {
+		filter["informationClassification"] = c.flagClassification
 	}
 	if c.flagSearch != "" {
 		filter["search"] = c.flagSearch
@@ -168,9 +150,9 @@ func (c *CloudLibraryThreatsCommand) buildFilter() map[string]interface{} {
 	return filter
 }
 
-func (c *CloudLibraryThreatsCommand) fetchThreatLibraryItems(token, orgId string, filter map[string]interface{}, httpClient HTTPClient, fsSvc FileSystemService) ([]threatLibraryItem, error) {
-	query := `query threatLibraryItems($orgId: ID!, $filter: ThreatLibraryFilter) {
-  threatLibraryItems(orgId: $orgId, filter: $filter) {
+func (c *CloudLibraryAssetsCommand) fetchInformationAssetLibraryItems(token, orgId string, filter map[string]interface{}, httpClient HTTPClient, fsSvc FileSystemService) ([]informationAssetLibraryItem, error) {
+	query := `query informationAssetLibraryItems($orgId: ID!, $filter: InformationAssetLibraryFilter) {
+  informationAssetLibraryItems(orgId: $orgId, filter: $filter) {
     id
     referenceId
     name
@@ -178,11 +160,7 @@ func (c *CloudLibraryThreatsCommand) fetchThreatLibraryItems(token, orgId string
     currentVersion {
       version
       name
-      description
-      severity
-      stride
-      impacts
-      tags
+      informationClassification
     }
     usageCount
   }
@@ -226,44 +204,47 @@ func (c *CloudLibraryThreatsCommand) fetchThreatLibraryItems(token, orgId string
 	}
 
 	var data struct {
-		ThreatLibraryItems []threatLibraryItem `json:"threatLibraryItems"`
+		InformationAssetLibraryItems []informationAssetLibraryItem `json:"informationAssetLibraryItems"`
 	}
 	if err := json.Unmarshal(gqlResp.Data, &data); err != nil {
-		return nil, fmt.Errorf("failed to parse threat library items: %w", err)
+		return nil, fmt.Errorf("failed to parse information asset library items: %w", err)
 	}
 
-	return data.ThreatLibraryItems, nil
+	return data.InformationAssetLibraryItems, nil
 }
 
-func (c *CloudLibraryThreatsCommand) displayThreats(threats []threatLibraryItem) {
+func (c *CloudLibraryAssetsCommand) displayInformationAssets(assets []informationAssetLibraryItem) {
 	fmt.Println(strings.Repeat("=", 100))
-	fmt.Println("  Threat Library Items")
+	fmt.Println("  Information Asset Library Items")
 	fmt.Println(strings.Repeat("=", 100))
 	fmt.Println()
 
-	if len(threats) == 0 {
-		fmt.Println("No threat library items found.")
+	if len(assets) == 0 {
+		fmt.Println("No information asset library items found.")
 		return
 	}
 
-	fmt.Printf("Found %d threat(s):\n\n", len(threats))
-	fmt.Printf("%-15s %-35s %-12s %-12s %s\n", "REF ID", "NAME", "STATUS", "SEVERITY", "USAGE")
+	fmt.Printf("Found %d information asset(s):\n\n", len(assets))
+	fmt.Printf("%-15s %-35s %-12s %-20s %s\n", "REF ID", "NAME", "STATUS", "CLASSIFICATION", "USAGE")
 	fmt.Println(strings.Repeat("-", 100))
 
-	for _, threat := range threats {
-		name := threat.Name
+	for _, asset := range assets {
+		name := asset.Name
 		if len(name) > 33 {
 			name = name[:30] + "..."
 		}
-		refId := threat.ReferenceID
+		refId := asset.ReferenceID
 		if len(refId) > 13 {
 			refId = refId[:10] + "..."
 		}
-		severity := ""
-		if threat.CurrentVersion != nil {
-			severity = threat.CurrentVersion.Severity
+		classification := ""
+		if asset.CurrentVersion != nil {
+			classification = asset.CurrentVersion.InformationClassification
 		}
-		fmt.Printf("%-15s %-35s %-12s %-12s %d\n", refId, name, threat.Status, severity, threat.UsageCount)
+		if len(classification) > 18 {
+			classification = classification[:15] + "..."
+		}
+		fmt.Printf("%-15s %-35s %-12s %-20s %d\n", refId, name, asset.Status, classification, asset.UsageCount)
 	}
 	fmt.Println()
 }
