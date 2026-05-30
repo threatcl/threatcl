@@ -101,14 +101,21 @@ func (c *CloudLibraryStatsCommand) fetchLibraryUsageStats(token, orgId string, h
   libraryUsageStats(orgId: $orgId) {
     totalThreatItems
     totalControlItems
+    totalInformationAssetItems
     publishedThreatItems
     publishedControlItems
+    publishedInformationAssetItems
     mostUsedThreats {
       id
       name
       usageCount
     }
     mostUsedControls {
+      id
+      name
+      usageCount
+    }
+    mostUsedInformationAssets {
       id
       name
       usageCount
@@ -170,8 +177,9 @@ func (c *CloudLibraryStatsCommand) displayStats(stats *libraryUsageStats) {
 	fmt.Println()
 
 	fmt.Println("Overview:")
-	fmt.Printf("  Total Threats:      %d (%d published)\n", stats.TotalThreatItems, stats.PublishedThreatItems)
-	fmt.Printf("  Total Controls:     %d (%d published)\n", stats.TotalControlItems, stats.PublishedControlItems)
+	fmt.Printf("  Total Threats:             %d (%d published)\n", stats.TotalThreatItems, stats.PublishedThreatItems)
+	fmt.Printf("  Total Controls:            %d (%d published)\n", stats.TotalControlItems, stats.PublishedControlItems)
+	fmt.Printf("  Total Information Assets:  %d (%d published)\n", stats.TotalInformationAssetItems, stats.PublishedInformationAssetItems)
 
 	if len(stats.MostUsedThreats) > 0 {
 		fmt.Println()
@@ -194,6 +202,18 @@ func (c *CloudLibraryStatsCommand) displayStats(stats *libraryUsageStats) {
 				name = name[:32] + "..."
 			}
 			fmt.Printf("  %d. %-38s - used in %d model(s)\n", i+1, name, control.UsageCount)
+		}
+	}
+
+	if len(stats.MostUsedInformationAssets) > 0 {
+		fmt.Println()
+		fmt.Println("Most Used Information Assets:")
+		for i, asset := range stats.MostUsedInformationAssets {
+			name := asset.Name
+			if len(name) > 35 {
+				name = name[:32] + "..."
+			}
+			fmt.Printf("  %d. %-38s - used in %d model(s)\n", i+1, name, asset.UsageCount)
 		}
 	}
 

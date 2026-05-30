@@ -208,6 +208,15 @@ func Run(args []string) int {
 		"cloud library control-ref": func() (cli.Command, error) {
 			return &CloudLibraryControlRefCommand{CloudCommandBase: base()}, nil
 		},
+		"cloud library assets": func() (cli.Command, error) {
+			return &CloudLibraryAssetsCommand{CloudCommandBase: base()}, nil
+		},
+		"cloud library asset": func() (cli.Command, error) {
+			return &CloudLibraryAssetCommand{CloudCommandBase: base()}, nil
+		},
+		"cloud library asset-ref": func() (cli.Command, error) {
+			return &CloudLibraryAssetRefCommand{CloudCommandBase: base()}, nil
+		},
 		"cloud library stats": func() (cli.Command, error) {
 			return &CloudLibraryStatsCommand{CloudCommandBase: base()}, nil
 		},

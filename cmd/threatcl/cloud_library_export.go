@@ -27,15 +27,17 @@ type CloudLibraryExportCommand struct {
 
 // Valid export types
 var validExportTypes = map[string]bool{
-	"threats":  true,
-	"controls": true,
+	"threats":            true,
+	"controls":           true,
+	"information-assets": true,
 }
 
 func (c *CloudLibraryExportCommand) Help() string {
 	helpText := `
 Usage: threatcl cloud library export [options]
 
-  Export the organization's threat and control library as HCL from ThreatCL Cloud.
+  Export the organization's threat, control, and information asset
+  library as HCL from ThreatCL Cloud.
 
 Options:
 
@@ -47,7 +49,8 @@ Options:
       Output file path (default: stdout)
 
   -type=<type>
-      Filter by type: "threats" or "controls" (default: all)
+      Filter by type: "threats", "controls", or "information-assets"
+      (default: all three)
 
   -status=<status>
       Filter by status (e.g. PUBLISHED, DRAFT)
@@ -81,6 +84,9 @@ Examples:
   # Export controls with specific tags
   threatcl cloud library export -type controls -tags "owasp,injection" -o controls.hcl
 
+  # Export only information assets
+  threatcl cloud library export -type information-assets -o assets.hcl
+
   # Export including drafts
   threatcl cloud library export -include-drafts -o full-library.hcl
 ` + cloudEnvVarHelp()
@@ -96,7 +102,7 @@ func (c *CloudLibraryExportCommand) AutocompleteFlags() complete.Flags {
 		"-config": predictHCL,
 		"-output": complete.PredictFiles("*"),
 		"-o":      complete.PredictFiles("*"),
-		"-type":   complete.PredictSet("threats", "controls"),
+		"-type":   complete.PredictSet("threats", "controls", "information-assets"),
 	}
 }
 
@@ -105,7 +111,7 @@ func (c *CloudLibraryExportCommand) Run(args []string) int {
 	flagSet.StringVar(&c.flagOrgId, "org-id", "", "Organization ID (optional)")
 	flagSet.StringVar(&c.flagOutput, "output", "", "Output file path (default: stdout)")
 	flagSet.StringVar(&c.flagOutput, "o", "", "Output file path (default: stdout)")
-	flagSet.StringVar(&c.flagType, "type", "", "Filter by type: threats or controls")
+	flagSet.StringVar(&c.flagType, "type", "", "Filter by type: threats, controls, or information-assets")
 	flagSet.StringVar(&c.flagStatus, "status", "", "Filter by status")
 	flagSet.StringVar(&c.flagFolder, "folder", "", "Filter by folder path")
 	flagSet.BoolVar(&c.flagIncludeDrafts, "include-drafts", false, "Include draft items")
@@ -118,7 +124,7 @@ func (c *CloudLibraryExportCommand) Run(args []string) int {
 
 	// Validate type if provided
 	if c.flagType != "" && !validExportTypes[c.flagType] {
-		fmt.Fprintf(os.Stderr, "Error: invalid export type %q (must be \"threats\" or \"controls\")\n", c.flagType)
+		fmt.Fprintf(os.Stderr, "Error: invalid export type %q (must be \"threats\", \"controls\", or \"information-assets\")\n", c.flagType)
 		return 1
 	}
 

@@ -236,6 +236,23 @@ func (c *CloudViewCommand) Run(args []string) int {
 				}
 			}
 		}
+
+		// Check for information asset refs and enrich if needed
+		assetRefs := extractInformationAssetRefs(wrapped)
+		if len(assetRefs) > 0 {
+			foundAssets, missingAssets, assetErr := validateInformationAssetRefs(token, orgValid, assetRefs, httpClient, fsSvc)
+			if assetErr != nil {
+				fmt.Fprintf(os.Stderr, "Warning: could not fetch information asset refs: %s\n", assetErr)
+			} else {
+				if len(missingAssets) > 0 {
+					fmt.Fprintf(os.Stderr, "Warning: unknown information asset refs (using local data): %v\n", missingAssets)
+				}
+				skippedAssets := enrichInformationAssetsWithCloudData(wrapped, foundAssets)
+				for _, s := range skippedAssets {
+					fmt.Fprintf(os.Stderr, "Warning: information asset ref %q has status %s (not PUBLISHED), using local data\n", s.Ref, s.Status)
+				}
+			}
+		}
 	}
 
 	// Render markdown
@@ -429,6 +446,70 @@ func enrichThreatsWithCloudData(wrapped *spec.ThreatmodelWrapped, cloudThreats m
 					threat.Controls = append(threat.Controls, newControl)
 					existingRefs[recCtrl.ReferenceID] = true
 				}
+			}
+		}
+	}
+
+	return skipped
+}
+
+// skippedAsset represents an information asset that was skipped during enrichment
+type skippedAsset struct {
+	Ref    string
+	Status string
+}
+
+// enrichInformationAssetsWithCloudData enriches InformationAsset structs with
+// data from the cloud library. Only PUBLISHED items are used. Returns a list of
+// skipped assets (non-PUBLISHED).
+// For assets with a ref:
+//   - Name (the HCL label) is NEVER overridden — it is the join key for
+//     threat.information_asset_refs and DFD data_store.information_asset.
+//   - Description/InformationClassification/Source are only enriched if local
+//     is empty.
+func enrichInformationAssetsWithCloudData(wrapped *spec.ThreatmodelWrapped, cloudAssets map[string]*informationAssetLibraryItem) []skippedAsset {
+	var skipped []skippedAsset
+
+	if wrapped == nil || cloudAssets == nil {
+		return skipped
+	}
+
+	for i := range wrapped.Threatmodels {
+		tm := &wrapped.Threatmodels[i]
+		for _, asset := range tm.InformationAssets {
+			if asset == nil || asset.Ref == "" {
+				continue
+			}
+
+			cloudItem, found := cloudAssets[asset.Ref]
+			if !found || cloudItem == nil || cloudItem.CurrentVersion == nil {
+				continue
+			}
+
+			// Only enrich from PUBLISHED assets
+			if cloudItem.Status != "PUBLISHED" {
+				skipped = append(skipped, skippedAsset{
+					Ref:    asset.Ref,
+					Status: cloudItem.Status,
+				})
+				continue
+			}
+
+			cv := cloudItem.CurrentVersion
+
+			// Enrich Description only if local is empty
+			if asset.Description == "" && cv.Description != "" {
+				asset.Description = cv.Description
+			}
+
+			// Enrich InformationClassification only if local is empty
+			if asset.InformationClassification == "" && cv.InformationClassification != "" {
+				asset.InformationClassification = cv.InformationClassification
+			}
+
+			// Enrich Source only if local is empty
+			if asset.Source == "" && cv.Source != "" {
+				asset.Source = cv.Source
 			}
 		}
 	}

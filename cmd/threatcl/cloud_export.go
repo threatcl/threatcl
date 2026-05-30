@@ -30,14 +30,16 @@ func (c *CloudExportCommand) Help() string {
 Usage: threatcl cloud export -model-id=<modelId_or_slug> [options]
 
   Export a threat model from ThreatCL Cloud, resolving every library
-  reference (threats and controls) into a fully-hydrated artifact.
+  reference (threats, controls, and information assets) into a
+  fully-hydrated artifact.
 
   Unlike 'threatcl cloud threatmodel -download', which writes the raw
   HCL stored in the cloud, this command fetches each referenced
-  threat/control from the cloud library and inlines its description,
-  STRIDE, impacts, implementation guidance, and risk reduction before
-  rendering. The result is a standalone, portable artifact suitable
-  for sharing with reviewers who cannot reach the cloud library.
+  threat/control/information-asset from the cloud library and inlines
+  its description, STRIDE, impacts, implementation guidance, risk
+  reduction, information classification, and source before rendering.
+  The result is a standalone, portable artifact suitable for sharing
+  with reviewers who cannot reach the cloud library.
 
 Options:
 
@@ -217,7 +219,31 @@ func (c *CloudExportCommand) Run(args []string) int {
 		}
 	}
 
-	hydrateLibraryRefs(wrapped, threatItems, controlItems, c.flagIncludeRecommended)
+	assetRefs := extractInformationAssetRefs(wrapped)
+	assetItems := map[string]*informationAssetLibraryItem{}
+	if len(assetRefs) > 0 {
+		fetched, err := fetchInformationAssetLibraryItemsByRefs(token, orgId, assetRefs, httpClient, fsSvc)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error resolving information asset library refs: %s\n", err)
+			return 1
+		}
+		for _, item := range fetched {
+			if item != nil {
+				assetItems[item.ReferenceID] = item
+			}
+		}
+		var missing []string
+		for _, ref := range assetRefs {
+			if assetItems[ref] == nil {
+				missing = append(missing, ref)
+			}
+		}
+		if len(missing) > 0 {
+			fmt.Fprintf(os.Stderr, "Warning: unresolved information asset refs: %s\n", strings.Join(missing, ", "))
+		}
+	}
+
+	hydrateLibraryRefs(wrapped, threatItems, controlItems, assetItems, c.flagIncludeRecommended)
 
 	if !c.flagKeepBackend {
 		wrapped.Backends = nil

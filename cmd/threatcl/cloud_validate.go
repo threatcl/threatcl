@@ -161,6 +161,35 @@ func (c *CloudValidateCommand) Run(args []string) int {
 		}
 	}
 
+	// Validate information asset refs if we have a valid org
+	if orgValid != "" && wrapped != nil {
+		refs := extractInformationAssetRefs(wrapped)
+		if len(refs) > 0 {
+			found, missing, refErr := validateInformationAssetRefs(token, orgValid, refs, httpClient, fsSvc)
+			if refErr != nil {
+				fmt.Fprintf(os.Stderr, "⚠ Warning: could not validate information asset refs: %s\n", refErr)
+			} else {
+				if len(missing) > 0 {
+					fmt.Fprintf(os.Stderr, "⚠ Warning: unknown information asset refs: %v\n", missing)
+				}
+				// Check for non-PUBLISHED information assets
+				var nonPublished []string
+				for ref, item := range found {
+					if item != nil && item.Status != "PUBLISHED" {
+						nonPublished = append(nonPublished, fmt.Sprintf("%s (%s)", ref, item.Status))
+					}
+				}
+				if len(nonPublished) > 0 {
+					fmt.Fprintf(os.Stderr, "⚠ Warning: non-PUBLISHED information asset refs: %v\n", nonPublished)
+				}
+				publishedCount := len(found) - len(nonPublished)
+				if publishedCount > 0 {
+					fmt.Printf("✓ %d information asset ref(s) validated (PUBLISHED)\n", publishedCount)
+				}
+			}
+		}
+	}
+
 	return 0
 
 }
