@@ -40,14 +40,7 @@ Options:
 
  -config=<file>
    Optional config file
-
-Environment Variables:
-
- THREATCL_API_URL
-   Override the API base URL (default: ` + defaultAPIBaseURL + `)
-   Example: THREATCL_API_URL=http://localhost:8080 threatcl cloud login
-
-`
+` + cloudEnvVarHelpNoOrg()
 	return strings.TrimSpace(helpText)
 }
 

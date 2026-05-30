@@ -31,21 +31,7 @@ Options:
 
  -config=<file>
    Optional config file
-
-Environment Variables:
-
- THREATCL_API_URL
-   Override the API base URL (default: ` + defaultAPIBaseURL + `)
-
-Examples:
-
-	# Add a token interactively
-	threatcl cloud token add
-
-	# Add a token directly
-	threatcl cloud token add -token=tcl_xxxxx
-
-`
+` + cloudEnvVarHelpNoOrg()
 	return strings.TrimSpace(helpText)
 }
 

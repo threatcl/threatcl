@@ -35,6 +35,9 @@ type libraryImportResult struct {
 	ControlsCreated int      `json:"controls_created"`
 	ControlsUpdated int      `json:"controls_updated"`
 	ControlsSkipped int      `json:"controls_skipped"`
+	AssetsCreated   int      `json:"assets_created"`
+	AssetsUpdated   int      `json:"assets_updated"`
+	AssetsSkipped   int      `json:"assets_skipped"`
 	Warnings        []string `json:"warnings"`
 }
 
@@ -85,20 +88,7 @@ Examples:
 
   # Import with replace mode to a specific org
   threatcl cloud library import -org-id org-123 -mode replace library.hcl
-
-Environment Variables:
-
-  THREATCL_API_URL
-    Override the API base URL (default: ` + defaultAPIBaseURL + `)
-
-  THREATCL_CLOUD_ORG
-    Default organization ID to use when -org-id is not specified.
-
-  THREATCL_API_TOKEN
-    Provide an API token directly, bypassing the local token store.
-    Useful for CI/CD pipelines and automation.
-
-`
+` + cloudEnvVarHelp()
 	return strings.TrimSpace(helpText)
 }
 
@@ -261,6 +251,7 @@ func (c *CloudLibraryImportCommand) Run(args []string) int {
 	fmt.Printf("  Folders:  %d created, %d updated\n", result.FoldersCreated, result.FoldersUpdated)
 	fmt.Printf("  Threats:  %d created, %d updated, %d skipped\n", result.ThreatsCreated, result.ThreatsUpdated, result.ThreatsSkipped)
 	fmt.Printf("  Controls: %d created, %d updated, %d skipped\n", result.ControlsCreated, result.ControlsUpdated, result.ControlsSkipped)
+	fmt.Printf("  Assets:   %d created, %d updated, %d skipped\n", result.AssetsCreated, result.AssetsUpdated, result.AssetsSkipped)
 
 	if len(result.Warnings) > 0 {
 		fmt.Println()

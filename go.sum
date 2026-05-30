@@ -356,6 +356,8 @@ github.com/threatcl/go-otm v0.0.2 h1:zN/Wwiy6QVw0SRm+YiZA7lDf2yI0jVyxPmNW1k9kgpw
 github.com/threatcl/go-otm v0.0.2/go.mod h1:U1CNSpdQQ8S0lqr5LNn3tFZxsLgBKOz27+5k+IzFho0=
 github.com/threatcl/spec v0.2.6 h1:d3MWF7gNkoVxOLpacDzBsNRxml9zRCEWqVtfUgqPvcA=
 github.com/threatcl/spec v0.2.6/go.mod h1:gktkM0t+4ajxnKLVPesFl6E0+P4b/71YZ4Oj5sihIy4=
+github.com/threatcl/spec v0.2.7 h1:jh6xmlbN3ftcw0m8XSfTvwhnYXaa2CBIdX1Ml7gqWQU=
+github.com/threatcl/spec v0.2.7/go.mod h1:gktkM0t+4ajxnKLVPesFl6E0+P4b/71YZ4Oj5sihIy4=
 github.com/ulikunitz/xz v0.5.15 h1:9DNdB5s+SgV3bQ2ApL10xRc35ck0DuIX/isZvIk+ubY=
 github.com/ulikunitz/xz v0.5.15/go.mod h1:nbz6k7qbPmH4IRqmfOplQw/tblSgqTqBwxkY0oWt/14=
 github.com/urfave/cli/v2 v2.27.4 h1:o1owoI+02Eb+K107p27wEX9Bb8eqIoZCfLXloLUSWJ8=
