@@ -114,6 +114,12 @@ type ComplexityRoot struct {
 		ThreatModel               func(childComplexity int) int
 	}
 
+	MermaidDiagram struct {
+		Content     func(childComplexity int) int
+		Description func(childComplexity int) int
+		Name        func(childComplexity int) int
+	}
+
 	Process struct {
 		Name      func(childComplexity int) int
 		TrustZone func(childComplexity int) int
@@ -168,6 +174,7 @@ type ComplexityRoot struct {
 		Exclusions             func(childComplexity int) int
 		InformationAssets      func(childComplexity int) int
 		Link                   func(childComplexity int) int
+		MermaidDiagrams        func(childComplexity int) int
 		Name                   func(childComplexity int) int
 		SourceFile             func(childComplexity int) int
 		ThirdPartyDependencies func(childComplexity int) int
@@ -464,6 +471,27 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.InformationAsset.ThreatModel(childComplexity), true
 
+	case "MermaidDiagram.content":
+		if e.complexity.MermaidDiagram.Content == nil {
+			break
+		}
+
+		return e.complexity.MermaidDiagram.Content(childComplexity), true
+
+	case "MermaidDiagram.description":
+		if e.complexity.MermaidDiagram.Description == nil {
+			break
+		}
+
+		return e.complexity.MermaidDiagram.Description(childComplexity), true
+
+	case "MermaidDiagram.name":
+		if e.complexity.MermaidDiagram.Name == nil {
+			break
+		}
+
+		return e.complexity.MermaidDiagram.Name(childComplexity), true
+
 	case "Process.name":
 		if e.complexity.Process.Name == nil {
 			break
@@ -749,6 +777,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.ThreatModel.Link(childComplexity), true
+
+	case "ThreatModel.mermaidDiagrams":
+		if e.complexity.ThreatModel.MermaidDiagrams == nil {
+			break
+		}
+
+		return e.complexity.ThreatModel.MermaidDiagrams(childComplexity), true
 
 	case "ThreatModel.name":
 		if e.complexity.ThreatModel.Name == nil {
@@ -2631,10 +2666,141 @@ func (ec *executionContext) fieldContext_InformationAsset_threatModel(_ context.
 				return ec.fieldContext_ThreatModel_thirdPartyDependencies(ctx, field)
 			case "dataFlowDiagrams":
 				return ec.fieldContext_ThreatModel_dataFlowDiagrams(ctx, field)
+			case "mermaidDiagrams":
+				return ec.fieldContext_ThreatModel_mermaidDiagrams(ctx, field)
 			case "sourceFile":
 				return ec.fieldContext_ThreatModel_sourceFile(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ThreatModel", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MermaidDiagram_name(ctx context.Context, field graphql.CollectedField, obj *spec.MermaidDiagram) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_MermaidDiagram_name(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Name, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_MermaidDiagram_name(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MermaidDiagram",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MermaidDiagram_description(ctx context.Context, field graphql.CollectedField, obj *spec.MermaidDiagram) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_MermaidDiagram_description(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Description, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalOString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_MermaidDiagram_description(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MermaidDiagram",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MermaidDiagram_content(ctx context.Context, field graphql.CollectedField, obj *spec.MermaidDiagram) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_MermaidDiagram_content(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Content, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_MermaidDiagram_content(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MermaidDiagram",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -2794,6 +2960,8 @@ func (ec *executionContext) fieldContext_Query_threatModels(ctx context.Context,
 				return ec.fieldContext_ThreatModel_thirdPartyDependencies(ctx, field)
 			case "dataFlowDiagrams":
 				return ec.fieldContext_ThreatModel_dataFlowDiagrams(ctx, field)
+			case "mermaidDiagrams":
+				return ec.fieldContext_ThreatModel_mermaidDiagrams(ctx, field)
 			case "sourceFile":
 				return ec.fieldContext_ThreatModel_sourceFile(ctx, field)
 			}
@@ -2880,6 +3048,8 @@ func (ec *executionContext) fieldContext_Query_threatModel(ctx context.Context, 
 				return ec.fieldContext_ThreatModel_thirdPartyDependencies(ctx, field)
 			case "dataFlowDiagrams":
 				return ec.fieldContext_ThreatModel_dataFlowDiagrams(ctx, field)
+			case "mermaidDiagrams":
+				return ec.fieldContext_ThreatModel_mermaidDiagrams(ctx, field)
 			case "sourceFile":
 				return ec.fieldContext_ThreatModel_sourceFile(ctx, field)
 			}
@@ -4161,6 +4331,8 @@ func (ec *executionContext) fieldContext_Threat_threatModel(_ context.Context, f
 				return ec.fieldContext_ThreatModel_thirdPartyDependencies(ctx, field)
 			case "dataFlowDiagrams":
 				return ec.fieldContext_ThreatModel_dataFlowDiagrams(ctx, field)
+			case "mermaidDiagrams":
+				return ec.fieldContext_ThreatModel_mermaidDiagrams(ctx, field)
 			case "sourceFile":
 				return ec.fieldContext_ThreatModel_sourceFile(ctx, field)
 			}
@@ -4886,6 +5058,58 @@ func (ec *executionContext) fieldContext_ThreatModel_dataFlowDiagrams(_ context.
 				return ec.fieldContext_DataFlowDiagram_trustZones(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type DataFlowDiagram", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ThreatModel_mermaidDiagrams(ctx context.Context, field graphql.CollectedField, obj *ThreatModel) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ThreatModel_mermaidDiagrams(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.MermaidDiagrams, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*spec.MermaidDiagram)
+	fc.Result = res
+	return ec.marshalNMermaidDiagram2ᚕᚖgithubᚗcomᚋthreatclᚋspecᚐMermaidDiagramᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ThreatModel_mermaidDiagrams(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ThreatModel",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "name":
+				return ec.fieldContext_MermaidDiagram_name(ctx, field)
+			case "description":
+				return ec.fieldContext_MermaidDiagram_description(ctx, field)
+			case "content":
+				return ec.fieldContext_MermaidDiagram_content(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type MermaidDiagram", field.Name)
 		},
 	}
 	return fc, nil
@@ -7589,6 +7813,52 @@ func (ec *executionContext) _InformationAsset(ctx context.Context, sel ast.Selec
 	return out
 }
 
+var mermaidDiagramImplementors = []string{"MermaidDiagram"}
+
+func (ec *executionContext) _MermaidDiagram(ctx context.Context, sel ast.SelectionSet, obj *spec.MermaidDiagram) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, mermaidDiagramImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("MermaidDiagram")
+		case "name":
+			out.Values[i] = ec._MermaidDiagram_name(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "description":
+			out.Values[i] = ec._MermaidDiagram_description(ctx, field, obj)
+		case "content":
+			out.Values[i] = ec._MermaidDiagram_content(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var processImplementors = []string{"Process"}
 
 func (ec *executionContext) _Process(ctx context.Context, sel ast.SelectionSet, obj *Process) graphql.Marshaler {
@@ -8122,6 +8392,11 @@ func (ec *executionContext) _ThreatModel(ctx context.Context, sel ast.SelectionS
 			}
 		case "dataFlowDiagrams":
 			out.Values[i] = ec._ThreatModel_dataFlowDiagrams(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "mermaidDiagrams":
+			out.Values[i] = ec._ThreatModel_mermaidDiagrams(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -8983,6 +9258,60 @@ func (ec *executionContext) marshalNInt2int(ctx context.Context, sel ast.Selecti
 		}
 	}
 	return res
+}
+
+func (ec *executionContext) marshalNMermaidDiagram2ᚕᚖgithubᚗcomᚋthreatclᚋspecᚐMermaidDiagramᚄ(ctx context.Context, sel ast.SelectionSet, v []*spec.MermaidDiagram) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNMermaidDiagram2ᚖgithubᚗcomᚋthreatclᚋspecᚐMermaidDiagram(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNMermaidDiagram2ᚖgithubᚗcomᚋthreatclᚋspecᚐMermaidDiagram(ctx context.Context, sel ast.SelectionSet, v *spec.MermaidDiagram) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._MermaidDiagram(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNProcess2ᚕᚖgithubᚗcomᚋthreatclᚋthreatclᚋinternalᚋgraphqlᚐProcessᚄ(ctx context.Context, sel ast.SelectionSet, v []*Process) graphql.Marshaler {

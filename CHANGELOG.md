@@ -1,10 +1,19 @@
+## 0.4.13
+
+### Jun, 6, 2026
+
+CHANGES:
+
+* Support for `spec` 0.2.8, which brings mermaid support
+* Adjusted OTM export, the graphql local server, and boilerplate to support mermaid blocks
+
 ## 0.4.12
 
 ### May 30, 2026
 
 CHANGES:
 
-* Bumped to `spec` 0.2.6 - now supports information_asset ref attributes
+* Bumped to `spec` 0.2.7 - now supports information_asset ref attributes
 * Tidied up some of the cloud commands
 * Introduced new cloud library commands associated with asset refs
 * Adjusted other cloud commands to support as well

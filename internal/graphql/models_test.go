@@ -61,6 +61,38 @@ func TestMapThreatModelToGraphQL(t *testing.T) {
 	}
 }
 
+func TestMapThreatModelToGraphQL_MermaidDiagrams(t *testing.T) {
+	tm := &spec.Threatmodel{
+		Name:   "Test Threat Model",
+		Author: "test@example.com",
+		MermaidDiagrams: []*spec.MermaidDiagram{
+			{
+				Name:        "Login sequence",
+				Description: "How a user authenticates",
+				Content:     "sequenceDiagram\n  User->>App: credentials",
+			},
+		},
+	}
+
+	result := MapThreatModelToGraphQL(tm, "test.hcl")
+
+	if result == nil {
+		t.Fatal("Expected non-nil result")
+	}
+
+	if len(result.MermaidDiagrams) != 1 {
+		t.Fatalf("Expected 1 mermaid diagram, got %d", len(result.MermaidDiagrams))
+	}
+
+	m := result.MermaidDiagrams[0]
+	if m.Name != "Login sequence" {
+		t.Errorf("Expected mermaid name 'Login sequence', got '%s'", m.Name)
+	}
+	if m.Content != "sequenceDiagram\n  User->>App: credentials" {
+		t.Errorf("Unexpected mermaid content: %q", m.Content)
+	}
+}
+
 func TestMapThreatModelToGraphQL_NilInput(t *testing.T) {
 	result := MapThreatModelToGraphQL(nil, "test.hcl")
 	if result != nil {

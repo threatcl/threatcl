@@ -34,6 +34,7 @@ func renderThreatmodels(
 			if err != nil {
 				return "", fmt.Errorf("error parsing into otm: %s", err)
 			}
+			appendMermaidRepresentations(&tmOtm, tm)
 			allOtms = append(allOtms, tmOtm)
 		}
 
@@ -87,4 +88,30 @@ func renderThreatmodels(
 	}
 
 	return "", fmt.Errorf("Incorrect -format option")
+}
+
+// appendMermaidRepresentations adds an OTM representation for each embedded
+// mermaid block so they survive otm export (spec.RenderOtm only maps
+// diagram_link). OTM has no first-class field for inline diagram source, so the
+// raw mermaid is carried in the representation attributes (format=mermaid,
+// content=<source>) and the block's optional description maps to the
+// representation description. IDs are namespaced "mermaid-<n>" to avoid
+// colliding with the "diagram-1" id RenderOtm emits for diagram_link.
+func appendMermaidRepresentations(o *otm.OtmSchemaJson, tm spec.Threatmodel) {
+	for i, m := range tm.MermaidDiagrams {
+		repr := otm.OtmSchemaJsonRepresentationsElem{
+			Id:   fmt.Sprintf("mermaid-%d", i+1),
+			Name: m.Name,
+			Type: "diagram",
+			Attributes: otm.OtmSchemaJsonRepresentationsElemAttributes{
+				"format":  "mermaid",
+				"content": m.Content,
+			},
+		}
+		if m.Description != "" {
+			desc := m.Description
+			repr.Description = &desc
+		}
+		o.Representations = append(o.Representations, repr)
+	}
 }

@@ -27,6 +27,7 @@ func MapThreatModelToGraphQL(tm *spec.Threatmodel, sourceFile string) *ThreatMod
 		Exclusions:             tm.Exclusions,
 		ThirdPartyDependencies: tm.ThirdPartyDependencies,
 		DataFlowDiagrams:       tm.DataFlowDiagrams,
+		MermaidDiagrams:        tm.MermaidDiagrams,
 		SourceFile:             sourceFile,
 	}
 }

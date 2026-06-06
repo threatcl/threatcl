@@ -69,6 +69,7 @@ type ThreatModel struct {
 	Exclusions             []*spec.Exclusion            `json:"exclusions"`
 	ThirdPartyDependencies []*spec.ThirdPartyDependency `json:"thirdPartyDependencies"`
 	DataFlowDiagrams       []*spec.DataFlowDiagram      `json:"dataFlowDiagrams"`
+	MermaidDiagrams        []*spec.MermaidDiagram       `json:"mermaidDiagrams"`
 	SourceFile             string                       `json:"sourceFile"`
 }
 

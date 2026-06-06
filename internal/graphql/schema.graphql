@@ -36,6 +36,7 @@ type ThreatModel {
   exclusions: [Exclusion!]!
   thirdPartyDependencies: [ThirdPartyDependency!]!
   dataFlowDiagrams: [DataFlowDiagram!]!
+  mermaidDiagrams: [MermaidDiagram!]!
   sourceFile: String!
 }
 
@@ -108,6 +109,13 @@ type ThirdPartyDependency {
   infrastructure: Boolean
   uptimeDependency: String!
   uptimeNotes: String
+}
+
+# Free-form mermaid diagram embedded in a threat model
+type MermaidDiagram {
+  name: String!
+  description: String
+  content: String!
 }
 
 # Data Flow Diagram
