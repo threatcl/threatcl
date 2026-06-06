@@ -349,6 +349,28 @@ EOT
 
     }
   }
+
+  // As of spec 0.2.8 threatmodels may also include free-form "mermaid" blocks.
+  // Unlike data_flow_diagram_v2 (which threatcl renders for you), a mermaid
+  // block embeds raw mermaid source verbatim - mermaid infers the diagram type
+  // from the first line, so any diagram (sequence, flowchart, etc.) works.
+  // The block label is the diagram's title. These render in the markdown from
+  // 'threatcl dashboard' and 'threatcl view', and are carried through the
+  // json, hcl, and otm exports.
+
+  mermaid "Login sequence" {
+
+    // description is optional
+    description = "How a user authenticates"
+
+    // content holds the raw mermaid source - a heredoc is the idiomatic form
+    content = <<-EOT
+      sequenceDiagram
+        User->>App: credentials
+        App->>Auth: verify
+        Auth-->>App: token
+    EOT
+  }
 }
 `
 )

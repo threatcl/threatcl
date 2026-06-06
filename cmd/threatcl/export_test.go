@@ -206,6 +206,63 @@ func TestExportOtmSingle(t *testing.T) {
 
 }
 
+func TestExportOtmMermaid(t *testing.T) {
+	cmd := testExportCommand(t)
+
+	var code int
+
+	out := capturer.CaptureStdout(func() {
+		code = cmd.Run([]string{
+			"-format=otm",
+			"./testdata/tm_mermaid.hcl",
+		})
+	})
+
+	if code != 0 {
+		t.Errorf("Code did not equal 0: %d", code)
+	}
+
+	// The mermaid block must survive otm export as a representation carrying
+	// the raw source, rather than being dropped.
+	for _, want := range []string{
+		"mermaid-1",
+		"Login sequence",
+		"sequenceDiagram",
+		"\"format\":\"mermaid\"",
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("otm output did not contain %q\n%s", want, out)
+		}
+	}
+}
+
+func TestExportHclMermaid(t *testing.T) {
+	cmd := testExportCommand(t)
+
+	var code int
+
+	out := capturer.CaptureStdout(func() {
+		code = cmd.Run([]string{
+			"-format=hcl",
+			"./testdata/tm_mermaid.hcl",
+		})
+	})
+
+	if code != 0 {
+		t.Errorf("Code did not equal 0: %d", code)
+	}
+
+	// The mermaid block must round-trip through hcl export.
+	for _, want := range []string{
+		"mermaid \"Login sequence\"",
+		"sequenceDiagram",
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("hcl output did not contain %q\n%s", want, out)
+		}
+	}
+}
+
 func TestExportHclSingle(t *testing.T) {
 	d, err := os.MkdirTemp("", "")
 	if err != nil {
