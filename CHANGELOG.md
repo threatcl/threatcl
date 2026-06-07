@@ -1,3 +1,11 @@
+## 0.4.14
+
+### Jun 7, 2026
+
+CHANGES:
+
+* Minor tweak to inverse the diff presented in `cloud validate -diff`
+
 ## 0.4.13
 
 ### Jun, 6, 2026

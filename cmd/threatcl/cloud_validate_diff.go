@@ -17,9 +17,10 @@ import (
 // HCL, prints a semantic/structural summary of how it differs from the local
 // file, then prints a colored unified (git-style) text diff.
 //
-// Orientation throughout: the local file is the "from" side and the cloud
-// version is the "to" side. So additions ("+") are content present in the cloud
-// version but not locally, removals ("-") are local-only, and "~" marks entities
+// Orientation throughout: the cloud version is the "from" side and the local
+// file is the "to" side, matching the git-style "these are my local changes"
+// mental model. So additions ("+") are content present in the local file but not
+// in the cloud version, removals ("-") are cloud-only, and "~" marks entities
 // present in both but changed.
 func runCloudValidateDiff(
 	token, orgId, modelIdOrSlug, filePath string,
@@ -67,11 +68,12 @@ func runCloudValidateDiff(
 	}
 	fmt.Println()
 
-	// 2) Unified text diff second.
-	fmt.Println("Unified diff (local vs cloud):")
+	// 2) Unified text diff second. The cloud version is the "from" side and the
+	// local file the "to" side, so "+" lines are your local additions.
+	fmt.Println("Unified diff (cloud vs local):")
 	diffText, derr := unifiedColorDiff(
-		string(localRaw), string(cloudRaw),
-		filepath.Base(filePath), "cloud/"+modelIdOrSlug,
+		string(cloudRaw), string(localRaw),
+		"cloud/"+modelIdOrSlug, filepath.Base(filePath),
 	)
 	if derr != nil {
 		return fmt.Errorf("rendering unified diff: %w", derr)
@@ -163,8 +165,8 @@ func unifiedColorDiff(a, b, fromFile, toFile string) (string, error) {
 }
 
 // semanticDiff walks two wrapped threat models and returns a sorted, concise
-// list of structural differences. Orientation: "+" present in cloud not local,
-// "-" present in local not cloud, "~" present in both but changed.
+// list of structural differences. Orientation: "+" present in local not cloud,
+// "-" present in cloud not local, "~" present in both but changed.
 func semanticDiff(local, cloud *spec.ThreatmodelWrapped) []string {
 	out := diffThreatmodels(local, cloud)
 	sort.Strings(out)
@@ -172,7 +174,7 @@ func semanticDiff(local, cloud *spec.ThreatmodelWrapped) []string {
 }
 
 // diffCollections matches two slices by identity key and returns lines for
-// added (cloud-only), removed (local-only), and changed entries. keyFn extracts
+// added (local-only), removed (cloud-only), and changed entries. keyFn extracts
 // the identity key (return "" to skip an item), label formats the entity
 // description, and changed compares a matched pair and returns a parenthesized
 // suffix (or "" if unchanged).
@@ -196,8 +198,8 @@ func diffCollections[T any](
 	}
 
 	var lines []string
-	for k, cItem := range cm {
-		if lItem, ok := lm[k]; ok {
+	for k, lItem := range lm {
+		if cItem, ok := cm[k]; ok {
 			if suffix := changed(lItem, cItem); suffix != "" {
 				lines = append(lines, fmt.Sprintf("~ %s %s", label(k), suffix))
 			}
@@ -205,8 +207,8 @@ func diffCollections[T any](
 			lines = append(lines, fmt.Sprintf("+ %s", label(k)))
 		}
 	}
-	for k := range lm {
-		if _, ok := cm[k]; !ok {
+	for k := range cm {
+		if _, ok := lm[k]; !ok {
 			lines = append(lines, fmt.Sprintf("- %s", label(k)))
 		}
 	}
@@ -233,13 +235,13 @@ func diffThreatmodels(local, cloud *spec.ThreatmodelWrapped) []string {
 
 	var lines []string
 
-	for name := range cByName {
-		if _, ok := lByName[name]; !ok {
+	for name := range lByName {
+		if _, ok := cByName[name]; !ok {
 			lines = append(lines, fmt.Sprintf("+ threat model %q", name))
 		}
 	}
-	for name := range lByName {
-		if _, ok := cByName[name]; !ok {
+	for name := range cByName {
+		if _, ok := lByName[name]; !ok {
 			lines = append(lines, fmt.Sprintf("- threat model %q", name))
 		}
 	}
