@@ -176,11 +176,11 @@ func TestCloudValidateDiffShowsDiff(t *testing.T) {
 		"Structural summary:",
 		`~ threat model "Test Model" (description changed)`,
 		`~ threat "SQL Injection" (in "Test Model") (description, stride changed)`,
-		`- threat "Phishing" (in "Test Model")`,
-		`+ control "WAF rule" (in threat "SQL Injection")`,
-		"Unified diff (local vs cloud):",
+		`+ threat "Phishing" (in "Test Model")`,
+		`- control "WAF rule" (in threat "SQL Injection")`,
+		"Unified diff (cloud vs local):",
 		"@@",
-		"Cloud description", // appears on the "+" side of the text diff
+		"Cloud description", // appears on the "-" side of the text diff
 	}
 	for _, w := range wants {
 		if !strings.Contains(out, w) {
@@ -324,7 +324,7 @@ func TestCloudValidateDiffUnparseableCloud(t *testing.T) {
 		t.Errorf("expected a semantic-diff parse warning, got: %s", out)
 	}
 	// The unified text diff should still render even when the cloud side won't parse.
-	if !strings.Contains(out, "Unified diff (local vs cloud):") || !strings.Contains(out, "@@") {
+	if !strings.Contains(out, "Unified diff (cloud vs local):") || !strings.Contains(out, "@@") {
 		t.Errorf("expected the unified text diff to still render, got: %s", out)
 	}
 }
@@ -360,9 +360,9 @@ func TestSemanticDiff(t *testing.T) {
 
 	got := semanticDiff(local, cloud)
 	want := []string{
-		`+ control "C2" (in threat "T1")`,
-		`+ threat "T3" (in "TM")`,
-		`- threat "T2" (in "TM")`,
+		`- control "C2" (in threat "T1")`,
+		`- threat "T3" (in "TM")`,
+		`+ threat "T2" (in "TM")`,
 		`~ threat "T1" (in "TM") (description changed)`,
 		`~ threat model "TM" (description changed)`,
 	}
