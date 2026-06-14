@@ -1,4 +1,4 @@
-spec_version = "0.3.0"
+spec_version = "0.3.1"
 
 threatmodel "Test Model" {
   author      = "xntrik"
