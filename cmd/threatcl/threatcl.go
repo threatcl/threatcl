@@ -85,6 +85,12 @@ func Run(args []string) int {
 				specCfg:          cfg,
 			}, nil
 		},
+		"mermaid": func() (cli.Command, error) {
+			return &MermaidCommand{
+				GlobalCmdOptions: globalCmdOptions,
+				specCfg:          cfg,
+			}, nil
+		},
 		"mcp": func() (cli.Command, error) {
 			return &MCPCommand{
 				GlobalCmdOptions: globalCmdOptions,

@@ -1,3 +1,11 @@
+## 0.5.1
+
+### Jun 15, 2026
+
+CHANGES:
+
+* Added a new `threatcl mermaid` command that outputs the raw mermaid source from `mermaid` blocks in your HCL threat models. Similar to `threatcl dfd`, it defaults to STDOUT (so it can be piped into renderers such as `mmdc`), and also supports `-out`, `-outdir`, and `-index`. It does not render images itself.
+
 ## 0.5.0
 
 ### Jun 14, 2026
