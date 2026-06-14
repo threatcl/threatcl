@@ -1,0 +1,44 @@
+{
+  "name": "vscode-threatcl-dev",
+  "displayName": "threatcl LSP (dev)",
+  "description": "Development launcher for the threatcl language server (threatcl lsp)",
+  "version": "0.0.1",
+  "publisher": "threatcl",
+  "private": true,
+  "engines": {
+    "vscode": "^1.82.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "main": "./extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "threatcl",
+        "aliases": [
+          "threatcl",
+          "Threatcl"
+        ],
+        "extensions": [
+          ".tm.hcl",
+          ".hcl"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "threatcl",
+        "scopeName": "source.threatcl",
+        "path": "./threatcl.tmLanguage.json"
+      }
+    ]
+  },
+  "dependencies": {
+    "vscode-languageclient": "^9.0.1"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.82.0"
+  }
+}

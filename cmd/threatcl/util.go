@@ -93,6 +93,12 @@ threatmodel "threatmodel name" {
 
   diagram_link = "https://link/to/diagram"
 
+  // The repository attribute is optional. It's a list of source code
+  // repositories that this threat model covers, useful for linking the model
+  // to the code being assessed.
+
+  repository = ["https://github.com/example/repo"]
+
   // created_at and updated_at are optional integer, UNIX time stamps
   created_at = 1594033151
   updated_at = 1594033160
@@ -179,6 +185,27 @@ threatmodel "threatmodel name" {
     // The impact is an optional array of potential impact values
     // The available values are '{{.ImpactTypes}}'
     impacts = [{{.ImpactTypesOut}}]
+
+    // The risk block is optional. It attaches a methodology-neutral risk
+    // rating to this threat. The inherent severity and a 0-100 score are
+    // computed from likelihood and impact, and reduced by any implemented
+    // controls to give a residual view (see threatcl view / dashboard).
+
+    risk {
+      // likelihood and impact are required, and must each be one of
+      // 'very_low', 'low', 'medium', 'high', or 'very_high'
+      likelihood = "high"
+      impact = "very_high"
+
+      // severity is optional. If unset, it is computed from the
+      // likelihood x impact matrix. Set it to override the computed value, in
+      // which case it must be one of 'info', 'low', 'medium', 'high', or
+      // 'critical'
+      // severity = "critical"
+
+      // rationale is optional free text explaining the rating
+      rationale = "Tokens are sent over a shared network segment"
+    }
 
     // A threat may contain multiple control blocks
 

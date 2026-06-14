@@ -125,12 +125,18 @@ func (r *queryResolver) Stats(ctx context.Context) (*Statistics, error) {
 
 	totalRiskReduction := 0
 	riskReductionCount := 0
+	severityCounts := map[string]int{}
 
 	for _, tm := range allModels {
 		stats.TotalInformationAssets += len(tm.InformationAssets)
 		stats.TotalThreats += len(tm.Threats)
 
 		for _, threat := range tm.Threats {
+			if threat.Risk != nil {
+				stats.ThreatsWithRisk++
+				severityCounts[threat.Risk.Severity()]++
+			}
+
 			for _, control := range threat.Controls {
 				stats.TotalControls++
 				if control.Implemented {
@@ -149,6 +155,15 @@ func (r *queryResolver) Stats(ctx context.Context) (*Statistics, error) {
 		stats.AverageRiskReduction = &avgRisk
 	}
 
+	// Emit one entry per severity band in canonical order (info..critical) so
+	// the breakdown has a stable shape even when some bands have no threats.
+	for _, band := range spec.SeverityLevels {
+		stats.SeverityCounts = append(stats.SeverityCounts, &SeverityCount{
+			Severity: band,
+			Count:    severityCounts[band],
+		})
+	}
+
 	return stats, nil
 }
 
@@ -163,6 +178,11 @@ func (r *threatResolver) Impacts(ctx context.Context, obj *spec.Threat) ([]strin
 		return []string{}, nil
 	}
 	return obj.ImpactType, nil
+}
+
+// Risk is the resolver for the risk field.
+func (r *threatResolver) Risk(ctx context.Context, obj *spec.Threat) (*RiskRating, error) {
+	return MapRiskRatingToGraphQL(obj), nil
 }
 
 // ThreatModel is the resolver for the threatModel field.

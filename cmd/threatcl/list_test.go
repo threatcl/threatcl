@@ -2,6 +2,7 @@ package main
 
 import (
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -202,6 +203,77 @@ func TestListRun(t *testing.T) {
 				if strings.Contains(out, tc.exp) {
 					t.Errorf("Was not expecting %s to contain %s", out, tc.exp)
 				}
+			}
+		})
+	}
+}
+
+// TestListRunRiskFields exercises the spec 0.3.0 risk/repository columns. The
+// fixture is written to a temp dir rather than testdata/ so it doesn't perturb
+// the directory-wide counts asserted by other tests.
+func TestListRunRiskFields(t *testing.T) {
+	riskHCL := `spec_version = "0.3.0"
+
+threatmodel "risk model" {
+  author      = "@xntrik"
+  description = "exercises risk and repository"
+  repository  = ["https://github.com/example/repo"]
+
+  threat "high risk" {
+    description = "serious"
+    risk {
+      likelihood = "high"
+      impact     = "very_high"
+    }
+  }
+
+  threat "low risk" {
+    description = "minor"
+    risk {
+      likelihood = "very_low"
+      impact     = "low"
+    }
+  }
+
+  threat "no risk" {
+    description = "unrated"
+  }
+}
+`
+
+	dir := t.TempDir()
+	riskFile := filepath.Join(dir, "risk.hcl")
+	if err := os.WriteFile(riskFile, []byte(riskHCL), 0644); err != nil {
+		t.Fatalf("Error writing fixture: %s", err)
+	}
+
+	cases := []struct {
+		name   string
+		flags  string
+		exp    string
+		invert bool
+	}{
+		{"repository", "-fields=repository", "https://github.com/example/repo", false},
+		{"riskcount_header", "-fields=riskcount", "Risk Count", false},
+		{"riskcount_value", "-fields=riskcount", "2", false},
+		{"highestseverity", "-fields=highestseverity", "critical", false},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			cmd := testListCommand(t)
+
+			var code int
+			out := capturer.CaptureStdout(func() {
+				code = cmd.Run([]string{tc.flags, riskFile})
+			})
+
+			if code != 0 {
+				t.Errorf("Code did not equal 0: %d", code)
+			}
+
+			if !tc.invert && !strings.Contains(out, tc.exp) {
+				t.Errorf("Expected %s to contain %s", out, tc.exp)
 			}
 		})
 	}

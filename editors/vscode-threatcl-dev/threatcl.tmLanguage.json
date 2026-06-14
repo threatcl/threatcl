@@ -1,0 +1,107 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "threatcl",
+  "scopeName": "source.threatcl",
+  "patterns": [
+    { "include": "#comments" },
+    { "include": "#blockHeader" },
+    { "include": "#attribute" },
+    { "include": "#heredoc" },
+    { "include": "#strings" },
+    { "include": "#constants" },
+    { "include": "#numbers" },
+    { "include": "#operators" }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.line.number-sign.threatcl",
+          "match": "#.*$"
+        },
+        {
+          "name": "comment.line.double-slash.threatcl",
+          "match": "//.*$"
+        },
+        {
+          "name": "comment.block.threatcl",
+          "begin": "/\\*",
+          "end": "\\*/"
+        }
+      ]
+    },
+    "blockHeader": {
+      "comment": "An identifier followed by a label string or an opening brace is a block type (threatmodel, threat, control, risk, ...).",
+      "match": "^\\s*([a-zA-Z_][a-zA-Z0-9_-]*)\\s+(?=[\"{])",
+      "captures": {
+        "1": { "name": "entity.name.type.block.threatcl" }
+      }
+    },
+    "attribute": {
+      "comment": "An identifier on the left of an = is an attribute name.",
+      "match": "([a-zA-Z_][a-zA-Z0-9_-]*)\\s*(=)",
+      "captures": {
+        "1": { "name": "variable.other.property.threatcl" },
+        "2": { "name": "keyword.operator.assignment.threatcl" }
+      }
+    },
+    "strings": {
+      "name": "string.quoted.double.threatcl",
+      "begin": "\"",
+      "end": "\"",
+      "patterns": [
+        {
+          "name": "constant.character.escape.threatcl",
+          "match": "\\\\."
+        },
+        {
+          "comment": "HCL ${...} interpolation",
+          "name": "meta.interpolation.threatcl",
+          "begin": "\\$\\{",
+          "end": "\\}",
+          "beginCaptures": {
+            "0": { "name": "punctuation.section.interpolation.begin.threatcl" }
+          },
+          "endCaptures": {
+            "0": { "name": "punctuation.section.interpolation.end.threatcl" }
+          },
+          "patterns": [
+            { "include": "#strings" },
+            { "include": "#constants" },
+            { "include": "#numbers" }
+          ]
+        }
+      ]
+    },
+    "heredoc": {
+      "comment": "HCL heredoc strings: <<EOT ... EOT and <<-EOT ... EOT",
+      "begin": "(<<-?)\\s*([A-Za-z_][A-Za-z0-9_]*)",
+      "end": "^\\s*\\2\\b",
+      "beginCaptures": {
+        "1": { "name": "keyword.operator.heredoc.threatcl" },
+        "2": { "name": "keyword.control.heredoc.threatcl" }
+      },
+      "name": "string.unquoted.heredoc.threatcl"
+    },
+    "constants": {
+      "patterns": [
+        {
+          "name": "constant.language.boolean.threatcl",
+          "match": "\\b(true|false)\\b"
+        },
+        {
+          "name": "constant.language.null.threatcl",
+          "match": "\\b(null)\\b"
+        }
+      ]
+    },
+    "numbers": {
+      "name": "constant.numeric.threatcl",
+      "match": "\\b-?\\d+(\\.\\d+)?\\b"
+    },
+    "operators": {
+      "name": "keyword.operator.threatcl",
+      "match": "=|\\?|:|=>|&&|\\|\\||==|!=|<=|>=|<|>|\\+|-|\\*|/|%|!"
+    }
+  }
+}

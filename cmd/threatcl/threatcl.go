@@ -91,6 +91,12 @@ func Run(args []string) int {
 				specCfg:          cfg,
 			}, nil
 		},
+		"lsp": func() (cli.Command, error) {
+			return &LSPCommand{
+				GlobalCmdOptions: globalCmdOptions,
+				specCfg:          cfg,
+			}, nil
+		},
 		"terraform": func() (cli.Command, error) {
 			return &TerraformCommand{
 				GlobalCmdOptions: globalCmdOptions,

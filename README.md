@@ -248,6 +248,14 @@ The command takes a single, optional argument, `-dir=<path>` which allows additi
 
 It's fair to say that this functionality is pretty beta at the moment.
 
+## LSP (Language Server)
+
+The `threatcl lsp` command runs a [Language Server Protocol](https://microsoft.github.io/language-server-protocol/) server over stdio, giving LSP-capable editors live diagnostics, completion, hover, document symbols, and formatting for threatcl HCL threat models.
+
+It's launched by your editor's LSP client rather than run by hand. Because threatcl files share the `.hcl` extension with Terraform and other HCL dialects, matching on `*.tm.hcl` (or scoping the client to your threat-model workspace) avoids fighting a Terraform language server.
+
+See [docs/lsp.md](docs/lsp.md) for editor wiring (Neovim, Helix, VS Code, Zed) and current limitations.
+
 ## Server (GraphQL API)
 
 The `threatcl server` command starts a GraphQL API server that exposes your threat models via HTTP for programmatic querying and integration.

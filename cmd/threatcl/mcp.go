@@ -124,9 +124,9 @@ func (c *MCPCommand) Run(args []string) int {
 			"list_all_tms_with_cols",
 			mcp.WithDescription("Get a detailed listing of all the threatcl threat models, and their files, located within the directory set by the -dir flag. This tool allows you to specify what columns are displayed, for instance: file, author, threatmodel, threatcount, internetfacing."),
 			mcp.WithString("columns",
-				mcp.Description("The columns you want to list against each threat model. Is expected to be a comma-separated list of values from this set: number, threatmodel, author, file, threatcount, internetfacing, assetcount, usecasecount, tpdcount, exclusioncount, size, newinitiative, dfd."),
+				mcp.Description("The columns you want to list against each threat model. Is expected to be a comma-separated list of values from this set: number, threatmodel, author, file, threatcount, internetfacing, assetcount, usecasecount, tpdcount, exclusioncount, size, newinitiative, dfd, repository, riskcount, highestseverity."),
 				mcp.Required(),
-				mcp.Enum("number", "threatmodel", "author", "file", "threatcount", "internetfacing", "assetcount", "usecasecount", "tpdcount", "exclusioncount", "size", "newinitiative", "dfd"),
+				mcp.Enum("number", "threatmodel", "author", "file", "threatcount", "internetfacing", "assetcount", "usecasecount", "tpdcount", "exclusioncount", "size", "newinitiative", "dfd", "repository", "riskcount", "highestseverity"),
 			),
 		), c.handleListTmsWithCustomCols)
 

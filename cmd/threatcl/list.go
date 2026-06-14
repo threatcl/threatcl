@@ -30,7 +30,7 @@ Options:
  -fields=<fields>
    Comma-separated list of fields to list. Fields include 'number', 'file',
    'threatmodel', 'assetcount', 'threatcount', 'usecasecount', 'tpdcount', 'exclusioncount', 'size', 'internetfacing',
-   'newinitiative', 'dfd' and 'author'.
+   'newinitiative', 'dfd', 'repository', 'riskcount', 'highestseverity' and 'author'.
    If not set, defaults to 'number,file,threatmodel,author'
 
  -noheader
@@ -57,6 +57,9 @@ func (c *ListCommand) Execute(args []string) ([]string, error) {
 		"Usecasecount",
 		"Exclusioncount",
 		"Dfd",
+		"Repository",
+		"RiskCount",
+		"HighestSeverity",
 	}
 
 	flagFields := []string{}
@@ -105,6 +108,10 @@ func (c *ListCommand) Execute(args []string) ([]string, error) {
 				headerString = headerString + "New Initiative"
 			case "Dfd":
 				headerString = headerString + "DFD"
+			case "RiskCount":
+				headerString = headerString + "Risk Count"
+			case "HighestSeverity":
+				headerString = headerString + "Highest Severity"
 			default:
 				headerString = headerString + flagField
 			}
@@ -172,6 +179,16 @@ func (c *ListCommand) Execute(args []string) ([]string, error) {
 					}
 				case "Dfd":
 					bodyString = bodyString + fmt.Sprintf("%d", len(tm.DataFlowDiagrams))
+				case "Repository":
+					if len(tm.Repository) > 0 {
+						bodyString = bodyString + strings.Join(tm.Repository, ", ")
+					} else {
+						bodyString = bodyString + "-"
+					}
+				case "RiskCount":
+					bodyString = bodyString + fmt.Sprintf("%d", countThreatsWithRisk(tm))
+				case "HighestSeverity":
+					bodyString = bodyString + highestInherentSeverity(tm)
 				}
 			}
 
@@ -183,10 +200,43 @@ func (c *ListCommand) Execute(args []string) ([]string, error) {
 	return output, nil
 }
 
+// countThreatsWithRisk returns how many of the threat model's threats carry a
+// risk block.
+func countThreatsWithRisk(tm spec.Threatmodel) int {
+	count := 0
+	for _, threat := range tm.Threats {
+		if threat.Risk != nil {
+			count++
+		}
+	}
+	return count
+}
+
+// highestInherentSeverity returns the highest resolved inherent severity band
+// across the threat model's threats, or "-" when no threat has a risk block.
+func highestInherentSeverity(tm spec.Threatmodel) string {
+	best := -1
+	for _, threat := range tm.Threats {
+		if threat.Risk == nil {
+			continue
+		}
+		sev := threat.Risk.Severity()
+		for i, band := range spec.SeverityLevels {
+			if band == sev && i > best {
+				best = i
+			}
+		}
+	}
+	if best < 0 {
+		return "-"
+	}
+	return spec.SeverityLevels[best]
+}
+
 func (c *ListCommand) Run(args []string) int {
 
 	flagSet := c.GetFlagset("list")
-	flagSet.StringVar(&c.flagFields, "fields", "", "Comma-separated list of fields for list. Fields include 'number', 'file', 'threatmodel', 'assetcount', 'threatcount', 'usecasecount','tpdcount', 'exclusioncount', 'size', 'internetfacing', 'newinitiative', 'dfd' and 'author'.")
+	flagSet.StringVar(&c.flagFields, "fields", "", "Comma-separated list of fields for list. Fields include 'number', 'file', 'threatmodel', 'assetcount', 'threatcount', 'usecasecount','tpdcount', 'exclusioncount', 'size', 'internetfacing', 'newinitiative', 'dfd', 'repository', 'riskcount', 'highestseverity' and 'author'.")
 	flagSet.BoolVar(&c.flagNoHeader, "noheader", false, "If set, will not print the header")
 	flagSet.Parse(args)
 
@@ -223,6 +273,6 @@ func (c *ListCommand) Synopsis() string {
 func (c *ListCommand) AutocompleteArgs() complete.Predictor { return predictHCLOrJSON }
 func (c *ListCommand) AutocompleteFlags() complete.Flags {
 	return complete.Flags{
-		"-config":   predictHCL,
+		"-config": predictHCL,
 	}
 }
