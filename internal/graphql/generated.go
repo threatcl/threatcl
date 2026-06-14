@@ -133,9 +133,27 @@ type ComplexityRoot struct {
 		Threats           func(childComplexity int, filter *ThreatFilter) int
 	}
 
+	RiskRating struct {
+		Impact                func(childComplexity int) int
+		InherentScore         func(childComplexity int) int
+		Likelihood            func(childComplexity int) int
+		Rationale             func(childComplexity int) int
+		ResidualRiskReduction func(childComplexity int) int
+		ResidualScore         func(childComplexity int) int
+		ResidualSeverity      func(childComplexity int) int
+		Severity              func(childComplexity int) int
+	}
+
+	SeverityCount struct {
+		Count    func(childComplexity int) int
+		Severity func(childComplexity int) int
+	}
+
 	Statistics struct {
 		AverageRiskReduction   func(childComplexity int) int
 		ImplementedControls    func(childComplexity int) int
+		SeverityCounts         func(childComplexity int) int
+		ThreatsWithRisk        func(childComplexity int) int
 		TotalControls          func(childComplexity int) int
 		TotalInformationAssets func(childComplexity int) int
 		TotalThreatModels      func(childComplexity int) int
@@ -159,6 +177,7 @@ type ComplexityRoot struct {
 		Impacts              func(childComplexity int) int
 		InformationAssetRefs func(childComplexity int) int
 		Name                 func(childComplexity int) int
+		Risk                 func(childComplexity int) int
 		Stride               func(childComplexity int) int
 		ThreatModel          func(childComplexity int) int
 	}
@@ -176,6 +195,7 @@ type ComplexityRoot struct {
 		Link                   func(childComplexity int) int
 		MermaidDiagrams        func(childComplexity int) int
 		Name                   func(childComplexity int) int
+		Repository             func(childComplexity int) int
 		SourceFile             func(childComplexity int) int
 		ThirdPartyDependencies func(childComplexity int) int
 		Threats                func(childComplexity int) int
@@ -218,6 +238,7 @@ type ThirdPartyDependencyResolver interface {
 type ThreatResolver interface {
 	Impacts(ctx context.Context, obj *spec.Threat) ([]string, error)
 
+	Risk(ctx context.Context, obj *spec.Threat) (*RiskRating, error)
 	ThreatModel(ctx context.Context, obj *spec.Threat) (*ThreatModel, error)
 }
 
@@ -561,6 +582,76 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Query.Threats(childComplexity, args["filter"].(*ThreatFilter)), true
 
+	case "RiskRating.impact":
+		if e.complexity.RiskRating.Impact == nil {
+			break
+		}
+
+		return e.complexity.RiskRating.Impact(childComplexity), true
+
+	case "RiskRating.inherentScore":
+		if e.complexity.RiskRating.InherentScore == nil {
+			break
+		}
+
+		return e.complexity.RiskRating.InherentScore(childComplexity), true
+
+	case "RiskRating.likelihood":
+		if e.complexity.RiskRating.Likelihood == nil {
+			break
+		}
+
+		return e.complexity.RiskRating.Likelihood(childComplexity), true
+
+	case "RiskRating.rationale":
+		if e.complexity.RiskRating.Rationale == nil {
+			break
+		}
+
+		return e.complexity.RiskRating.Rationale(childComplexity), true
+
+	case "RiskRating.residualRiskReduction":
+		if e.complexity.RiskRating.ResidualRiskReduction == nil {
+			break
+		}
+
+		return e.complexity.RiskRating.ResidualRiskReduction(childComplexity), true
+
+	case "RiskRating.residualScore":
+		if e.complexity.RiskRating.ResidualScore == nil {
+			break
+		}
+
+		return e.complexity.RiskRating.ResidualScore(childComplexity), true
+
+	case "RiskRating.residualSeverity":
+		if e.complexity.RiskRating.ResidualSeverity == nil {
+			break
+		}
+
+		return e.complexity.RiskRating.ResidualSeverity(childComplexity), true
+
+	case "RiskRating.severity":
+		if e.complexity.RiskRating.Severity == nil {
+			break
+		}
+
+		return e.complexity.RiskRating.Severity(childComplexity), true
+
+	case "SeverityCount.count":
+		if e.complexity.SeverityCount.Count == nil {
+			break
+		}
+
+		return e.complexity.SeverityCount.Count(childComplexity), true
+
+	case "SeverityCount.severity":
+		if e.complexity.SeverityCount.Severity == nil {
+			break
+		}
+
+		return e.complexity.SeverityCount.Severity(childComplexity), true
+
 	case "Statistics.averageRiskReduction":
 		if e.complexity.Statistics.AverageRiskReduction == nil {
 			break
@@ -574,6 +665,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Statistics.ImplementedControls(childComplexity), true
+
+	case "Statistics.severityCounts":
+		if e.complexity.Statistics.SeverityCounts == nil {
+			break
+		}
+
+		return e.complexity.Statistics.SeverityCounts(childComplexity), true
+
+	case "Statistics.threatsWithRisk":
+		if e.complexity.Statistics.ThreatsWithRisk == nil {
+			break
+		}
+
+		return e.complexity.Statistics.ThreatsWithRisk(childComplexity), true
 
 	case "Statistics.totalControls":
 		if e.complexity.Statistics.TotalControls == nil {
@@ -694,6 +799,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Threat.Name(childComplexity), true
 
+	case "Threat.risk":
+		if e.complexity.Threat.Risk == nil {
+			break
+		}
+
+		return e.complexity.Threat.Risk(childComplexity), true
+
 	case "Threat.stride":
 		if e.complexity.Threat.Stride == nil {
 			break
@@ -791,6 +903,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.ThreatModel.Name(childComplexity), true
+
+	case "ThreatModel.repository":
+		if e.complexity.ThreatModel.Repository == nil {
+			break
+		}
+
+		return e.complexity.ThreatModel.Repository(childComplexity), true
 
 	case "ThreatModel.sourceFile":
 		if e.complexity.ThreatModel.SourceFile == nil {
@@ -2646,6 +2765,8 @@ func (ec *executionContext) fieldContext_InformationAsset_threatModel(_ context.
 				return ec.fieldContext_ThreatModel_link(ctx, field)
 			case "diagramLink":
 				return ec.fieldContext_ThreatModel_diagramLink(ctx, field)
+			case "repository":
+				return ec.fieldContext_ThreatModel_repository(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_ThreatModel_createdAt(ctx, field)
 			case "updatedAt":
@@ -2940,6 +3061,8 @@ func (ec *executionContext) fieldContext_Query_threatModels(ctx context.Context,
 				return ec.fieldContext_ThreatModel_link(ctx, field)
 			case "diagramLink":
 				return ec.fieldContext_ThreatModel_diagramLink(ctx, field)
+			case "repository":
+				return ec.fieldContext_ThreatModel_repository(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_ThreatModel_createdAt(ctx, field)
 			case "updatedAt":
@@ -3028,6 +3151,8 @@ func (ec *executionContext) fieldContext_Query_threatModel(ctx context.Context, 
 				return ec.fieldContext_ThreatModel_link(ctx, field)
 			case "diagramLink":
 				return ec.fieldContext_ThreatModel_diagramLink(ctx, field)
+			case "repository":
+				return ec.fieldContext_ThreatModel_repository(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_ThreatModel_createdAt(ctx, field)
 			case "updatedAt":
@@ -3121,6 +3246,8 @@ func (ec *executionContext) fieldContext_Query_threats(ctx context.Context, fiel
 				return ec.fieldContext_Threat_controls(ctx, field)
 			case "informationAssetRefs":
 				return ec.fieldContext_Threat_informationAssetRefs(ctx, field)
+			case "risk":
+				return ec.fieldContext_Threat_risk(ctx, field)
 			case "threatModel":
 				return ec.fieldContext_Threat_threatModel(ctx, field)
 			}
@@ -3259,6 +3386,10 @@ func (ec *executionContext) fieldContext_Query_stats(_ context.Context, field gr
 				return ec.fieldContext_Statistics_implementedControls(ctx, field)
 			case "averageRiskReduction":
 				return ec.fieldContext_Statistics_averageRiskReduction(ctx, field)
+			case "threatsWithRisk":
+				return ec.fieldContext_Statistics_threatsWithRisk(ctx, field)
+			case "severityCounts":
+				return ec.fieldContext_Statistics_severityCounts(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Statistics", field.Name)
 		},
@@ -3390,6 +3521,443 @@ func (ec *executionContext) fieldContext_Query___schema(_ context.Context, field
 				return ec.fieldContext___Schema_directives(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type __Schema", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RiskRating_likelihood(ctx context.Context, field graphql.CollectedField, obj *RiskRating) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RiskRating_likelihood(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Likelihood, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RiskRating_likelihood(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RiskRating",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RiskRating_impact(ctx context.Context, field graphql.CollectedField, obj *RiskRating) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RiskRating_impact(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Impact, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RiskRating_impact(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RiskRating",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RiskRating_severity(ctx context.Context, field graphql.CollectedField, obj *RiskRating) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RiskRating_severity(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Severity, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RiskRating_severity(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RiskRating",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RiskRating_rationale(ctx context.Context, field graphql.CollectedField, obj *RiskRating) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RiskRating_rationale(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Rationale, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RiskRating_rationale(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RiskRating",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RiskRating_inherentScore(ctx context.Context, field graphql.CollectedField, obj *RiskRating) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RiskRating_inherentScore(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.InherentScore, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RiskRating_inherentScore(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RiskRating",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RiskRating_residualScore(ctx context.Context, field graphql.CollectedField, obj *RiskRating) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RiskRating_residualScore(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ResidualScore, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RiskRating_residualScore(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RiskRating",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RiskRating_residualSeverity(ctx context.Context, field graphql.CollectedField, obj *RiskRating) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RiskRating_residualSeverity(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ResidualSeverity, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RiskRating_residualSeverity(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RiskRating",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RiskRating_residualRiskReduction(ctx context.Context, field graphql.CollectedField, obj *RiskRating) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RiskRating_residualRiskReduction(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ResidualRiskReduction, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RiskRating_residualRiskReduction(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RiskRating",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SeverityCount_severity(ctx context.Context, field graphql.CollectedField, obj *SeverityCount) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SeverityCount_severity(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Severity, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SeverityCount_severity(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SeverityCount",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SeverityCount_count(ctx context.Context, field graphql.CollectedField, obj *SeverityCount) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SeverityCount_count(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Count, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SeverityCount_count(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SeverityCount",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
 		},
 	}
 	return fc, nil
@@ -3651,6 +4219,100 @@ func (ec *executionContext) fieldContext_Statistics_averageRiskReduction(_ conte
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Statistics_threatsWithRisk(ctx context.Context, field graphql.CollectedField, obj *Statistics) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Statistics_threatsWithRisk(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ThreatsWithRisk, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Statistics_threatsWithRisk(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Statistics",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Statistics_severityCounts(ctx context.Context, field graphql.CollectedField, obj *Statistics) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Statistics_severityCounts(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.SeverityCounts, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*SeverityCount)
+	fc.Result = res
+	return ec.marshalNSeverityCount2ᚕᚖgithubᚗcomᚋthreatclᚋthreatclᚋinternalᚋgraphqlᚐSeverityCountᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Statistics_severityCounts(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Statistics",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "severity":
+				return ec.fieldContext_SeverityCount_severity(ctx, field)
+			case "count":
+				return ec.fieldContext_SeverityCount_count(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type SeverityCount", field.Name)
 		},
 	}
 	return fc, nil
@@ -4262,6 +4924,65 @@ func (ec *executionContext) fieldContext_Threat_informationAssetRefs(_ context.C
 	return fc, nil
 }
 
+func (ec *executionContext) _Threat_risk(ctx context.Context, field graphql.CollectedField, obj *spec.Threat) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Threat_risk(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Threat().Risk(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*RiskRating)
+	fc.Result = res
+	return ec.marshalORiskRating2ᚖgithubᚗcomᚋthreatclᚋthreatclᚋinternalᚋgraphqlᚐRiskRating(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Threat_risk(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Threat",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "likelihood":
+				return ec.fieldContext_RiskRating_likelihood(ctx, field)
+			case "impact":
+				return ec.fieldContext_RiskRating_impact(ctx, field)
+			case "severity":
+				return ec.fieldContext_RiskRating_severity(ctx, field)
+			case "rationale":
+				return ec.fieldContext_RiskRating_rationale(ctx, field)
+			case "inherentScore":
+				return ec.fieldContext_RiskRating_inherentScore(ctx, field)
+			case "residualScore":
+				return ec.fieldContext_RiskRating_residualScore(ctx, field)
+			case "residualSeverity":
+				return ec.fieldContext_RiskRating_residualSeverity(ctx, field)
+			case "residualRiskReduction":
+				return ec.fieldContext_RiskRating_residualRiskReduction(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type RiskRating", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Threat_threatModel(ctx context.Context, field graphql.CollectedField, obj *spec.Threat) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Threat_threatModel(ctx, field)
 	if err != nil {
@@ -4311,6 +5032,8 @@ func (ec *executionContext) fieldContext_Threat_threatModel(_ context.Context, f
 				return ec.fieldContext_ThreatModel_link(ctx, field)
 			case "diagramLink":
 				return ec.fieldContext_ThreatModel_diagramLink(ctx, field)
+			case "repository":
+				return ec.fieldContext_ThreatModel_repository(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_ThreatModel_createdAt(ctx, field)
 			case "updatedAt":
@@ -4541,6 +5264,47 @@ func (ec *executionContext) _ThreatModel_diagramLink(ctx context.Context, field 
 }
 
 func (ec *executionContext) fieldContext_ThreatModel_diagramLink(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ThreatModel",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ThreatModel_repository(ctx context.Context, field graphql.CollectedField, obj *ThreatModel) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ThreatModel_repository(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Repository, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]string)
+	fc.Result = res
+	return ec.marshalOString2ᚕstringᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ThreatModel_repository(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "ThreatModel",
 		Field:      field,
@@ -4838,6 +5602,8 @@ func (ec *executionContext) fieldContext_ThreatModel_threats(_ context.Context, 
 				return ec.fieldContext_Threat_controls(ctx, field)
 			case "informationAssetRefs":
 				return ec.fieldContext_Threat_informationAssetRefs(ctx, field)
+			case "risk":
+				return ec.fieldContext_Threat_risk(ctx, field)
 			case "threatModel":
 				return ec.fieldContext_Threat_threatModel(ctx, field)
 			}
@@ -7027,7 +7793,7 @@ func (ec *executionContext) unmarshalInputThreatFilter(ctx context.Context, obj 
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"name", "impacts", "stride", "hasImplementedControls"}
+	fieldsInOrder := [...]string{"name", "impacts", "stride", "hasImplementedControls", "severity"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -7062,6 +7828,13 @@ func (ec *executionContext) unmarshalInputThreatFilter(ctx context.Context, obj 
 				return it, err
 			}
 			it.HasImplementedControls = data
+		case "severity":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("severity"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Severity = data
 		}
 	}
 
@@ -8057,6 +8830,121 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 	return out
 }
 
+var riskRatingImplementors = []string{"RiskRating"}
+
+func (ec *executionContext) _RiskRating(ctx context.Context, sel ast.SelectionSet, obj *RiskRating) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, riskRatingImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("RiskRating")
+		case "likelihood":
+			out.Values[i] = ec._RiskRating_likelihood(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "impact":
+			out.Values[i] = ec._RiskRating_impact(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "severity":
+			out.Values[i] = ec._RiskRating_severity(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "rationale":
+			out.Values[i] = ec._RiskRating_rationale(ctx, field, obj)
+		case "inherentScore":
+			out.Values[i] = ec._RiskRating_inherentScore(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "residualScore":
+			out.Values[i] = ec._RiskRating_residualScore(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "residualSeverity":
+			out.Values[i] = ec._RiskRating_residualSeverity(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "residualRiskReduction":
+			out.Values[i] = ec._RiskRating_residualRiskReduction(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var severityCountImplementors = []string{"SeverityCount"}
+
+func (ec *executionContext) _SeverityCount(ctx context.Context, sel ast.SelectionSet, obj *SeverityCount) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, severityCountImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("SeverityCount")
+		case "severity":
+			out.Values[i] = ec._SeverityCount_severity(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "count":
+			out.Values[i] = ec._SeverityCount_count(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var statisticsImplementors = []string{"Statistics"}
 
 func (ec *executionContext) _Statistics(ctx context.Context, sel ast.SelectionSet, obj *Statistics) graphql.Marshaler {
@@ -8095,6 +8983,16 @@ func (ec *executionContext) _Statistics(ctx context.Context, sel ast.SelectionSe
 			}
 		case "averageRiskReduction":
 			out.Values[i] = ec._Statistics_averageRiskReduction(ctx, field, obj)
+		case "threatsWithRisk":
+			out.Values[i] = ec._Statistics_threatsWithRisk(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "severityCounts":
+			out.Values[i] = ec._Statistics_severityCounts(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -8271,6 +9169,39 @@ func (ec *executionContext) _Threat(ctx context.Context, sel ast.SelectionSet, o
 			}
 		case "informationAssetRefs":
 			out.Values[i] = ec._Threat_informationAssetRefs(ctx, field, obj)
+		case "risk":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Threat_risk(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "threatModel":
 			field := field
 
@@ -8357,6 +9288,8 @@ func (ec *executionContext) _ThreatModel(ctx context.Context, sel ast.SelectionS
 			out.Values[i] = ec._ThreatModel_link(ctx, field, obj)
 		case "diagramLink":
 			out.Values[i] = ec._ThreatModel_diagramLink(ctx, field, obj)
+		case "repository":
+			out.Values[i] = ec._ThreatModel_repository(ctx, field, obj)
 		case "createdAt":
 			out.Values[i] = ec._ThreatModel_createdAt(ctx, field, obj)
 		case "updatedAt":
@@ -9137,6 +10070,21 @@ func (ec *executionContext) marshalNExternalElement2ᚖgithubᚗcomᚋthreatcl�
 	return ec._ExternalElement(ctx, sel, v)
 }
 
+func (ec *executionContext) unmarshalNFloat2float64(ctx context.Context, v interface{}) (float64, error) {
+	res, err := graphql.UnmarshalFloatContext(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNFloat2float64(ctx context.Context, sel ast.SelectionSet, v float64) graphql.Marshaler {
+	res := graphql.MarshalFloatContext(v)
+	if res == graphql.Null {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+	}
+	return graphql.WrapContextMarshaler(ctx, res)
+}
+
 func (ec *executionContext) marshalNFlow2ᚕᚖgithubᚗcomᚋthreatclᚋthreatclᚋinternalᚋgraphqlᚐFlowᚄ(ctx context.Context, sel ast.SelectionSet, v []*Flow) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
@@ -9366,6 +10314,60 @@ func (ec *executionContext) marshalNProcess2ᚖgithubᚗcomᚋthreatclᚋthreatc
 		return graphql.Null
 	}
 	return ec._Process(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNSeverityCount2ᚕᚖgithubᚗcomᚋthreatclᚋthreatclᚋinternalᚋgraphqlᚐSeverityCountᚄ(ctx context.Context, sel ast.SelectionSet, v []*SeverityCount) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNSeverityCount2ᚖgithubᚗcomᚋthreatclᚋthreatclᚋinternalᚋgraphqlᚐSeverityCount(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNSeverityCount2ᚖgithubᚗcomᚋthreatclᚋthreatclᚋinternalᚋgraphqlᚐSeverityCount(ctx context.Context, sel ast.SelectionSet, v *SeverityCount) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._SeverityCount(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNStatistics2githubᚗcomᚋthreatclᚋthreatclᚋinternalᚋgraphqlᚐStatistics(ctx context.Context, sel ast.SelectionSet, v Statistics) graphql.Marshaler {
@@ -10091,6 +11093,13 @@ func (ec *executionContext) marshalOInt2ᚖint(ctx context.Context, sel ast.Sele
 	}
 	res := graphql.MarshalInt(*v)
 	return res
+}
+
+func (ec *executionContext) marshalORiskRating2ᚖgithubᚗcomᚋthreatclᚋthreatclᚋinternalᚋgraphqlᚐRiskRating(ctx context.Context, sel ast.SelectionSet, v *RiskRating) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._RiskRating(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalOString2string(ctx context.Context, v interface{}) (string, error) {

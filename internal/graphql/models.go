@@ -17,6 +17,7 @@ func MapThreatModelToGraphQL(tm *spec.Threatmodel, sourceFile string) *ThreatMod
 		Description:            strPtrOrNil(tm.Description),
 		Link:                   strPtrOrNil(tm.Link),
 		DiagramLink:            strPtrOrNil(tm.DiagramLink),
+		Repository:             tm.Repository,
 		CreatedAt:              int64PtrToIntPtr(tm.CreatedAt),
 		UpdatedAt:              int64PtrToIntPtr(tm.UpdatedAt),
 		Attributes:             mapAttributesToGraphQL(tm.Attributes),
@@ -29,6 +30,28 @@ func MapThreatModelToGraphQL(tm *spec.Threatmodel, sourceFile string) *ThreatMod
 		DataFlowDiagrams:       tm.DataFlowDiagrams,
 		MermaidDiagrams:        tm.MermaidDiagrams,
 		SourceFile:             sourceFile,
+	}
+}
+
+// MapRiskRatingToGraphQL converts a threat's optional risk block into a GraphQL
+// RiskRating. The severity and score values are computed (they are methods on
+// the spec types), and the residual view needs the parent threat in scope to
+// account for implemented controls, so the whole threat is passed in. Returns
+// nil when the threat has no risk block.
+func MapRiskRatingToGraphQL(t *spec.Threat) *RiskRating {
+	if t == nil || t.Risk == nil {
+		return nil
+	}
+
+	return &RiskRating{
+		Likelihood:            t.Risk.Likelihood,
+		Impact:                t.Risk.Impact,
+		Severity:              t.Risk.Severity(),
+		Rationale:             strPtrOrNil(t.Risk.Rationale),
+		InherentScore:         t.Risk.InherentScore(),
+		ResidualScore:         t.ResidualScore(),
+		ResidualSeverity:      t.ResidualSeverity(),
+		ResidualRiskReduction: t.ResidualRiskReduction(),
 	}
 }
 

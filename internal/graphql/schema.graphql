@@ -26,6 +26,7 @@ type ThreatModel {
   description: String
   link: String
   diagramLink: String
+  repository: [String!]
   createdAt: Int
   updatedAt: Int
   attributes: Attributes
@@ -61,7 +62,24 @@ type Threat {
   stride: [String!]
   controls: [Control!]!
   informationAssetRefs: [String!]
+  risk: RiskRating
   threatModel: ThreatModel!
+}
+
+# Optional, methodology-neutral risk rating attached to a threat (spec 0.3.0+).
+# likelihood/impact are ordinal enums (very_low|low|medium|high|very_high).
+# severity is the resolved inherent band (author override, else computed from
+# the likelihood x impact matrix). The *Score values are on a 0-100 scale and
+# the residual* values reflect the effect of implemented controls.
+type RiskRating {
+  likelihood: String!
+  impact: String!
+  severity: String!
+  rationale: String
+  inherentScore: Float!
+  residualScore: Float!
+  residualSeverity: String!
+  residualRiskReduction: Float!
 }
 
 # Control/mitigation for a threat
@@ -167,6 +185,14 @@ type Statistics {
   totalControls: Int!
   implementedControls: Int!
   averageRiskReduction: Float
+  threatsWithRisk: Int!
+  severityCounts: [SeverityCount!]!
+}
+
+# Count of threats whose resolved inherent severity falls in a given band
+type SeverityCount {
+  severity: String!
+  count: Int!
 }
 
 # Input filter for threat models
@@ -183,4 +209,7 @@ input ThreatFilter {
   impacts: [String!]
   stride: [String!]
   hasImplementedControls: Boolean
+  # Match threats whose resolved inherent severity is in this set
+  # (info|low|medium|high|critical)
+  severity: [String!]
 }

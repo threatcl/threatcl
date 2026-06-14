@@ -295,3 +295,97 @@ func TestMapNilSlices(t *testing.T) {
 		t.Error("Expected empty slice, got nil")
 	}
 }
+
+func TestMapThreatModelToGraphQL_Repository(t *testing.T) {
+	tm := &spec.Threatmodel{
+		Name:       "Repo TM",
+		Author:     "test@example.com",
+		Repository: []string{"https://github.com/x/y", "https://github.com/x/z"},
+	}
+
+	result := MapThreatModelToGraphQL(tm, "f.hcl")
+	if len(result.Repository) != 2 {
+		t.Fatalf("Expected 2 repositories, got %d", len(result.Repository))
+	}
+	if result.Repository[0] != "https://github.com/x/y" {
+		t.Errorf("Expected first repo 'https://github.com/x/y', got '%s'", result.Repository[0])
+	}
+}
+
+func TestMapRiskRatingToGraphQL(t *testing.T) {
+	// high x very_high resolves to a critical inherent band; a single 75%
+	// implemented control reduces the residual score.
+	threat := &spec.Threat{
+		Name:        "Token theft",
+		Description: "d",
+		Risk: &spec.Risk{
+			Likelihood: "high",
+			Impact:     "very_high",
+			Rationale:  "unencrypted tokens",
+		},
+		Controls: []*spec.Control{
+			{Name: "TLS", Description: "tls", Implemented: true, RiskReduction: 75},
+		},
+	}
+
+	rr := MapRiskRatingToGraphQL(threat)
+	if rr == nil {
+		t.Fatal("Expected non-nil RiskRating")
+	}
+	if rr.Likelihood != "high" || rr.Impact != "very_high" {
+		t.Errorf("Expected high/very_high, got %s/%s", rr.Likelihood, rr.Impact)
+	}
+	if rr.Severity != "critical" {
+		t.Errorf("Expected severity 'critical', got '%s'", rr.Severity)
+	}
+	if rr.Rationale == nil || *rr.Rationale != "unencrypted tokens" {
+		t.Errorf("Expected rationale, got %v", rr.Rationale)
+	}
+	// Computed values should pass through verbatim from the spec methods.
+	if rr.InherentScore != threat.Risk.InherentScore() {
+		t.Errorf("InherentScore = %v, want %v", rr.InherentScore, threat.Risk.InherentScore())
+	}
+	if rr.ResidualScore != threat.ResidualScore() {
+		t.Errorf("ResidualScore = %v, want %v", rr.ResidualScore, threat.ResidualScore())
+	}
+	if rr.ResidualSeverity != threat.ResidualSeverity() {
+		t.Errorf("ResidualSeverity = %v, want %v", rr.ResidualSeverity, threat.ResidualSeverity())
+	}
+	if rr.ResidualRiskReduction != 75 {
+		t.Errorf("ResidualRiskReduction = %v, want 75", rr.ResidualRiskReduction)
+	}
+}
+
+func TestMapRiskRatingToGraphQL_NoRisk(t *testing.T) {
+	if rr := MapRiskRatingToGraphQL(&spec.Threat{Name: "no risk"}); rr != nil {
+		t.Errorf("Expected nil for threat without a risk block, got %+v", rr)
+	}
+	if rr := MapRiskRatingToGraphQL(nil); rr != nil {
+		t.Errorf("Expected nil for nil threat, got %+v", rr)
+	}
+}
+
+func TestMatchesThreatFilter_Severity(t *testing.T) {
+	// high x very_high => critical inherent severity
+	withRisk := &spec.Threat{Name: "a", Risk: &spec.Risk{Likelihood: "high", Impact: "very_high"}}
+	noRisk := &spec.Threat{Name: "b"}
+
+	tests := []struct {
+		name   string
+		threat *spec.Threat
+		filter *ThreatFilter
+		want   bool
+	}{
+		{"match critical", withRisk, &ThreatFilter{Severity: []string{"critical"}}, true},
+		{"case-insensitive", withRisk, &ThreatFilter{Severity: []string{"Critical"}}, true},
+		{"no match for low", withRisk, &ThreatFilter{Severity: []string{"low"}}, false},
+		{"no-risk threat excluded", noRisk, &ThreatFilter{Severity: []string{"critical"}}, false},
+		{"empty severity filter matches", withRisk, &ThreatFilter{}, true},
+	}
+
+	for _, tc := range tests {
+		if got := matchesThreatFilter(tc.threat, tc.filter); got != tc.want {
+			t.Errorf("%s: matchesThreatFilter = %v, want %v", tc.name, got, tc.want)
+		}
+	}
+}

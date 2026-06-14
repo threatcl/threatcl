@@ -84,6 +84,25 @@ func matchesThreatFilter(threat *spec.Threat, filter *ThreatFilter) bool {
 		}
 	}
 
+	// Check severity filter against the threat's resolved inherent severity.
+	// A threat with no risk block can never match a severity filter.
+	if len(filter.Severity) > 0 {
+		if threat.Risk == nil {
+			return false
+		}
+		sev := threat.Risk.Severity()
+		matched := false
+		for _, want := range filter.Severity {
+			if strings.EqualFold(sev, want) {
+				matched = true
+				break
+			}
+		}
+		if !matched {
+			return false
+		}
+	}
+
 	return true
 }
 

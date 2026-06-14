@@ -37,13 +37,31 @@ type Process struct {
 type Query struct {
 }
 
+type RiskRating struct {
+	Likelihood            string  `json:"likelihood"`
+	Impact                string  `json:"impact"`
+	Severity              string  `json:"severity"`
+	Rationale             *string `json:"rationale,omitempty"`
+	InherentScore         float64 `json:"inherentScore"`
+	ResidualScore         float64 `json:"residualScore"`
+	ResidualSeverity      string  `json:"residualSeverity"`
+	ResidualRiskReduction float64 `json:"residualRiskReduction"`
+}
+
+type SeverityCount struct {
+	Severity string `json:"severity"`
+	Count    int    `json:"count"`
+}
+
 type Statistics struct {
-	TotalThreatModels      int      `json:"totalThreatModels"`
-	TotalThreats           int      `json:"totalThreats"`
-	TotalInformationAssets int      `json:"totalInformationAssets"`
-	TotalControls          int      `json:"totalControls"`
-	ImplementedControls    int      `json:"implementedControls"`
-	AverageRiskReduction   *float64 `json:"averageRiskReduction,omitempty"`
+	TotalThreatModels      int              `json:"totalThreatModels"`
+	TotalThreats           int              `json:"totalThreats"`
+	TotalInformationAssets int              `json:"totalInformationAssets"`
+	TotalControls          int              `json:"totalControls"`
+	ImplementedControls    int              `json:"implementedControls"`
+	AverageRiskReduction   *float64         `json:"averageRiskReduction,omitempty"`
+	ThreatsWithRisk        int              `json:"threatsWithRisk"`
+	SeverityCounts         []*SeverityCount `json:"severityCounts"`
 }
 
 type ThreatFilter struct {
@@ -51,6 +69,7 @@ type ThreatFilter struct {
 	Impacts                []string `json:"impacts,omitempty"`
 	Stride                 []string `json:"stride,omitempty"`
 	HasImplementedControls *bool    `json:"hasImplementedControls,omitempty"`
+	Severity               []string `json:"severity,omitempty"`
 }
 
 type ThreatModel struct {
@@ -59,6 +78,7 @@ type ThreatModel struct {
 	Description            *string                      `json:"description,omitempty"`
 	Link                   *string                      `json:"link,omitempty"`
 	DiagramLink            *string                      `json:"diagramLink,omitempty"`
+	Repository             []string                     `json:"repository,omitempty"`
 	CreatedAt              *int                         `json:"createdAt,omitempty"`
 	UpdatedAt              *int                         `json:"updatedAt,omitempty"`
 	Attributes             *Attributes                  `json:"attributes,omitempty"`

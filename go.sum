@@ -354,8 +354,8 @@ github.com/tetratelabs/wazero v1.10.1 h1:2DugeJf6VVk58KTPszlNfeeN8AhhpwcZqkJj2ww
 github.com/tetratelabs/wazero v1.10.1/go.mod h1:DRm5twOQ5Gr1AoEdSi0CLjDQF1J9ZAuyqFIjl1KKfQU=
 github.com/threatcl/go-otm v0.0.2 h1:zN/Wwiy6QVw0SRm+YiZA7lDf2yI0jVyxPmNW1k9kgpw=
 github.com/threatcl/go-otm v0.0.2/go.mod h1:U1CNSpdQQ8S0lqr5LNn3tFZxsLgBKOz27+5k+IzFho0=
-github.com/threatcl/spec v0.2.8 h1:PmKQzTbUdGtTRLydexaGMlwtBjrs27TS3ZDxrmDxV3A=
-github.com/threatcl/spec v0.2.8/go.mod h1:gktkM0t+4ajxnKLVPesFl6E0+P4b/71YZ4Oj5sihIy4=
+github.com/threatcl/spec v0.3.0 h1:JP6XiUddyxNHlAewglS3zrzDKC99gqIdII/UWTCUm+A=
+github.com/threatcl/spec v0.3.0/go.mod h1:gktkM0t+4ajxnKLVPesFl6E0+P4b/71YZ4Oj5sihIy4=
 github.com/ulikunitz/xz v0.5.15 h1:9DNdB5s+SgV3bQ2ApL10xRc35ck0DuIX/isZvIk+ubY=
 github.com/ulikunitz/xz v0.5.15/go.mod h1:nbz6k7qbPmH4IRqmfOplQw/tblSgqTqBwxkY0oWt/14=
 github.com/urfave/cli/v2 v2.27.4 h1:o1owoI+02Eb+K107p27wEX9Bb8eqIoZCfLXloLUSWJ8=

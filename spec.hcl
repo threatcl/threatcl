@@ -1,5 +1,5 @@
 // To cater for multiple spec versions we specify this in our HCL files
-spec_version = "0.2.8"
+spec_version = "0.3.0"
 
 // You can include variables outside your threatmodel blocks
 
@@ -48,6 +48,12 @@ threatmodel "threatmodel name" {
   // when running threatcl dashboard
 
   diagram_link = "https://link/to/diagram"
+
+  // The repository attribute is optional. It's a list of source code
+  // repositories that this threat model covers, useful for linking the model
+  // to the code being assessed.
+
+  repository = ["https://github.com/example/repo"]
 
   // created_at and updated_at are optional integer, UNIX time stamps
   created_at = 1594033151
@@ -136,6 +142,27 @@ threatmodel "threatmodel name" {
     // The available values are 'Confidentiality, Integrity, Availability'
     impacts = ["Confidentiality", "Integrity", "Availability"]
 
+    // The risk block is optional. It attaches a methodology-neutral risk
+    // rating to this threat. The inherent severity and a 0-100 score are
+    // computed from likelihood and impact, and reduced by any implemented
+    // controls to give a residual view (see threatcl view / dashboard).
+
+    risk {
+      // likelihood and impact are required, and must each be one of
+      // 'very_low', 'low', 'medium', 'high', or 'very_high'
+      likelihood = "high"
+      impact = "very_high"
+
+      // severity is optional. If unset, it is computed from the
+      // likelihood x impact matrix. Set it to override the computed value, in
+      // which case it must be one of 'info', 'low', 'medium', 'high', or
+      // 'critical'
+      // severity = "critical"
+
+      // rationale is optional free text explaining the rating
+      rationale = "Tokens are sent over a shared network segment"
+    }
+
     // A threat may contain multiple control blocks
 
     control "control name" {
@@ -183,7 +210,7 @@ threatmodel "threatmodel name" {
 
   // An example of what may be in controls.hcl:
   //
-  // spec_version = "0.2.8"
+  // spec_version = "0.3.0"
   // component "control" "control_name" {
   //   description = "A control that can be used in multiple places"
   // }
@@ -216,7 +243,7 @@ EOT
   // (note, a single external file can include both expanded controls and
   // regular controls.)
 
-  // spec_version = "0.2.8"
+  // spec_version = "0.3.0"
   // component "control" "authentication_control" {
   //  description = "Multi-factor authentication required"
   //  implemented = true
