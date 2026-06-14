@@ -1,3 +1,15 @@
+## 0.5.0
+
+### Jun 14, 2026
+
+CHANGES:
+
+* Bumped threatcl to support the 0.3.1 version of the spec, this brings a number of changes
+    * `threatmodel` block now includes an optional `repository` attribute (array of strings)
+    * `threat` blocks now support optional `risk` blocks
+* Added a new `threatcl lsp` command that runs a Language Server (LSP) over stdio, providing diagnostics, completion, hover, document symbols, and formatting for threatcl HCL threat models in LSP-capable editors. See [docs/lsp.md](docs/lsp.md) for editor wiring and current limitations.
+* Built on the new `lang` language-intelligence layer in `spec`.
+
 ## 0.4.14
 
 ### Jun 7, 2026
