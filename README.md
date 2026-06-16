@@ -144,6 +144,7 @@ Available commands are:
     generate     Generate an HCL Threat Model
     list         List Threatmodels found in HCL file(s)
     mcp          Model Context Protocol (MCP) server for threatcl
+    mermaid      Output raw mermaid source from 'mermaid' blocks in existing HCL threatmodel file(s)
     query        Execute GraphQL queries against threat model data
     server       Start a GraphQL API server for threat models
     terraform    Parse output from 'terraform show -json'
@@ -401,6 +402,35 @@ Successfully created 'testout/tm2-modellymodel.png'
 ```
 
 If your `threatmodel` doesn't include a `diagram_link`, but does include a `data_flow_diagram`, then this will also be rendered when running `threatcl dashboard`.
+
+## Mermaid
+
+As per the [spec](spec.hcl), a `threatmodel` may also include free-form `mermaid` blocks. Unlike `data_flow_diagram_v2` (which `threatcl` renders for you), a `mermaid` block embeds raw [mermaid](https://mermaid.js.org/) source verbatim - mermaid infers the diagram type (sequence, state, flowchart, etc.) from the first line of the content.
+
+The `threatcl mermaid` command extracts that raw source so it can be piped into other rendering tools. It does not render images itself.
+
+By default the source is printed to STDOUT:
+
+```bash
+$ threatcl mermaid examples/tm2.hcl
+sequenceDiagram
+  User->>App: credentials
+  App->>Auth: verify
+  Auth-->>App: token
+```
+
+This makes it easy to pipe into a renderer such as [mermaid-cli](https://github.com/mermaid-js/mermaid-cli):
+
+```bash
+$ threatcl mermaid model.hcl | mmdc -o diagram.svg -i -
+```
+
+If there are multiple `mermaid` blocks, select one with `-index=n`, or write them all to a directory with `-outdir` (one `.mmd` file per block). You can also write a single block to a file with `-out`.
+
+```bash
+$ threatcl mermaid -outdir testout model.hcl
+Successfully created 'testout/model-mymodelloginsequence.mmd'
+```
 
 ## Terraform
 
