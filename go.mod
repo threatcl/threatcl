@@ -9,7 +9,7 @@ require (
 	github.com/charmbracelet/glamour v0.3.0
 	github.com/fatih/color v1.18.0
 	github.com/fsnotify/fsnotify v1.9.0
-	github.com/go-chi/chi/v5 v5.2.2
+	github.com/go-chi/chi/v5 v5.2.4
 	github.com/hashicorp/hcl/v2 v2.24.0
 	github.com/hashicorp/terraform-json v0.13.0
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51
