@@ -23,12 +23,15 @@ Status legend: ✅ done · 🔶 partial / in substance · ⛔ not met · ➖ out
 
 | Track  | Current (2026-06-27)            | Target (this effort)                                   |
 |--------|---------------------------------|--------------------------------------------------------|
-| Build  | **L0** — no provenance at all   | **L2, in substance L3** — signed SLSA provenance on every artifact, GitHub-hosted isolated builds |
+| Build  | **L2, in substance L3** — signed SLSA provenance wired for every artifact + image-by-digest (Phase 3); emitted on each `v*` release | **reached** — GitHub-hosted isolated builds, keyless-signed provenance, consumer-verifiable |
 | Source | **L1 in substance** (no VSA), a few L2 controls present-but-not-enforced | **L3 controls enforced** (in substance; no VSA), L4 ➖ (solo maintainer) |
 
-The headline gap is **Build L0 → L2/L3**: the release pipeline builds 5 platform
-binaries and multi-arch Docker images but produces **zero** provenance and **no
-checksums file**. Phase 3 is the main event.
+The headline **Build L0 → L2/L3** gap is now closed: Phase 3 wired
+[`actions/attest-build-provenance`](https://github.com/actions/attest-build-provenance)
+into the release job, so every tagged release emits Sigstore-signed SLSA
+provenance over each platform archive, the `SHA256SUMS` file, and the multi-arch
+container image (by digest). The remaining open work is **Source track Phase 2**
+(branch/tag rulesets + CODEOWNERS + enforcement).
 
 ---
 
@@ -49,17 +52,18 @@ The release pipeline (`.github/workflows/threatcl-release.yml`, tag-triggered on
 
 | Build requirement                                  | Status | Notes                                                        |
 |----------------------------------------------------|--------|--------------------------------------------------------------|
-| L1 — provenance exists (may be unsigned/incomplete)| ⛔     | No provenance is generated for binaries or images.           |
+| L1 — provenance exists (may be unsigned/incomplete)| ✅ (Phase 3) | Signed SLSA provenance is generated for every archive, `SHA256SUMS`, and the image. |
 | L1 — consistent, scripted build process            | ✅     | Builds are fully scripted in the workflow.                   |
-| L2 — build runs on a hosted platform               | ✅ (latent) | GitHub-hosted `ubuntu/macos/windows-latest` runners — but worthless for SLSA until provenance exists. |
-| L2 — provenance generated **and signed** by platform| ⛔    | None.                                                        |
-| L2 — consumer can validate provenance authenticity | ⛔     | Nothing to validate; no `gh attestation verify` story.       |
-| L3 — isolated, hardened builds; signing secrets not reachable by build steps | 🔶 (latent) | GitHub-hosted ephemeral runners + OIDC→Fulcio keyless signing provide this *once attestation is wired*; no user-controlled signing key is exposed to build steps. |
-| Checksums file (SHA256SUMS) published              | ✅ (Phase 2.5) | GoReleaser now emits `SHA256SUMS` over every archive on release. Integrity ✓; provenance still pending (Phase 3). |
+| L2 — build runs on a hosted platform               | ✅     | GitHub-hosted `ubuntu-latest` runner — now meaningful because provenance is attested. |
+| L2 — provenance generated **and signed** by platform| ✅ (Phase 3) | `actions/attest-build-provenance` — keyless GitHub OIDC → Fulcio, signed by the platform. |
+| L2 — consumer can validate provenance authenticity | ✅ (Phase 3) | `gh attestation verify` for both binaries and the image-by-digest (documented in README). |
+| L3 — isolated, hardened builds; signing secrets not reachable by build steps | 🔶 (in substance) | GitHub-hosted ephemeral runner + OIDC→Fulcio keyless signing — no user-controlled signing key is exposed to any build step. No third-party audit, so claimed in substance only. |
+| Checksums file (SHA256SUMS) published              | ✅ (Phase 2.5) | GoReleaser emits `SHA256SUMS` over every archive; Phase 3 also attests it. |
 
-**Honest read:** despite running on hosted, isolated runners (which would
-*support* L2/L3), the absence of any generated provenance pins this at **Build
-L0** today.
+**Honest read:** the release job now generates platform-signed, consumer-verifiable
+provenance for every artifact, so this reaches **Build L2** formally, with the L3
+isolation/hardening properties met **in substance** (ephemeral hosted runners +
+keyless signing). Provenance is emitted from the next `v*` tag onward.
 
 ### Phase 2.5 (done) — GoReleaser migration
 
@@ -84,16 +88,22 @@ own — it stays **Build L0** until Phase 3 adds attestations. What it buys:
   push-to-main = rolling `dev` pre-release; tag `v*` = full release. Images are
   pushed **only** on tags (`:v<version>` + `:latest`).
 
-### Target state — Build L2, in substance L3
+### Phase 3 (done) — Build L2, in substance L3
 
-Phase 3 wires [`actions/attest-build-provenance`](https://github.com/actions/attest-build-provenance)
-into the `release` job of the GoReleaser pipeline:
+Phase 3 wired [`actions/attest-build-provenance`](https://github.com/actions/attest-build-provenance)
+(v4.1.1, SHA-pinned) into the `release` job of the GoReleaser pipeline:
 
 - Sigstore-signed SLSA provenance (keyless, GitHub OIDC → Fulcio) for **every
-  released artifact**: each platform archive + the `SHA256SUMS` file.
-- Docker image provenance attested **by digest** (GoReleaser surfaces the digest).
-- `id-token: write` + `attestations: write` scoped to the `release` job only.
-- `gh attestation verify` documented in the README for both binaries and images.
+  released artifact**: one attestation over each platform archive + the
+  `SHA256SUMS` file (`subject-path` glob over `dist/`).
+- Docker image provenance attested **by digest**, pushed to ghcr.io as an OCI
+  referrer. The pushed multi-arch manifest digest is resolved with
+  `docker buildx imagetools inspect … --format '{{ .Manifest.Digest }}'`, so the
+  attested digest covers both `:v<version>` and `:latest` (same push).
+- `id-token: write` + `attestations: write` scoped to the `release` job only —
+  the PR `validate` and push-to-main `dev` jobs never get signing privileges.
+- `gh attestation verify` documented in the README for both binaries and the
+  image-by-digest.
 
 This reaches **Build L2** formally (provenance generated + signed by the
 platform, consumer-verifiable). The **L3** isolation/hardening properties are met
@@ -204,9 +214,9 @@ These underpin both tracks (a compromised Action can forge provenance or push to
 | 2     | `CODEOWNERS`                                                           | Source (review routing)          | ⛔ |
 | 2     | Require signed commits + status check; drop admin bypass               | Source L3 (enforcement)          | ⛔ |
 | 3     | `SHA256SUMS` checksums file in releases                                | Build (integrity)                | ✅ (done in 2.5) |
-| 3     | `attest-build-provenance` on every binary + checksums                  | **Build L0→L2 (in substance L3)**| ⛔ |
-| 3     | Attest Docker image **by digest**                                      | Build L2 (images)                | ⛔ |
-| 3     | README `gh attestation verify` docs (binaries + images-by-digest)      | Build L2 (consumer validation)   | ⛔ |
+| 3     | `attest-build-provenance` on every binary + checksums                  | **Build L0→L2 (in substance L3)**| ✅ |
+| 3     | Attest Docker image **by digest**                                      | Build L2 (images)                | ✅ |
+| 3     | README `gh attestation verify` docs (binaries + images-by-digest)      | Build L2 (consumer validation)   | ✅ |
 
 ---
 
@@ -231,6 +241,29 @@ These underpin both tracks (a compromised Action can forge provenance or push to
 
 ## Verification (for end users)
 
-> Filled in during Phase 3 once attestations ship. Will document:
-> `gh attestation verify <downloaded-archive> --repo threatcl/threatcl` for
-> binaries, and verifying the container image **by digest**.
+Every `v*` release carries Sigstore-signed SLSA build provenance. Verify with the
+[GitHub CLI](https://cli.github.com) — no keys or extra tooling required (this is
+also documented in the README).
+
+**Binaries / archives** — verify a downloaded archive (or the `SHA256SUMS` file):
+
+```bash
+gh attestation verify threatcl_<version>_<os>_<arch>.tar.gz --repo threatcl/threatcl
+```
+
+**Container image** — verify by tag (resolved to its digest automatically):
+
+```bash
+gh attestation verify oci://ghcr.io/threatcl/threatcl:<version> --repo threatcl/threatcl
+```
+
+Or pin to an immutable digest and verify that exact image:
+
+```bash
+digest=$(docker buildx imagetools inspect ghcr.io/threatcl/threatcl:<version> --format '{{ .Manifest.Digest }}')
+gh attestation verify oci://ghcr.io/threatcl/threatcl@${digest} --repo threatcl/threatcl
+```
+
+A successful verify confirms the artifact was built by this repo's `release`
+workflow from a `v*` tag, on a GitHub-hosted runner, signed keylessly via GitHub
+OIDC → Fulcio.

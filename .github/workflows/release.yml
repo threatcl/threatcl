@@ -80,16 +80,20 @@ jobs:
 
   # Tag v*: the real release. GoReleaser builds + publishes the GitHub Release
   # (mac/linux/windows archives + SHA256SUMS) and builds + pushes the multi-arch
-  # image as :v<version> and :latest.
-  #
-  # Phase 3 will add `id-token: write` + `attestations: write` here plus an
-  # actions/attest-build-provenance step over dist/ and the image digest.
+  # image as :v<version> and :latest. Then SLSA build provenance is attested for
+  # every released artifact (Phase 3, see docs/SLSA.md):
+  #   - one signed provenance over each platform archive + SHA256SUMS, and
+  #   - one signed provenance over the multi-arch image, by digest, pushed to ghcr.
+  # Signing is keyless (GitHub OIDC -> Fulcio); no signing secret is exposed to
+  # any build step. id-token/attestations are scoped to THIS job only.
   release:
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     permissions:
-      contents: write
-      packages: write
+      contents: write     # create the GitHub Release
+      packages: write     # push image + its attestation to ghcr.io
+      id-token: write     # OIDC token for keyless (Fulcio) signing
+      attestations: write # record provenance via the GitHub attestations API
     steps:
       - name: Checkout
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
@@ -116,3 +120,39 @@ jobs:
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # --- SLSA build provenance (Phase 3) -----------------------------------
+      # Attest every released archive + the checksums file. Produces a single
+      # Sigstore-signed provenance whose subjects are each file's digest, so
+      # `gh attestation verify <archive> --repo threatcl/threatcl` works for any
+      # one of them (and for SHA256SUMS itself).
+      - name: Attest release binaries + checksums
+        uses: actions/attest-build-provenance@0f67c3f4856b2e3261c31976d6725780e5e4c373 # v4.1.1
+        with:
+          subject-path: |
+            dist/*.tar.gz
+            dist/*.zip
+            dist/SHA256SUMS
+
+      # Resolve the digest of the multi-arch manifest GoReleaser just pushed. The
+      # image tag mirrors the git tag (.goreleaser.yaml tags `v{{ .Version }}`),
+      # so $GITHUB_REF_NAME (e.g. v1.2.3) is the right reference. Attesting the
+      # index digest covers both :v<version> and :latest (same push, same digest).
+      - name: Resolve pushed image digest
+        id: image
+        run: |
+          set -euo pipefail
+          ref="ghcr.io/threatcl/threatcl:${GITHUB_REF_NAME}"
+          digest="$(docker buildx imagetools inspect "$ref" --format '{{ .Manifest.Digest }}')"
+          echo "resolved $ref -> $digest"
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
+
+      # Attest the image BY DIGEST and push the provenance to ghcr.io as an OCI
+      # referrer, so `gh attestation verify oci://ghcr.io/threatcl/threatcl:<tag>`
+      # can validate it.
+      - name: Attest container image (by digest)
+        uses: actions/attest-build-provenance@0f67c3f4856b2e3261c31976d6725780e5e4c373 # v4.1.1
+        with:
+          subject-name: ghcr.io/threatcl/threatcl
+          subject-digest: ${{ steps.image.outputs.digest }}
+          push-to-registry: true
