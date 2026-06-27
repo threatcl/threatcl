@@ -55,22 +55,44 @@ The release pipeline (`.github/workflows/threatcl-release.yml`, tag-triggered on
 | L2 — provenance generated **and signed** by platform| ⛔    | None.                                                        |
 | L2 — consumer can validate provenance authenticity | ⛔     | Nothing to validate; no `gh attestation verify` story.       |
 | L3 — isolated, hardened builds; signing secrets not reachable by build steps | 🔶 (latent) | GitHub-hosted ephemeral runners + OIDC→Fulcio keyless signing provide this *once attestation is wired*; no user-controlled signing key is exposed to build steps. |
-| Checksums file (SHA256SUMS) published              | ⛔     | Not produced; consumers cannot verify download integrity.    |
+| Checksums file (SHA256SUMS) published              | ✅ (Phase 2.5) | GoReleaser now emits `SHA256SUMS` over every archive on release. Integrity ✓; provenance still pending (Phase 3). |
 
 **Honest read:** despite running on hosted, isolated runners (which would
 *support* L2/L3), the absence of any generated provenance pins this at **Build
 L0** today.
 
+### Phase 2.5 (done) — GoReleaser migration
+
+Before wiring provenance, the release pipeline was rebuilt around
+[GoReleaser](https://goreleaser.com) (replacing two ~95%-duplicated hand-rolled
+workflows). This is groundwork for Build provenance, not a level change on its
+own — it stays **Build L0** until Phase 3 adds attestations. What it buys:
+
+- **Deterministic, stable artifact names** (`threatcl_<version>_<os>_<arch>.tar.gz`,
+  windows `.zip`) — the old `BUILD_TIME`-stamped names were hostile to
+  verification. `-trimpath` reproducible builds.
+- **`SHA256SUMS`** over all archives (download-integrity).
+- **Version stamped from the git tag** via `-ldflags -X …/version.Version` (no
+  more manual `version.go` bumps).
+- **Single build path for the container image** (Option B): the image `COPY`s the
+  *same* binary that's in the archive (`Dockerfile.goreleaser` is COPY-only), so
+  the bytes a user verifies in the archive are the bytes in the image. Multi-arch
+  via `dockers_v2`; an **SBOM is attached to the image** by default.
+- **One ubuntu runner** cross-compiles all 5 targets (dropped the macOS/Windows
+  runners — pure-Go `CGO_ENABLED=0`).
+- **Security-aware triggers**: PR = build-only dry-run (fork-safe, read-only);
+  push-to-main = rolling `dev` pre-release; tag `v*` = full release. Images are
+  pushed **only** on tags (`:v<version>` + `:latest`).
+
 ### Target state — Build L2, in substance L3
 
 Phase 3 wires [`actions/attest-build-provenance`](https://github.com/actions/attest-build-provenance)
-into the existing pipeline (no goreleaser — see decision below):
+into the `release` job of the GoReleaser pipeline:
 
-- A `SHA256SUMS` file covering every platform archive.
 - Sigstore-signed SLSA provenance (keyless, GitHub OIDC → Fulcio) for **every
   released artifact**: each platform archive + the `SHA256SUMS` file.
-- Docker image provenance attested **by digest**.
-- `id-token: write` + `attestations: write` scoped to the attesting job(s) only.
+- Docker image provenance attested **by digest** (GoReleaser surfaces the digest).
+- `id-token: write` + `attestations: write` scoped to the `release` job only.
 - `gh attestation verify` documented in the README for both binaries and images.
 
 This reaches **Build L2** formally (provenance generated + signed by the
@@ -157,12 +179,12 @@ These underpin both tracks (a compromised Action can forge provenance or push to
 | Job-scoped escalation only where needed              | ✅ (Phase 1) | Build-only jobs dropped to inherit `contents: read` (they only `upload-artifact`). Escalation kept only on jobs that need it: `release`/`pre-release` (`contents: write`, GitHub Release), image push (`packages: write`). `pre-build-image-test` dropped `packages: write` (it's `push: false`). |
 | CodeQL scanning                                      | ✅     | `.github/workflows/codeql.yml` runs on push/PR to `main` + weekly. |
 
-> **Known carry-over (Phase 1):** the three `docker/*` actions are pinned to old
-> majors (`login-action` v1.10.0, `metadata-action` v3.3.0, `build-push-action`
-> v2.5.0), and `setup-qemu`/`setup-buildx` to v2. Phase 1 pinned them *as-is* (no
-> behaviour change); the new Dependabot config will propose major bumps as
-> separate, CI-verified PRs to review + merge. `mknejp/delete-release-assets@v1`
-> is a **branch** (no tags exist) now pinned to its commit SHA.
+> **Carry-over resolved in Phase 2.5:** the old `docker/*` pins (`login-action`
+> v1.10.0, `metadata-action` v3.3.0, `build-push-action` v2.5.0) and the
+> `mknejp/delete-release-assets@v1` branch pin lived in the two release workflows
+> that the GoReleaser migration **deleted**. The new `release.yml` uses current
+> `docker/login-action` v4.2.0, `setup-qemu`/`setup-buildx` v4.1.0, and
+> `goreleaser-action` v7.2.2 — all SHA-pinned with version comments.
 
 ---
 
@@ -174,11 +196,14 @@ These underpin both tracks (a compromised Action can forge provenance or push to
 | 1     | SHA-pin all Actions w/ `# vX.Y.Z`                                       | Hygiene (protects both tracks)   | ✅ |
 | 1     | Add `dependabot.yml` (github-actions + gomod + docker)                 | Hygiene                          | ✅ |
 | 1     | Least-privilege `permissions:` on every workflow (fix `testvet.yml`)   | Hygiene                          | ✅ |
+| 2.5   | Migrate release pipeline to GoReleaser (`.goreleaser.yaml`, consolidated `release.yml`) | Build groundwork (determinism, single build path) | ✅ |
+| 2.5   | Deterministic artifact names + version ldflags injection               | Build groundwork                 | ✅ |
+| 2.5   | Multi-arch image via `dockers_v2`, image binary == archive binary + SBOM | Build groundwork (images)        | ✅ |
 | 2     | Branch ruleset on `main` (PR + status check + signed + linear + squash)| Source L2→L3 controls (in substance) | ⛔ |
 | 2     | Tag ruleset on `v*` (immutable + signed)                               | Source L2/L3 (tag immutability)  | ⛔ |
 | 2     | `CODEOWNERS`                                                           | Source (review routing)          | ⛔ |
 | 2     | Require signed commits + status check; drop admin bypass               | Source L3 (enforcement)          | ⛔ |
-| 3     | `SHA256SUMS` checksums file in releases                                | Build (integrity)                | ⛔ |
+| 3     | `SHA256SUMS` checksums file in releases                                | Build (integrity)                | ✅ (done in 2.5) |
 | 3     | `attest-build-provenance` on every binary + checksums                  | **Build L0→L2 (in substance L3)**| ⛔ |
 | 3     | Attest Docker image **by digest**                                      | Build L2 (images)                | ⛔ |
 | 3     | README `gh attestation verify` docs (binaries + images-by-digest)      | Build L2 (consumer validation)   | ⛔ |

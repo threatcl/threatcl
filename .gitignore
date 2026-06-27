@@ -17,5 +17,11 @@
 # Output of `go test -coverprofile=cover.txt`
 cover.txt
 
+# GoReleaser build output
+dist/
+
+# Locally-built binary (`make build`)
+/threatcl
+
 .DS_Store
 .vscode

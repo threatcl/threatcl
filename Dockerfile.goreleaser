@@ -1,0 +1,15 @@
+# Runtime image used by GoReleaser (see .goreleaser.yaml `dockers`).
+# GoReleaser cross-compiles the binary and drops it into the build context, so
+# this image only needs to package that pre-built binary — there is no build
+# stage here. The binary in the container is therefore byte-identical to the one
+# in the released archive (single build path).
+#
+# For local from-source image builds use the top-level `Dockerfile` (`make image`).
+FROM alpine:3.23
+
+RUN addgroup -S threatcl && adduser -S -G threatcl threatcl
+
+COPY threatcl /usr/bin/threatcl
+
+USER threatcl
+ENTRYPOINT ["/usr/bin/threatcl"]
