@@ -151,11 +151,18 @@ These underpin both tracks (a compromised Action can forge provenance or push to
 
 | Control                                              | Status | Notes |
 |------------------------------------------------------|--------|-------|
-| All Actions SHA-pinned with `# vX.Y.Z` comment       | 🔶     | Mostly tag-pinned (`@v6`, `@v2`, …). Only 3 `docker/*` actions are SHA-pinned, and without version comments. |
-| Dependabot (github-actions + gomod)                  | ⛔     | No `.github/dependabot.yml`. |
-| Least-privilege top-level `permissions: contents: read` | 🔶  | `release` + `pre-release` + `codeql` set it (top-level or per-job); **`threatcl-testvet.yml` has no `permissions:` block at all** (inherits default token scope). |
-| Job-scoped escalation only where needed              | 🔶     | Release jobs escalate to `contents: write` / `packages: write` per job — good. To be normalised in Phase 1. |
+| All Actions SHA-pinned with `# vX.Y.Z` comment       | ✅ (Phase 1) | Every `uses:` across all 4 workflows pinned to a full commit SHA + version comment. The lone `@latest` left is inside a commented-out dead block. |
+| Dependabot (github-actions + gomod)                  | ✅ (Phase 1) | `.github/dependabot.yml` covers `github-actions`, `gomod`, and `docker` (base images), weekly, grouped. Will drive the older `docker/*` action pins up to current majors as CI-gated PRs. |
+| Least-privilege top-level `permissions: contents: read` | ✅ (Phase 1) | All 4 workflows now declare top-level `contents: read` (added to `threatcl-testvet.yml` + `codeql.yml`; already present on the release workflows). |
+| Job-scoped escalation only where needed              | ✅ (Phase 1) | Build-only jobs dropped to inherit `contents: read` (they only `upload-artifact`). Escalation kept only on jobs that need it: `release`/`pre-release` (`contents: write`, GitHub Release), image push (`packages: write`). `pre-build-image-test` dropped `packages: write` (it's `push: false`). |
 | CodeQL scanning                                      | ✅     | `.github/workflows/codeql.yml` runs on push/PR to `main` + weekly. |
+
+> **Known carry-over (Phase 1):** the three `docker/*` actions are pinned to old
+> majors (`login-action` v1.10.0, `metadata-action` v3.3.0, `build-push-action`
+> v2.5.0), and `setup-qemu`/`setup-buildx` to v2. Phase 1 pinned them *as-is* (no
+> behaviour change); the new Dependabot config will propose major bumps as
+> separate, CI-verified PRs to review + merge. `mknejp/delete-release-assets@v1`
+> is a **branch** (no tags exist) now pinned to its commit SHA.
 
 ---
 
@@ -163,10 +170,10 @@ These underpin both tracks (a compromised Action can forge provenance or push to
 
 | Phase | Change                                                                 | Advances                         | Status |
 |-------|------------------------------------------------------------------------|----------------------------------|--------|
-| 0     | Recon + this `docs/SLSA.md`                                             | (baseline)                       | 🔶 in progress |
-| 1     | SHA-pin all Actions w/ `# vX.Y.Z`                                       | Hygiene (protects both tracks)   | ⛔ |
-| 1     | Add `dependabot.yml` (github-actions + gomod)                          | Hygiene                          | ⛔ |
-| 1     | Least-privilege `permissions:` on every workflow (fix `testvet.yml`)   | Hygiene                          | ⛔ |
+| 0     | Recon + this `docs/SLSA.md`                                             | (baseline)                       | ✅ |
+| 1     | SHA-pin all Actions w/ `# vX.Y.Z`                                       | Hygiene (protects both tracks)   | ✅ |
+| 1     | Add `dependabot.yml` (github-actions + gomod + docker)                 | Hygiene                          | ✅ |
+| 1     | Least-privilege `permissions:` on every workflow (fix `testvet.yml`)   | Hygiene                          | ✅ |
 | 2     | Branch ruleset on `main` (PR + status check + signed + linear + squash)| Source L2→L3 controls (in substance) | ⛔ |
 | 2     | Tag ruleset on `v*` (immutable + signed)                               | Source L2/L3 (tag immutability)  | ⛔ |
 | 2     | `CODEOWNERS`                                                           | Source (review routing)          | ⛔ |
