@@ -27,8 +27,11 @@ ifndef TAG
 	$(error TAG is undefined)
 endif
 
+VERSION?=$(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
+LDFLAGS=-X github.com/threatcl/threatcl/version.Version=$(VERSION)
+
 build: ## Build threatcl and copy to your GOPATH/bin
-	$(GO_CMD) build -o ${BINNAME} ./cmd/threatcl
+	$(GO_CMD) build -ldflags "$(LDFLAGS)" -o ${BINNAME} ./cmd/threatcl
 
 fmt: ## Checks go formatting
 	goimports -w $(GOFMT_FILES)

@@ -1,0 +1,115 @@
+# GoReleaser config for threatcl — single source of truth for release builds.
+# https://goreleaser.com
+#
+# Local dry-run (no publish, no docker):
+#   goreleaser release --snapshot --clean --skip=docker
+# Validate config:
+#   goreleaser check
+version: 2
+
+project_name: threatcl
+
+before:
+  hooks:
+    # download (not tidy) so a release never mutates go.mod/go.sum.
+    - go mod download
+
+builds:
+  - id: threatcl
+    main: ./cmd/threatcl
+    binary: threatcl
+    env:
+      - CGO_ENABLED=0
+    flags:
+      - -trimpath
+    ldflags:
+      # Reproducible, stripped binary with the version stamped in. {{.Version}}
+      # is the git tag (without the leading "v") for releases, or "dev" for
+      # snapshot builds (see `snapshot` below).
+      - -s -w -X github.com/threatcl/threatcl/version.Version={{ .Version }}
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ignore:
+      # threatcl ships no windows/arm64 build (parity with the old pipeline).
+      - goos: windows
+        goarch: arm64
+
+archives:
+  - id: threatcl
+    ids:
+      - threatcl
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    formats:
+      - tar.gz
+    format_overrides:
+      - goos: windows
+        formats:
+          - zip
+    files:
+      - LICENSE
+      - README.md
+
+checksum:
+  name_template: "SHA256SUMS"
+  algorithm: sha256
+
+snapshot:
+  # Non-tag builds (PRs, pushes to main) get a stable "dev" version so the
+  # rolling `dev` pre-release assets keep constant filenames and overwrite
+  # cleanly instead of accumulating.
+  version_template: "dev"
+
+changelog:
+  use: github
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"
+      - "^ci:"
+
+# Multi-arch container image (buildx-native dockers_v2). GoReleaser builds the
+# image straight from the already-compiled binary (Dockerfile.goreleaser is
+# COPY-only, no build stage) — so the binary in the image is byte-identical to
+# the one in the released archive. On a real release it builds + pushes the
+# multi-arch manifest; on snapshot builds it builds per-arch locally and does
+# NOT push. An SBOM is attached to the image by default (sbom: true).
+dockers_v2:
+  - id: threatcl
+    ids:
+      - threatcl
+    dockerfile: Dockerfile.goreleaser
+    images:
+      - ghcr.io/threatcl/threatcl
+    # NOTE: assumes the existing convention is `:vX.Y.Z` (the old
+    # metadata-action default `type=ref,event=tag`). If your images were tagged
+    # without the leading "v", change to "{{ .Version }}".
+    tags:
+      - "v{{ .Version }}"
+      - latest
+    platforms:
+      - linux/amd64
+      - linux/arm64
+    labels:
+      org.opencontainers.image.title: "{{ .ProjectName }}"
+      org.opencontainers.image.description: "Threat modeling as code"
+      org.opencontainers.image.url: "https://github.com/threatcl/threatcl"
+      org.opencontainers.image.source: "https://github.com/threatcl/threatcl"
+      org.opencontainers.image.version: "{{ .Version }}"
+      org.opencontainers.image.revision: "{{ .FullCommit }}"
+      org.opencontainers.image.created: "{{ .Date }}"
+      org.opencontainers.image.licenses: "MIT"
+
+release:
+  github:
+    owner: threatcl
+    name: threatcl
+  # Tags like v1.2.3-rc1 are auto-marked as pre-releases; full tags are not.
+  prerelease: auto
+  make_latest: "true"

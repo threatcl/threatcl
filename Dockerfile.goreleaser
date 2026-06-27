@@ -1,0 +1,19 @@
+# Runtime image used by GoReleaser (see .goreleaser.yaml `dockers_v2`).
+#
+# GoReleaser cross-compiles the binary and lays the build context out BY
+# PLATFORM (e.g. linux/amd64/threatcl, linux/arm64/threatcl), then builds with
+# buildx — which provides the $TARGETPLATFORM arg. So this image only packages
+# the pre-built binary (no build stage); the binary is byte-identical to the one
+# in the released archive.
+#
+# For local from-source image builds use the top-level `Dockerfile` (`make image`).
+FROM alpine:3.23
+
+ARG TARGETPLATFORM
+
+RUN addgroup -S threatcl && adduser -S -G threatcl threatcl
+
+COPY $TARGETPLATFORM/threatcl /usr/bin/threatcl
+
+USER threatcl
+ENTRYPOINT ["/usr/bin/threatcl"]
