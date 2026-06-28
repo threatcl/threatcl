@@ -1,4 +1,4 @@
- spec_version = "0.3.1"
+ spec_version = "0.4.0"
 
  threatmodel "Modelly model" {
    imports = ["control-library/othercontrols.hcl"]

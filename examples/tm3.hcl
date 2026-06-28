@@ -1,4 +1,4 @@
- spec_version = "0.3.1"
+ spec_version = "0.4.0"
 
  threatmodel "Modelly model" {
    imports = ["https://raw.githubusercontent.com/threatcl/threatcl/main/examples/aws-security-checklist.hcl", "https://raw.githubusercontent.com/threatcl/threatcl/main/examples/owasp-proactive-controls.hcl"]
