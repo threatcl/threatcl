@@ -73,8 +73,11 @@ To release a new version:
 * Update the [CHANGELOG](CHANGELOG.md)
 * Once the main branch has been merged and updated and all the [actions](https://github.com/threatcl/threatcl/actions) are complete - this is basically setup to release "dev" release (without docker)
 * Once that's complete and you're ready to do the primary release, you tag
-* `git tag -a vN.N.N -m 'vN.N.N'`
-* `git tag -f latest`
+* `git tag -s vN.N.N -m 'vN.N.N'` — release tags **must be signed** (the `v*` tag
+  ruleset requires it; an unsigned `git tag -a` is rejected on push). See
+  [docs/SLSA.md](docs/SLSA.md) for signing setup.
+* `git tag -f latest` — the floating `latest` tag is intentionally outside the
+  `v*` ruleset, so it can still be force-moved (no signature required).
 * `git push --tags`
 * This should then run a "threatcl release" action to release a new version, including amd64/arm64 docker images to ghcr.io
 * [Deprecated] Then don't forget to update https://github.com/threatcl/homebrew-repo
