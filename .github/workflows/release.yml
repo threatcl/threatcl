@@ -73,6 +73,17 @@ jobs:
           tag_name: dev
           name: "Development Build"
           prerelease: true
+          # Always set a clean, fixed body. Without this, action-gh-release leaves
+          # whatever notes the release already had — which is how the old, giant
+          # full-history changelog got stuck on this rolling tag. A dev build has
+          # no meaningful "release range", so just describe what it is.
+          body: |
+            ⚠️ **Rolling development build** — rebuilt and overwritten on every
+            push to `main`. Unstable and not intended for production use; for a
+            stable version grab the latest tagged
+            [release](https://github.com/threatcl/threatcl/releases/latest).
+
+            Built from commit ${{ github.sha }}.
           files: |
             dist/*.tar.gz
             dist/*.zip
