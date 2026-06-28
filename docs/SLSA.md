@@ -21,20 +21,23 @@ Status legend: ✅ done · 🔶 partial / in substance · ⛔ not met · ➖ out
 
 ## TL;DR — current vs target
 
-| Track  | Current (2026-06-27)            | Target (this effort)                                   |
+| Track  | Current (2026-06-28)            | Target (this effort)                                   |
 |--------|---------------------------------|--------------------------------------------------------|
 | Build  | **L2, in substance L3** — signed SLSA provenance wired for every artifact + image-by-digest (Phase 3); emitted on each `v*` release | **reached** — GitHub-hosted isolated builds, keyless-signed provenance, consumer-verifiable |
-| Source | **L1 in substance** (no VSA), a few L2 controls present-but-not-enforced | **L3 controls enforced** (in substance; no VSA), L4 ➖ (solo maintainer) |
+| Source | **L3 controls in force** (in substance; no VSA) — non-bypassable `main` + `v*` rulesets active | **reached** — L3-shaped controls enforced (no VSA, GitHub limitation), L4 ➖ (solo maintainer) |
 
 The headline **Build L0 → L2/L3** gap is now closed: Phase 3 wired
 [`actions/attest-build-provenance`](https://github.com/actions/attest-build-provenance)
 into the release job, so every tagged release emits Sigstore-signed SLSA
 provenance over each platform archive, the `SHA256SUMS` file, and the multi-arch
-container image (by digest). **Source track Phase 2** now ships its committed
-artifacts too — importable branch/tag rulesets under `.github/rulesets/` plus
-`.github/CODEOWNERS`. GitHub never auto-reads those files, so the remaining work
-is a one-time **maintainer activation** (import both rulesets via the UI or
-`gh api`); see the [maintainer checklist](#phase-2-committed--source-l3-controls-in-substance).
+container image (by digest). **Source track Phase 2** is now done too: the
+importable branch/tag rulesets under `.github/rulesets/` plus `.github/CODEOWNERS`
+ship in the repo **and** have been imported — both rulesets are **active and
+non-bypassable** on `main` + `v*` (PR + `testvet`/`validate` + signed + linear +
+squash; immutable signed tags). See the
+[activation record](#phase-2-active--source-l3-controls-in-substance). The
+now-redundant legacy classic branch protection on `main` has been removed, leaving
+the ruleset as the single source of truth.
 
 ---
 
@@ -121,45 +124,55 @@ audit of the build platform — but the technical controls are L3-shaped.
 
 ### Current state
 
-Live state as of 2026-06-27 (`gh api`):
+Live state as of 2026-06-28 (`gh api`) — **Phase 2 activated**, both rulesets
+imported and enforcing:
 
-- **Rulesets: none** (`repos/threatcl/threatcl/rulesets` → `[]`).
-- **Classic branch protection on `main`** exists but with sharp edges:
-  - `required_pull_request_reviews`: 1 approval required.
-  - `enforce_admins`: **false** → the solo maintainer (admin) bypasses the entire
-    protection, including the PR requirement.
-  - `required_signatures`: **false** → commits on `main` are not required to be
-    signed (even though the maintainer signs locally).
-  - **No required status check** — `make test`/`make vet` is *not* gated on merge.
-  - `allow_force_pushes`: false ✅, `allow_deletions`: false ✅.
-  - `required_linear_history`: false.
-- **Merge settings:** squash, merge-commit, and rebase all allowed (not
-  squash-only).
-- **No tag protection** — `v*` tags are not immutable.
-- **Signing works**: recent `v*` tags are annotated, signed tag objects; commit +
-  tag signing is configured locally (SSH signing via Secretive / Secure Enclave).
-- **No CODEOWNERS.**
+- **Two active rulesets** (`repos/threatcl/threatcl/rulesets`):
+  - `main branch protection` (branch, `~DEFAULT_BRANCH`, enforcement **active**):
+    require PR (**0 approvals**), require status checks **`testvet` + `validate`**
+    (strict), `required_signatures`, `required_linear_history`, squash-only
+    (`allowed_merge_methods: ["squash"]`), `non_fast_forward` (no force-push), and
+    `deletion` blocked. **`bypass_actors: []`** — non-bypassable, including for the
+    admin/maintainer.
+  - `release tag protection` (tag, `refs/tags/v*`, enforcement **active**):
+    `deletion` + `update` + `non_fast_forward` blocked, `required_signatures`.
+    `bypass_actors: []`. (The floating `latest` and rolling `dev` tags are
+    deliberately out of scope.)
+- **Legacy classic branch protection — removed.** The old classic protection on
+  `main` (1-approval PR, `enforce_admins: false`, no signatures, no status checks)
+  was fully superseded by the ruleset and deleted on 2026-06-28
+  (`gh api -X DELETE repos/threatcl/threatcl/branches/main/protection` → 404).
+  Its only unique rule — a 1-approval requirement — conflicted with the
+  solo-maintainer 0-approval design and was the source of the #169 "1 approving
+  review required" merge block. The ruleset is now the single source of truth
+  for `main`.
+- **CODEOWNERS** present (`.github/CODEOWNERS`, default owner `@xntrik`).
+- **Signing enforced**: commit + tag signing is configured locally (SSH signing
+  via Secretive / Secure Enclave); `required_signatures` now enforces it on both
+  `main` and `v*` tags. Recent `v*` tags are annotated, signed tag objects.
 
 | Source requirement                                                   | Level | Status | Notes |
 |----------------------------------------------------------------------|-------|--------|-------|
 | Version controlled, stable repo + revision locators, diff tooling    | L1    | 🔶     | GitHub provides all of this; but no **Source VSA** is emitted (GitHub limitation). "L1 in substance." |
-| Immutable history — no force-push to `main`                          | L2    | ✅     | `allow_force_pushes=false`, `allow_deletions=false`. |
+| Immutable history — no force-push to `main`                          | L2    | ✅     | Ruleset `non_fast_forward` + `deletion` on `main` (and `v*` tags); non-bypassable. |
 | Change attribution (who/when/new revision id)                        | L2    | ✅     | Native git + GitHub history. |
 | Contemporaneous **Source Provenance** attestations                   | L2    | ⛔     | GitHub does not produce these. |
-| Continuous **enforced** technical controls, recorded in attestations | L3    | 🔶     | Non-bypassable rulesets are now **committed** under `.github/rulesets/` (in substance once imported); still no attestations. The live repo enforces them only after the maintainer activation step below. |
+| Continuous **enforced** technical controls, recorded in attestations | L3    | 🔶     | Non-bypassable rulesets are **active** on `main` + `v*` (`bypass_actors: []`): PR + `testvet`/`validate` + signatures + linear history. Controls are now *in force* — but still no Source Provenance/VSA attestations (GitHub limitation), so "L3 in substance," not platform-attested. |
 | Two-party review of every change to protected branches               | L4    | ➖     | Solo maintainer — not achievable without a second trusted reviewer. |
 
-**Honest read:** **Source L1 in substance** (no VSA), with two L2-flavoured
-controls (force-push/deletion protection) already in place but neither enforced
-against admins nor attested. Phase 2 now **commits** the L3-shaped rulesets
-(non-bypassable PR + CI + signature + linear-history gates); flipping them on is
-a one-time maintainer import — see the checklist below.
+**Honest read:** **Source L1 in substance** (no VSA), now with the **L3-shaped
+technical controls active and non-bypassable** — Phase 2's rulesets are imported
+and enforcing on `main` + `v*` (PR + CI + signature + linear-history + tag
+immutability, `bypass_actors: []`, no admin escape hatch). The remaining gap is
+the one GitHub can't close yet: no Source Provenance/VSA attestation, so this is
+"L2/L3 controls in force," not platform-attested. **L4** is still gated on a
+second reviewer.
 
-### Phase 2 (committed) — Source L3 controls, in substance
+### Phase 2 (active) — Source L3 controls, in substance
 
 Phase 2 ports the `threatcl/spec` patterns. It ships three **committed**
-artifacts (version-controlled templates GitHub never auto-reads) plus the
-activation checklist below:
+artifacts (version-controlled templates GitHub never auto-reads) that were then
+imported and activated (see the record below):
 
 - `.github/CODEOWNERS` — default owner `@xntrik`, so the maintainer is the
   default reviewer (and the routing is already in place the day a second
@@ -197,11 +210,15 @@ attestations — the spec requires those produced contemporaneously and they sim
 don't exist yet on GitHub. We are honest about this gap. **L4 (two-party review)
 is out of scope** for a single maintainer.
 
-#### Maintainer activation checklist — GitHub settings
+#### Maintainer activation record — GitHub settings
+
+> **✅ Activated 2026-06-28.** Both rulesets were imported and are enforcing on
+> `main` + `v*`, and the redundant legacy classic branch protection was removed.
+> The steps below are kept as the activation/repro record.
 
 The rulesets are **not auto-applied** — GitHub never reads these files. They are
-version-controlled templates you import by hand (UI) or push with `gh api`. Do
-the steps in order.
+version-controlled templates imported by hand (UI) or pushed with `gh api`, in
+this order.
 
 **Step 1 — Signing (already configured).** Both rulesets require signatures.
 Commit + tag signing is already set up locally via SSH signing (Secretive /
@@ -233,14 +250,14 @@ gh api repos/threatcl/threatcl/rulesets \
 
 It encodes:
 
-- [ ] Require a pull request before merging (**0 approvals** — solo default).
-- [ ] Require status checks **`testvet`** *and* **`validate`** (strict /
+- [x] Require a pull request before merging (**0 approvals** — solo default).
+- [x] Require status checks **`testvet`** *and* **`validate`** (strict /
   up-to-date).
-- [ ] **Block force-pushes** (`non_fast_forward`) — Source L2 move-forward-only.
-- [ ] **Restrict deletions** of `main`.
-- [ ] **Require linear history** + **squash-only** merges (no more merge commits;
+- [x] **Block force-pushes** (`non_fast_forward`) — Source L2 move-forward-only.
+- [x] **Restrict deletions** of `main`.
+- [x] **Require linear history** + **squash-only** merges (no more merge commits;
   PRs land as a single squashed, GitHub-signed commit).
-- [ ] **Require signed commits** (`required_signatures`).
+- [x] **Require signed commits** (`required_signatures`).
 
 > Want CodeQL gated on merge too? Add `{ "context": "Analyze (go)" }` (the
 > `codeql.yml` check name) to `required_status_checks` and re-import. Left out of
@@ -250,9 +267,9 @@ It encodes:
 `.github/rulesets/tag-protection.json` (or `gh api … /rulesets --method POST
 --input …`). It makes `v*` tags **immutable + signed**:
 
-- [ ] Block tag **deletion**, **update**, and **force** (`deletion`, `update`,
+- [x] Block tag **deletion**, **update**, and **force** (`deletion`, `update`,
   `non_fast_forward`) — Source L2 tag immutability.
-- [ ] **Require signed tags** (`required_signatures`). Applies to new tags only;
+- [x] **Require signed tags** (`required_signatures`). Applies to new tags only;
   existing unsigned tags are unaffected. Don't activate before Step 1 or your next
   `git push --tags` is rejected.
 
@@ -261,7 +278,7 @@ It encodes:
 > so the release flow's force-moved/unsigned non-version tags keep working. Only
 > the immutable `vX.Y.Z` release points are locked down.
 
-**What this advances.** Activating both rulesets moves the **Source track** from
+**What this advanced.** With both rulesets active, the **Source track** moved from
 "L1 in substance" to the **L2/L3 technical-control** posture: continuous, enforced
 controls on `main` and on release tags — immutable history, blocked force-push,
 required signatures, two required CI gates. The formal **Source VSA** an SCS is
@@ -304,19 +321,19 @@ These underpin both tracks (a compromised Action can forge provenance or push to
 | 2.5   | Migrate release pipeline to GoReleaser (`.goreleaser.yaml`, consolidated `release.yml`) | Build groundwork (determinism, single build path) | ✅ |
 | 2.5   | Deterministic artifact names + version ldflags injection               | Build groundwork                 | ✅ |
 | 2.5   | Multi-arch image via `dockers_v2`, image binary == archive binary + SBOM | Build groundwork (images)        | ✅ |
-| 2     | Branch ruleset on `main` (PR + `testvet`/`validate` checks + signed + linear + squash)| Source L2→L3 controls (in substance) | ✅ committed¹ |
-| 2     | Tag ruleset on `v*` (immutable + signed)                               | Source L2/L3 (tag immutability)  | ✅ committed¹ |
-| 2     | `CODEOWNERS`                                                           | Source (review routing)          | ✅ committed |
-| 2     | Non-bypassable enforcement (empty bypass list; no admin escape hatch)  | Source L3 (enforcement)          | 🔶 import¹ |
+| 2     | Branch ruleset on `main` (PR + `testvet`/`validate` checks + signed + linear + squash)| Source L2→L3 controls (in substance) | ✅ active¹ |
+| 2     | Tag ruleset on `v*` (immutable + signed)                               | Source L2/L3 (tag immutability)  | ✅ active¹ |
+| 2     | `CODEOWNERS`                                                           | Source (review routing)          | ✅ |
+| 2     | Non-bypassable enforcement (empty bypass list; no admin escape hatch)  | Source L3 (enforcement)          | ✅ active¹ |
 | 3     | `SHA256SUMS` checksums file in releases                                | Build (integrity)                | ✅ (done in 2.5) |
 | 3     | `attest-build-provenance` on every binary + checksums                  | **Build L0→L2 (in substance L3)**| ✅ |
 | 3     | Attest Docker image **by digest**                                      | Build L2 (images)                | ✅ |
 | 3     | README `gh attestation verify` docs (binaries + images-by-digest)      | Build L2 (consumer validation)   | ✅ |
 
-> ¹ **Committed ≠ enforced.** The Phase 2 ruleset JSON + `CODEOWNERS` ship in this
-> repo, but GitHub never auto-reads them. Live enforcement on `main`/`v*` requires
-> a one-time maintainer import (UI or `gh api`) — see the
-> [activation checklist](#maintainer-activation-checklist--github-settings).
+> ¹ **Activated 2026-06-28.** Both rulesets were imported from the committed JSON
+> and are live + non-bypassable on `main`/`v*` (`bypass_actors: []`); the redundant
+> legacy classic branch protection on `main` was removed the same day. See the
+> [activation record](#maintainer-activation-record--github-settings).
 
 ---
 
