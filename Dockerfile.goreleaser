@@ -7,7 +7,7 @@
 # in the released archive.
 #
 # For local from-source image builds use the top-level `Dockerfile` (`make image`).
-FROM alpine:3.23
+FROM alpine:3.24
 
 ARG TARGETPLATFORM
 
