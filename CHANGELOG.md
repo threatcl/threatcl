@@ -1,3 +1,13 @@
+## 0.5.2
+
+### Jun 28, 2026
+
+CHANGES:
+
+* Bumped to `spec` `0.4.0`, which introduces an optional `segment` attribute to the `backend` block
+* Also bumped numerous dependencies
+* Re-released CI workflow
+
 ## 0.5.1
 
 ### Jun 16, 2026
