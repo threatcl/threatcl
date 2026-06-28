@@ -1,0 +1,11 @@
+# Code owners for threatcl/threatcl.
+#
+# Owners listed here are automatically requested for review on pull requests
+# that touch matching paths. This is *enforced* only when the `main` branch
+# ruleset has "Require review from Code Owners" enabled (see
+# .github/rulesets/main-protection.json and docs/SLSA.md).
+#
+# Docs: https://docs.github.com/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Default owner for everything in the repo.
+*       @xntrik
