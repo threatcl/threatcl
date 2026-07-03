@@ -51,17 +51,14 @@ func (c *CloudThreatmodelsCommand) Run(args []string) int {
 	flagSet.StringVar(&c.flagOrgId, "org-id", "", "Organization ID (optional)")
 	flagSet.Parse(args)
 
-	// Initialize dependencies
-	httpClient, keyringSvc, fsSvc := c.initDependencies(10 * time.Second)
-
-	// Step 1: Retrieve token and org ID
-	token, orgId, err := c.getTokenAndOrgId(c.flagOrgId, keyringSvc, fsSvc)
+	// Build the cloud client (resolves token + org)
+	client, _, err := c.newCloudClient(c.flagOrgId, 10*time.Second)
 	if err != nil {
 		return c.handleTokenError(err)
 	}
 
-	// Step 2: Fetch threat models
-	threatModels, err := fetchThreatModels(token, orgId, httpClient, fsSvc)
+	// Fetch threat models
+	threatModels, err := client.FetchThreatModels()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error fetching threat models: %s\n", err)
 		return 1

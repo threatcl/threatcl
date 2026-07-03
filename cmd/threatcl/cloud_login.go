@@ -211,8 +211,8 @@ func (c *CloudLoginCommand) pollForToken(deviceResp *deviceCodeResponse, httpCli
 }
 
 func (c *CloudLoginCommand) fetchOrgName(token, orgId string, httpClient HTTPClient, fsSvc FileSystemService) string {
-	// Try to fetch user info to get org name
-	whoamiResp, err := fetchUserInfo(token, httpClient, fsSvc)
+	// Try to fetch user info to get org name (org-agnostic call)
+	whoamiResp, err := NewCloudClient(token, "", getAPIBaseURL(fsSvc), httpClient).FetchUserInfo()
 	if err != nil {
 		return ""
 	}

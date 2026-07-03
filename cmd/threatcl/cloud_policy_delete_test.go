@@ -150,7 +150,7 @@ func TestCloudPolicyDeletePolicy(t *testing.T) {
 
 	httpClient.transport.setResponse("DELETE", "/api/v1/org/org123/policies/pol-1", http.StatusNoContent, "")
 
-	err := deletePolicy("token", "org123", "pol-1", httpClient, fsSvc)
+	err := NewCloudClient("token", "org123", getAPIBaseURL(fsSvc), httpClient).DeletePolicy("pol-1")
 
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)

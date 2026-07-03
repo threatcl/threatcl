@@ -457,7 +457,7 @@ threatmodel "Test Model" {
 			}
 
 			// Call validateThreatModel
-			_, orgValid, tmNameValid, tmFileMatches, err := validateThreatModel("test-token", tmpFile.Name(), httpClient, fsSvc, cfg)
+			_, orgValid, tmNameValid, tmFileMatches, err := validateThreatModel(NewCloudClient("test-token", "", getAPIBaseURL(fsSvc), httpClient), tmpFile.Name(), cfg)
 
 			// Check return values
 			if orgValid != tt.expectedOrgValid {
@@ -563,7 +563,7 @@ func TestCreateThreatModel(t *testing.T) {
 				httpClient.transport.setResponse("POST", "/api/v1/org/org123/models", tt.statusCode, tt.response)
 			}
 
-			tm, err := createThreatModel("token", "org123", tt.modelName, tt.description, httpClient, fsSvc)
+			tm, err := NewCloudClient("token", "org123", getAPIBaseURL(fsSvc), httpClient).CreateThreatModel(tt.modelName, tt.description)
 
 			if tt.expectError {
 				if err == nil {

@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -88,19 +87,16 @@ func (c *CloudThreatmodelVersionsCommand) Run(args []string) int {
 		return 1
 	}
 
-	// Initialize dependencies
-	httpClient, keyringSvc, fsSvc := c.initDependencies(10 * time.Second)
-
-	// Step 1: Retrieve token and org ID
-	token, orgId, err := c.getTokenAndOrgId(c.flagOrgId, keyringSvc, fsSvc)
+	// Build the cloud client (resolves token + org)
+	client, fsSvc, err := c.newCloudClient(c.flagOrgId, 10*time.Second)
 	if err != nil {
 		return c.handleTokenError(err)
 	}
 
-	// Step 2: Download threat model version file (if requested)
+	// Download threat model version file (if requested)
 	if c.flagDownload != "" {
-		apiURL := fmt.Sprintf("%s/api/v1/org/%s/models/%s/versions/%s/download", getAPIBaseURL(fsSvc), url.PathEscape(orgId), url.PathEscape(c.flagModelId), url.PathEscape(c.flagVersion))
-		err = downloadFile(apiURL, token, c.flagDownload, c.flagOverwrite, httpClient, fsSvc)
+		apiURL := client.DownloadModelVersionURL(c.flagModelId, c.flagVersion)
+		err = downloadToFile(client, apiURL, c.flagDownload, c.flagOverwrite, fsSvc)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error downloading threat model version file: %s\n", err)
 			return 1
@@ -109,8 +105,8 @@ func (c *CloudThreatmodelVersionsCommand) Run(args []string) int {
 		return 0
 	}
 
-	// Step 4: Fetch threat model versions
-	threatModelVersionsResponse, err := fetchThreatModelVersions(token, orgId, c.flagModelId, httpClient, fsSvc)
+	// Fetch threat model versions
+	threatModelVersionsResponse, err := client.FetchThreatModelVersions(c.flagModelId)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error fetching threat model versions: %s\n", err)
 		return 1

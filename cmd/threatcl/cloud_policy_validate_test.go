@@ -239,7 +239,7 @@ func TestCloudPolicyValidateRego(t *testing.T) {
 
 	httpClient.transport.setResponse("POST", "/api/v1/org/org123/policies/validate", http.StatusOK, `{"valid":true}`)
 
-	result, err := validateRego("token", "org123", "package threatcl.test\n", httpClient, fsSvc)
+	result, err := NewCloudClient("token", "org123", getAPIBaseURL(fsSvc), httpClient).ValidateRego("package threatcl.test\n")
 
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)

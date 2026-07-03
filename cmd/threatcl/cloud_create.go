@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -125,16 +126,13 @@ func (c *CloudCreateCommand) Run(args []string) int {
 	if c.flagUpload != "" {
 		timeout = 30 * time.Second
 	}
-	httpClient, keyringSvc, fsSvc := c.initDependencies(timeout)
-
-	// Step 1: Retrieve token and org ID
-	token, orgId, err := c.getTokenAndOrgId(c.flagOrgId, keyringSvc, fsSvc)
+	client, fsSvc, err := c.newCloudClient(c.flagOrgId, timeout)
 	if err != nil {
 		return c.handleTokenError(err)
 	}
 
-	// Step 2: Create the threat model
-	threatModel, err := createThreatModel(token, orgId, c.flagName, c.flagDescription, httpClient, fsSvc)
+	// Create the threat model
+	threatModel, err := client.CreateThreatModel(c.flagName, c.flagDescription)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error creating threat model: %s\n", err)
 		return 1
@@ -147,12 +145,18 @@ func (c *CloudCreateCommand) Run(args []string) int {
 		fmt.Printf("  Description: %s\n", threatModel.Description)
 	}
 
-	// Step 4: Upload file if provided
+	// Upload file if provided. The caller reads the file so the client stays
+	// filesystem-free; the error text/flow matches the previous uploadFile path.
 	if c.flagUpload != "" {
 		fmt.Printf("\nUploading file %s...\n", c.flagUpload)
-		err := uploadFile(token, orgId, threatModel.Slug, c.flagUpload, false, httpClient, fsSvc)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error uploading file: %s\n", err)
+		content, uploadErr := fsSvc.ReadFile(c.flagUpload)
+		if uploadErr == nil {
+			uploadErr = client.Upload(threatModel.Slug, filepath.Base(c.flagUpload), content, false)
+		} else {
+			uploadErr = fmt.Errorf("%s: %w", ErrFailedToReadFile, uploadErr)
+		}
+		if uploadErr != nil {
+			fmt.Fprintf(os.Stderr, "Error uploading file: %s\n", uploadErr)
 			fmt.Fprintf(os.Stderr, "Note: The threat model was created successfully, but the upload failed.\n")
 			return 1
 		}

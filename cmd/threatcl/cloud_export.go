@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -114,14 +113,12 @@ func (c *CloudExportCommand) Run(args []string) int {
 		}
 	}
 
-	httpClient, keyringSvc, fsSvc := c.initDependencies(30 * time.Second)
-
-	token, orgId, err := c.getTokenAndOrgId(c.flagOrgId, keyringSvc, fsSvc)
+	client, _, err := c.newCloudClient(c.flagOrgId, 30*time.Second)
 	if err != nil {
 		return c.handleTokenError(err)
 	}
 
-	if _, err := fetchThreatModel(token, orgId, c.flagModelId, httpClient, fsSvc); err != nil {
+	if _, err := client.FetchThreatModel(c.flagModelId); err != nil {
 		fmt.Fprintf(os.Stderr, "Error fetching threat model: %s\n", err)
 		return 1
 	}
@@ -134,12 +131,7 @@ func (c *CloudExportCommand) Run(args []string) int {
 		}
 	}
 
-	downloadURL := fmt.Sprintf("%s/api/v1/org/%s/models/%s/download",
-		getAPIBaseURL(fsSvc),
-		url.PathEscape(orgId),
-		url.PathEscape(c.flagModelId),
-	)
-	hclBytes, err := downloadFileContent(downloadURL, token, httpClient)
+	hclBytes, err := client.DownloadContent(client.DownloadModelURL(c.flagModelId))
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error downloading threat model file: %s\n", err)
 		return 1
@@ -174,7 +166,7 @@ func (c *CloudExportCommand) Run(args []string) int {
 	threatRefs := extractThreatRefs(wrapped)
 	threatItems := map[string]*threatLibraryItem{}
 	if len(threatRefs) > 0 {
-		fetched, err := fetchThreatLibraryItemsByRefs(token, orgId, threatRefs, c.flagIncludeRecommended, httpClient, fsSvc)
+		fetched, err := client.FetchThreatLibraryItemsByRefs(threatRefs, c.flagIncludeRecommended)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error resolving threat library refs: %s\n", err)
 			return 1
@@ -198,7 +190,7 @@ func (c *CloudExportCommand) Run(args []string) int {
 	controlRefs := extractControlRefs(wrapped)
 	controlItems := map[string]*controlLibraryItem{}
 	if len(controlRefs) > 0 {
-		fetched, err := fetchControlLibraryItemsByRefs(token, orgId, controlRefs, httpClient, fsSvc)
+		fetched, err := client.FetchControlLibraryItemsByRefs(controlRefs)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error resolving control library refs: %s\n", err)
 			return 1
@@ -222,7 +214,7 @@ func (c *CloudExportCommand) Run(args []string) int {
 	assetRefs := extractInformationAssetRefs(wrapped)
 	assetItems := map[string]*informationAssetLibraryItem{}
 	if len(assetRefs) > 0 {
-		fetched, err := fetchInformationAssetLibraryItemsByRefs(token, orgId, assetRefs, httpClient, fsSvc)
+		fetched, err := client.FetchInformationAssetLibraryItemsByRefs(assetRefs)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error resolving information asset library refs: %s\n", err)
 			return 1

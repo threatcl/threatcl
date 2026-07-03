@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -94,11 +95,10 @@ func (c *CloudPushCommand) Run(args []string) int {
 		}
 	}
 
-	// Initialize dependencies - use longer timeout for upload
-	httpClient, keyringSvc, fsSvc := c.initDependencies(30 * time.Second)
-
-	// Step 1: Retrieve token (org will be determined from file content)
-	token, _, err := c.getTokenAndOrgId("", keyringSvc, fsSvc)
+	// Build the cloud client (30s timeout for upload). The org is determined
+	// from the file's backend block, not a flag, so start org-agnostic and
+	// re-scope with WithOrg once validateThreatModel resolves it.
+	client, fsSvc, err := c.newCloudClient("", 30*time.Second)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "❌ %s\n", err)
 		fmt.Fprintf(os.Stderr, "   %s\n", ErrPleaseLogin)
@@ -108,7 +108,7 @@ func (c *CloudPushCommand) Run(args []string) int {
 	// Step 2: Run validateThreatModel on the original file
 	// Note: validateThreatModel handles preprocessing internally for HCL parsing,
 	// while using the original content for hash calculation
-	wrapped, orgValid, tmNameValid, tmFileMatchesVersion, validateErr := validateThreatModel(token, filePath, httpClient, fsSvc, c.specCfg)
+	wrapped, orgValid, tmNameValid, tmFileMatchesVersion, validateErr := validateThreatModel(client, filePath, c.specCfg)
 
 	// Step 4: Handle validation results
 	if validateErr != nil {
@@ -129,6 +129,17 @@ func (c *CloudPushCommand) Run(args []string) int {
 		return 1
 	}
 
+	// Scope the client to the file-resolved org, plus an upload helper that
+	// reads the file bytes (the client itself stays filesystem-free).
+	orgClient := client.WithOrg(orgValid)
+	uploadPush := func(slug string) error {
+		content, readErr := fsSvc.ReadFile(filePath)
+		if readErr != nil {
+			return fmt.Errorf("%s: %w", ErrFailedToReadFile, readErr)
+		}
+		return orgClient.Upload(slug, filepath.Base(filePath), content, c.flagIgnoreLinkedControls)
+	}
+
 	// Case: tmNameValid and tmFileMatchesVersion - version already matches
 	if tmNameValid != "" && tmFileMatchesVersion != "" {
 		fmt.Printf("✓ Cloud version matches local version (v%s), not pushing\n", tmFileMatchesVersion)
@@ -138,7 +149,7 @@ func (c *CloudPushCommand) Run(args []string) int {
 	// Case: tmNameValid but no version match - upload new version
 	if tmNameValid != "" && tmFileMatchesVersion == "" {
 		fmt.Printf("Uploading new version to threat model '%s'...\n", tmNameValid)
-		err = uploadFile(token, orgValid, tmNameValid, filePath, c.flagIgnoreLinkedControls, httpClient, fsSvc)
+		err = uploadPush(tmNameValid)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error uploading file: %s\n", err)
 			return 1
@@ -165,7 +176,7 @@ func (c *CloudPushCommand) Run(args []string) int {
 
 		// Create the threat model
 		fmt.Printf("Creating new threat model '%s'...\n", tmName)
-		newTM, err := createThreatModel(token, orgValid, tmName, tmDescription, httpClient, fsSvc)
+		newTM, err := orgClient.CreateThreatModel(tmName, tmDescription)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error creating threat model: %s\n", err)
 			return 1
@@ -219,7 +230,7 @@ func (c *CloudPushCommand) Run(args []string) int {
 
 		// Upload the updated file
 		fmt.Printf("Uploading threat model...\n")
-		err = uploadFile(token, orgValid, newTM.Slug, filePath, c.flagIgnoreLinkedControls, httpClient, fsSvc)
+		err = uploadPush(newTM.Slug)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error uploading file: %s\n", err)
 			fmt.Fprintf(os.Stderr, "Note: The threat model was created and local file updated, but the upload failed.\n")

@@ -146,7 +146,7 @@ func TestCloudWhoamiFetchUserInfo(t *testing.T) {
 
 			_ = testCloudWhoamiCommand(t, httpClient, nil, fsSvc)
 
-			resp, err := fetchUserInfo(tt.token, httpClient, fsSvc)
+			resp, err := NewCloudClient(tt.token, "", getAPIBaseURL(fsSvc), httpClient).FetchUserInfo()
 
 			if tt.expectError {
 				if err == nil {

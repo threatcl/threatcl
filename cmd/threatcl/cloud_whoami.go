@@ -50,24 +50,21 @@ func (c *CloudWhoamiCommand) Run(args []string) int {
 	flagSet.StringVar(&orgIdFlag, "org-id", "", "Organization ID")
 	flagSet.Parse(args)
 
-	// Initialize dependencies
-	httpClient, keyringSvc, fsSvc := c.initDependencies(10 * time.Second)
-
-	// Step 1: Retrieve token for the specified/default org
-	token, orgId, err := c.getTokenAndOrgId(orgIdFlag, keyringSvc, fsSvc)
+	// Build the cloud client (resolves token + org)
+	client, _, err := c.newCloudClient(orgIdFlag, 10*time.Second)
 	if err != nil {
 		return c.handleTokenError(err)
 	}
 
-	// Step 2: Make API request
-	whoamiResp, err := fetchUserInfo(token, httpClient, fsSvc)
+	// Make API request
+	whoamiResp, err := client.FetchUserInfo()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error fetching user information: %s\n", err)
 		return 1
 	}
 
-	// Step 3: Display results
-	c.displayUserInfo(whoamiResp, orgId)
+	// Display results
+	c.displayUserInfo(whoamiResp, client.OrgID())
 
 	return 0
 }

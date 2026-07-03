@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -264,7 +265,7 @@ func TestCloudCreateFetchUserInfo(t *testing.T) {
 
 			_ = testCloudCreateCommand(t, httpClient, nil, fsSvc)
 
-			resp, err := fetchUserInfo(tt.token, httpClient, fsSvc)
+			resp, err := NewCloudClient(tt.token, "", getAPIBaseURL(fsSvc), httpClient).FetchUserInfo()
 
 			if tt.expectError {
 				if err == nil {
@@ -365,7 +366,7 @@ func TestCloudCreateCreateThreatModel(t *testing.T) {
 
 			_ = testCloudCreateCommand(t, httpClient, nil, fsSvc)
 
-			tm, err := createThreatModel("token", "org123", tt.modelName, tt.description, httpClient, fsSvc)
+			tm, err := NewCloudClient("token", "org123", getAPIBaseURL(fsSvc), httpClient).CreateThreatModel(tt.modelName, tt.description)
 
 			if tt.expectError {
 				if err == nil {
@@ -767,7 +768,15 @@ func TestCloudCreateUploadFile(t *testing.T) {
 
 			_ = testCloudCreateCommand(t, httpClient, nil, fsSvc)
 
-			err := uploadFile("token", "org123", "test-model", tt.filePath, false, httpClient, fsSvc)
+			// Upload takes bytes; the caller reads the file (matching the
+			// command), so the file-read error path is exercised here.
+			content, err := fsSvc.ReadFile(tt.filePath)
+			if err == nil {
+				client := NewCloudClient("token", "org123", getAPIBaseURL(fsSvc), httpClient)
+				err = client.Upload("test-model", filepath.Base(tt.filePath), content, false)
+			} else {
+				err = fmt.Errorf("%s: %w", ErrFailedToReadFile, err)
+			}
 
 			if tt.expectError {
 				if err == nil {

@@ -80,17 +80,14 @@ func (c *CloudLibraryThreatRefCommand) Run(args []string) int {
 	}
 	refId := remainingArgs[0]
 
-	// Initialize dependencies
-	httpClient, keyringSvc, fsSvc := c.initDependencies(30 * time.Second)
-
-	// Get token and org ID
-	token, orgId, err := c.getTokenAndOrgId(c.flagOrgId, keyringSvc, fsSvc)
+	// Build the cloud client (resolves token + org)
+	client, _, err := c.newCloudClient(c.flagOrgId, 30*time.Second)
 	if err != nil {
 		return c.handleTokenError(err)
 	}
 
 	// Fetch threat by reference ID
-	threat, err := fetchThreatLibraryItemByRef(token, orgId, refId, httpClient, fsSvc)
+	threat, err := client.FetchThreatLibraryItemByRef(refId)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error fetching threat library item: %s\n", err)
 		return 1

@@ -161,7 +161,8 @@ func (c *CloudPolicyCreateCommand) Run(args []string) int {
 	}
 
 	// Create policy
-	p, err := createPolicy(token, orgId, &payload, httpClient, fsSvc)
+	client := NewCloudClient(token, orgId, getAPIBaseURL(fsSvc), httpClient)
+	p, err := client.CreatePolicy(&payload)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error creating policy: %s\n", err)
 		return 1
