@@ -529,10 +529,7 @@ func (c *MCPCommand) handleShowSpecResource(ctx context.Context, req mcp.ReadRes
 
 func (c *MCPCommand) handleViewSpecToolResource(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	resourceReq := mcp.ReadResourceRequest{
-		Params: struct {
-			URI       string                 `json:"uri"`
-			Arguments map[string]interface{} `json:"arguments,omitempty"`
-		}{
+		Params: mcp.ReadResourceParams{
 			URI: "threatcl://static/spec",
 		},
 	}
