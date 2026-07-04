@@ -39,7 +39,8 @@ invariant "internet_facing_models_document_audit_logging" {
 
   error_message = "threatmodel '${item.name}' is internet-facing but documents no audit logging control"
 
-  exemption "Legacy Public API" {
+  exemption {
+    model         = threatmodel["Legacy Public API"]
     justification = "Grandfathered until Q3 migration; tracked in SEC-123"
   }
 }
@@ -64,13 +65,29 @@ invariant "threats_have_implemented_controls" {
 
 ### Exemptions
 
-An `exemption` block waives the invariant for one named threat model, with a
+An `exemption` block waives the invariant for one threat model, with a
 required justification so the waiver is auditable:
 
 ```hcl
-exemption "threat model name" {
+exemption {
+  model         = threatmodel["Legacy Public API"]
   justification = "Why this model is allowed to violate the rule"
 }
+```
+
+`model` is a real reference, not a string: `threatmodel` is a registry of the
+models in the current validate run, keyed by name. Referencing a model that
+isn't in the run is a hard error that lists the models that are — so a typo'd
+or renamed model can't leave a silently-dead waiver behind. Because the
+reference resolves to the actual model object, field access works too
+(`threatmodel["Legacy Public API"].author`), though an exemption's `model`
+must be the model itself, not a field of it.
+
+If one invariants file is shared across fleets that are validated separately,
+wrap the reference so it's inactive where the model isn't present:
+
+```hcl
+model = try(threatmodel["Other Fleet's Model"], null)
 ```
 
 Exemptions live in the invariants file — not in the threat model — so models

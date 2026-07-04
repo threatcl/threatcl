@@ -2,10 +2,13 @@ package invariants
 
 import (
 	"fmt"
+	"sort"
+	"strings"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/zclconf/go-cty/cty"
 	"github.com/zclconf/go-cty/cty/convert"
+	"github.com/zclconf/go-cty/cty/function"
 )
 
 // Violation records one item that failed an invariant's condition.
@@ -67,14 +70,24 @@ func Evaluate(invs []*Invariant, models []*Model) (*Report, error) {
 	report := &Report{Invariants: len(invs), Models: len(models)}
 	funcs := invariantFunctions()
 
-	for _, m := range models {
-		tmVal := threatmodelVal(m.TM)
+	tmVals := make([]cty.Value, len(models))
+	for i, m := range models {
+		tmVals[i] = threatmodelVal(m.TM)
+	}
+
+	exempted, err := resolveExemptions(invs, models, tmVals, funcs)
+	if err != nil {
+		return nil, err
+	}
+
+	for i, m := range models {
+		tmVal := tmVals[i]
 		for _, inv := range invs {
-			if ex := inv.exemptionFor(m.TM.Name); ex != nil {
+			if justification, ok := exempted[inv][m.TM.Name]; ok {
 				report.Exemptions = append(report.Exemptions, &ExemptionUse{
 					Invariant:     inv,
 					Model:         m,
-					Justification: ex.Justification,
+					Justification: justification,
 				})
 				continue
 			}
@@ -120,6 +133,54 @@ func Evaluate(invs []*Invariant, models []*Model) (*Report, error) {
 		}
 	}
 	return report, nil
+}
+
+// resolveExemptions evaluates every exemption's model reference against the
+// `threatmodel` registry — the models in this run, keyed by name — and returns
+// the exempted model names (with justifications) per invariant. A reference to
+// a name not in the registry is a hard error naming the missing model; an
+// exemption whose reference evaluates to null (e.g. via
+// try(threatmodel["Other Fleet"], null) in an invariants file shared across
+// separately-validated fleets) is inactive rather than an error.
+func resolveExemptions(invs []*Invariant, models []*Model, tmVals []cty.Value, funcs map[string]function.Function) (map[*Invariant]map[string]string, error) {
+	registry := map[string]cty.Value{}
+	for i, m := range models {
+		registry[m.TM.Name] = tmVals[i]
+	}
+	registryVal := cty.EmptyObjectVal
+	if len(registry) > 0 {
+		registryVal = cty.ObjectVal(registry)
+	}
+	ctx := &hcl.EvalContext{
+		Variables: map[string]cty.Value{"threatmodel": registryVal},
+		Functions: funcs,
+	}
+
+	names := make([]string, 0, len(registry))
+	for name := range registry {
+		names = append(names, fmt.Sprintf("%q", name))
+	}
+	sort.Strings(names)
+
+	exempted := map[*Invariant]map[string]string{}
+	for _, inv := range invs {
+		exempted[inv] = map[string]string{}
+		for i, ex := range inv.Exemptions {
+			v, diags := ex.model.Value(ctx)
+			if diags.HasErrors() {
+				return nil, fmt.Errorf("invariant %q: resolving exemption #%d model reference: %w (threat models in this run: %s)",
+					inv.Name, i+1, diags, strings.Join(names, ", "))
+			}
+			if v.IsNull() {
+				continue
+			}
+			if !v.Type().IsObjectType() || !v.Type().HasAttribute("name") {
+				return nil, fmt.Errorf("invariant %q: exemption #%d model must reference a threat model, e.g. threatmodel[\"Some Model\"]", inv.Name, i+1)
+			}
+			exempted[inv][v.GetAttr("name").AsString()] = ex.Justification
+		}
+	}
+	return exempted, nil
 }
 
 func evalError(inv *Invariant, attr string, m *Model, it item, err error) error {

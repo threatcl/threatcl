@@ -254,7 +254,8 @@ invariant "impossible" {
   target    = "threatmodel"
   condition = false
 
-  exemption "Test Model" {
+  exemption {
+    model         = threatmodel["Test Model"]
     justification = "Known exception; tracked in SEC-1"
   }
 }
@@ -269,24 +270,76 @@ invariant "impossible" {
 	if report.Exemptions[0].Justification != "Known exception; tracked in SEC-1" {
 		t.Errorf("unexpected justification: %s", report.Exemptions[0].Justification)
 	}
+}
 
-	// The exemption names a different model, so it must not apply.
-	report = mustEvalRaw(t, `
+func TestEvaluateExemptionDanglingReference(t *testing.T) {
+	// A reference to a model that isn't in the evaluated set is a hard error,
+	// not a silently-dead waiver.
+	_, err := evalRaw(t, `
 invariant "impossible" {
   target    = "threatmodel"
   condition = false
 
-  exemption "Another Model" {
-    justification = "Not this one"
+  exemption {
+    model         = threatmodel["Another Model"]
+    justification = "Not in this run"
+  }
+}
+`, testModels())
+
+	if err == nil {
+		t.Fatalf("expected an error for a dangling exemption reference, got none")
+	}
+	if !strings.Contains(err.Error(), "resolving exemption #1 model reference") {
+		t.Errorf("expected a dangling-reference error, got: %s", err)
+	}
+	if !strings.Contains(err.Error(), `threat models in this run: "Test Model"`) {
+		t.Errorf("expected the error to list the models in the run, got: %s", err)
+	}
+}
+
+func TestEvaluateExemptionTryEscapeHatch(t *testing.T) {
+	// try(..., null) makes an exemption inactive when its model isn't in the
+	// evaluated set — for invariants files shared across separately-validated
+	// fleets.
+	report := mustEvalRaw(t, `
+invariant "impossible" {
+  target    = "threatmodel"
+  condition = false
+
+  exemption {
+    model         = try(threatmodel["Another Model"], null)
+    justification = "Only applies in the fleet that has this model"
   }
 }
 `, testModels())
 
 	if len(report.Violations) != 1 {
-		t.Errorf("expected 1 violation when exemption doesn't match, got %d", len(report.Violations))
+		t.Errorf("expected 1 violation when the exemption is inactive, got %d", len(report.Violations))
 	}
 	if len(report.Exemptions) != 0 {
 		t.Errorf("expected no exemption uses, got %d", len(report.Exemptions))
+	}
+}
+
+func TestEvaluateExemptionNonModelReference(t *testing.T) {
+	_, err := evalRaw(t, `
+invariant "impossible" {
+  target    = "threatmodel"
+  condition = false
+
+  exemption {
+    model         = threatmodel["Test Model"].author
+    justification = "A field, not a model"
+  }
+}
+`, testModels())
+
+	if err == nil {
+		t.Fatalf("expected an error for a non-model reference, got none")
+	}
+	if !strings.Contains(err.Error(), "must reference a threat model") {
+		t.Errorf("expected a non-model-reference error, got: %s", err)
 	}
 }
 

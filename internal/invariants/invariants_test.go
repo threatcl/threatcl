@@ -37,7 +37,8 @@ invariant "audit_logging" {
   condition   = anytrue([for c in tm.controls : can(regex("(?i)audit", c.name))])
   error_message = "threatmodel '${item.name}' has no audit logging control"
 
-  exemption "Legacy API" {
+  exemption {
+    model         = threatmodel["Legacy API"]
     justification = "Grandfathered until Q3; tracked in SEC-123"
   }
 }
@@ -77,8 +78,8 @@ invariant "audit_logging" {
 	if len(second.Exemptions) != 1 {
 		t.Fatalf("expected 1 exemption, got %d", len(second.Exemptions))
 	}
-	if second.Exemptions[0].Model != "Legacy API" {
-		t.Errorf("unexpected exemption model: %s", second.Exemptions[0].Model)
+	if second.Exemptions[0].model == nil {
+		t.Errorf("expected exemption model expression to be set")
 	}
 	if !strings.Contains(second.Exemptions[0].Justification, "SEC-123") {
 		t.Errorf("unexpected justification: %s", second.Exemptions[0].Justification)
@@ -156,11 +157,37 @@ invariant "x" {
   target    = "threat"
   condition = true
 
-  exemption "Some Model" {
+  exemption {
+    model         = threatmodel["Some Model"]
     justification = "  "
   }
 }`,
 			"requires a justification",
+		},
+		{
+			"exemption_without_model",
+			`invariant "x" {
+  target    = "threat"
+  condition = true
+
+  exemption {
+    justification = "No model reference"
+  }
+}`,
+			`missing required attribute "model"`,
+		},
+		{
+			"exemption_with_unknown_variable",
+			`invariant "x" {
+  target    = "threat"
+  condition = true
+
+  exemption {
+    model         = tm["Some Model"]
+    justification = "Wrong root"
+  }
+}`,
+			`exemption model references unknown variable "tm"`,
 		},
 		{
 			"no_invariants",

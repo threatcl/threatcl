@@ -188,7 +188,8 @@ func TestValidateInvariants(t *testing.T) {
   target    = "threatmodel"
   condition = length(item.threats) > 0
 
-  exemption "tm tm1 two" {
+  exemption {
+    model         = threatmodel["tm tm1 two"]
     justification = "Attribute-only model; tracked in SEC-1"
   }
 }`,

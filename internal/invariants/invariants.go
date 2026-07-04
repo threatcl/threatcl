@@ -48,20 +48,15 @@ type Invariant struct {
 	errorMessage hcl.Expression
 }
 
-// Exemption waives an invariant for a single named threat model. The
-// justification is required so the waiver is auditable in the policy file.
+// Exemption waives an invariant for a single threat model. The model is a
+// real reference — an expression like threatmodel["Legacy Public API"]
+// resolved against the models being evaluated, so a dangling reference fails
+// loudly instead of silently never applying. The justification is required so
+// the waiver is auditable in the policy file.
 type Exemption struct {
-	Model         string
 	Justification string
-}
 
-func (i *Invariant) exemptionFor(model string) *Exemption {
-	for _, e := range i.Exemptions {
-		if e.Model == model {
-			return e
-		}
-	}
-	return nil
+	model hcl.Expression
 }
 
 // Target names accepted by the `target` attribute. Each maps to a collection
@@ -108,8 +103,8 @@ type invariantHCL struct {
 }
 
 type exemptionHCL struct {
-	Model         string `hcl:"model,label"`
-	Justification string `hcl:"justification"`
+	Model         hcl.Expression `hcl:"model"`
+	Justification string         `hcl:"justification"`
 }
 
 // ParseFile parses and validates an invariants HCL file.
@@ -226,12 +221,20 @@ func (r *invariantHCL) validate() (*Invariant, error) {
 	}
 
 	exemptions := make([]*Exemption, 0, len(r.Exemptions))
-	for _, e := range r.Exemptions {
-		if strings.TrimSpace(e.Justification) == "" {
-			errs = append(errs, fmt.Errorf("invariant %q: exemption for %q requires a justification", r.Name, e.Model))
+	for i, e := range r.Exemptions {
+		if absentExpr(e.Model) {
+			errs = append(errs, fmt.Errorf("invariant %q: exemption #%d: missing required attribute \"model\" (e.g. model = threatmodel[\"Some Model\"])", r.Name, i+1))
 			continue
 		}
-		exemptions = append(exemptions, &Exemption{Model: e.Model, Justification: e.Justification})
+		if err := checkVariables(e.Model, map[string]bool{"threatmodel": true}, r.Name, "exemption model"); err != nil {
+			errs = append(errs, err)
+			continue
+		}
+		if strings.TrimSpace(e.Justification) == "" {
+			errs = append(errs, fmt.Errorf("invariant %q: exemption #%d requires a justification", r.Name, i+1))
+			continue
+		}
+		exemptions = append(exemptions, &Exemption{model: e.Model, Justification: e.Justification})
 	}
 
 	if len(errs) > 0 {
