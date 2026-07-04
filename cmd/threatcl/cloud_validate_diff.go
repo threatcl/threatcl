@@ -82,6 +82,9 @@ func runCloudValidateDiff(
 func parseCloudHCL(raw []byte, modelId string, specCfg *spec.ThreatmodelSpecConfig) (*spec.ThreatmodelWrapped, error) {
 	processed := preprocessHCLForControls(raw)
 	processed = preprocessHCLForThreats(processed)
+	// This HCL was downloaded from the cloud; strip remote-fetch directives so
+	// parsing it cannot drive go-getter requests from this machine (SSRF/LFI).
+	processed = stripRemoteFetchDirectives(processed)
 
 	tmpDir, err := os.MkdirTemp("", "threatcl-validate-diff-")
 	if err != nil {

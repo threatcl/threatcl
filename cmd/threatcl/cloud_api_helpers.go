@@ -640,6 +640,54 @@ func preprocessHCLForThreats(content []byte) []byte {
 	return content
 }
 
+// stripRemoteFetchDirectives removes the HCL constructs that make the spec
+// parser fetch remote content via go-getter: the top-level "imports" attribute
+// and each threatmodel block's "including" attribute. Both take a source
+// string that go-getter resolves with no scheme/host allowlist (http(s)://,
+// git::, s3::, file://, ...).
+//
+// This is applied to HCL *downloaded from the cloud API* before it is parsed.
+// That content is not authored by the local user - it can come from another
+// member of a shared org (or a compromised backend) - so resolving these
+// directives on the user's machine would be an SSRF / local-file-read
+// primitive. Locally-authored files (cloud push/validate of a user's own
+// file) are deliberately NOT passed through this, so their imports/including
+// continue to work.
+func stripRemoteFetchDirectives(content []byte) []byte {
+	// Parse with hclwrite (lenient parser for AST manipulation)
+	file, diags := hclwrite.ParseConfig(content, "", hcl.InitialPos)
+	if diags.HasErrors() {
+		// If parsing fails, return original content and let the normal parser
+		// report errors.
+		return content
+	}
+
+	modified := false
+	body := file.Body()
+
+	// Top-level "imports = [...]"
+	if body.GetAttribute("imports") != nil {
+		body.RemoveAttribute("imports")
+		modified = true
+	}
+
+	// Per-threatmodel "including = ..."
+	for _, tmBlock := range body.Blocks() {
+		if tmBlock.Type() != "threatmodel" {
+			continue
+		}
+		if tmBlock.Body().GetAttribute("including") != nil {
+			tmBlock.Body().RemoveAttribute("including")
+			modified = true
+		}
+	}
+
+	if modified {
+		return file.Bytes()
+	}
+	return content
+}
+
 // extractControlRefs extracts all unique control refs from a wrapped threatmodel
 func extractControlRefs(wrapped *spec.ThreatmodelWrapped) []string {
 	if wrapped == nil {
