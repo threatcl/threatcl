@@ -116,14 +116,14 @@ func TestServerSetup(t *testing.T) {
 	cfg, _ := spec.LoadSpecConfig()
 	tmCache := cache.NewThreatModelCache(cfg, examplesDir)
 
-	srv := cmd.setupServer(tmCache, 18081)
+	srv := cmd.setupServer(tmCache, "127.0.0.1", 18081)
 
 	if srv == nil {
 		t.Fatal("Expected server to be created")
 	}
 
-	if srv.Addr != ":18081" {
-		t.Errorf("Expected server addr ':18081', got: %s", srv.Addr)
+	if srv.Addr != "127.0.0.1:18081" {
+		t.Errorf("Expected server addr '127.0.0.1:18081', got: %s", srv.Addr)
 	}
 }
 

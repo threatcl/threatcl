@@ -1,0 +1,48 @@
+# Weekly CVE scan of the *published* container image (ghcr.io/threatcl/threatcl
+# is the only image this repo ships; :latest and :v<version> share a digest).
+#
+# Why scan an image we just built: vulnerabilities are disclosed *after*
+# shipping. The Go dependencies are covered at source by govulncheck +
+# dependency-review, so the unique value here is the alpine base layer
+# (musl/busybox/openssl) — a new CVE there should trigger a patch release,
+# and this scan is the alert. SARIF goes to code scanning.
+#
+# (This replaces the old Snyk container scan, which needed a SNYK_TOKEN and
+# died red when the token did — Trivy needs no account or secret.)
+name: trivy image scan
+
+on:
+  schedule:
+    - cron: '30 19 * * 5'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  scan-published-image:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write # upload SARIF findings to code scanning
+    steps:
+      - name: Harden runner (egress audit)
+        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
+        with:
+          egress-policy: audit
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+      - name: Scan published image
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: ghcr.io/threatcl/threatcl:latest
+          format: sarif
+          output: trivy-results.sarif
+          severity: CRITICAL,HIGH,MEDIUM
+      - name: Upload SARIF
+        uses: github/codeql-action/upload-sarif@8aad20d150bbac5944a9f9d289da16a4b0d87c1e # v4.36.2
+        with:
+          sarif_file: trivy-results.sarif
+          category: trivy-image

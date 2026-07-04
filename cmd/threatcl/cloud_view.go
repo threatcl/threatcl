@@ -153,6 +153,12 @@ func (c *CloudViewCommand) Run(args []string) int {
 			return 1
 		}
 
+		// This HCL was downloaded from the cloud (not authored locally), so
+		// strip remote-fetch directives before it is parsed. Otherwise a model
+		// authored by another org member could drive go-getter requests from
+		// this machine (SSRF) or read local files via file:// sources.
+		body = stripRemoteFetchDirectives(body)
+
 		tmpDir, err = os.MkdirTemp("", "threatcl-cloud-view-")
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error creating temp directory: %s\n", err)

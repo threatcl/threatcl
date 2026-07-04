@@ -18,7 +18,6 @@ import (
 	"github.com/fsnotify/fsnotify"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-	"github.com/rs/cors"
 	"github.com/threatcl/spec"
 	"github.com/threatcl/threatcl/internal/cache"
 	"github.com/threatcl/threatcl/internal/graphql"
@@ -26,10 +25,11 @@ import (
 
 type ServerCommand struct {
 	*GlobalCmdOptions
-	specCfg   *spec.ThreatmodelSpecConfig
-	flagDir   string
-	flagPort  int
-	flagWatch bool
+	specCfg    *spec.ThreatmodelSpecConfig
+	flagDir    string
+	flagListen string
+	flagPort   int
+	flagWatch  bool
 }
 
 func (c *ServerCommand) Help() string {
@@ -49,6 +49,11 @@ Options:
  -dir=<path>
    Directory path containing HCL threat model files (required)
 
+ -listen=<address>
+   Address to bind to (default: 127.0.0.1). The server exposes all loaded
+   threat model data without authentication, so it binds to localhost only by
+   default. Set to 0.0.0.0 to deliberately expose it on all interfaces.
+
  -port=<number>
    Port to listen on (default: 8080)
 
@@ -57,11 +62,14 @@ Options:
 
 Examples:
 
-  # Start server on default port
+  # Start server on default port (localhost only)
   threatcl server -dir ./examples
 
   # Start with custom port
   threatcl server -dir ./threatmodels -port 3000
+
+  # Deliberately expose on all interfaces
+  threatcl server -dir ./threatmodels -listen 0.0.0.0
 
   # Access GraphQL playground at http://localhost:8080
   # GraphQL API endpoint at http://localhost:8080/graphql
@@ -83,6 +91,7 @@ func (c *ServerCommand) AutocompleteFlags() complete.Flags {
 func (c *ServerCommand) Run(args []string) int {
 	flagSet := c.GetFlagset("server")
 	flagSet.StringVar(&c.flagDir, "dir", "", "Directory containing threat model files (required)")
+	flagSet.StringVar(&c.flagListen, "listen", "127.0.0.1", "Address to bind to (default: 127.0.0.1; set to 0.0.0.0 to expose on all interfaces)")
 	flagSet.IntVar(&c.flagPort, "port", 8080, "Port to listen on")
 	flagSet.BoolVar(&c.flagWatch, "watch", false, "Watch for file changes and reload (not yet implemented)")
 	flagSet.Parse(args)
@@ -140,13 +149,23 @@ func (c *ServerCommand) Run(args []string) int {
 	}
 
 	// Set up HTTP server
-	srv := c.setupServer(tmCache, c.flagPort)
+	srv := c.setupServer(tmCache, c.flagListen, c.flagPort)
+
+	// Display host for URLs: 0.0.0.0 has no meaning in a browser, so show
+	// localhost in that case while the listener still binds to all interfaces.
+	displayHost := c.flagListen
+	if displayHost == "0.0.0.0" || displayHost == "" {
+		displayHost = "localhost"
+	}
 
 	// Start server in a goroutine
 	go func() {
-		fmt.Printf("Starting GraphQL server on http://localhost:%d\n", c.flagPort)
-		fmt.Printf("GraphQL Playground: http://localhost:%d\n", c.flagPort)
-		fmt.Printf("GraphQL API: http://localhost:%d/graphql\n", c.flagPort)
+		if c.flagListen == "0.0.0.0" {
+			fmt.Println("Warning: binding to 0.0.0.0 exposes unauthenticated threat model data on all interfaces")
+		}
+		fmt.Printf("Starting GraphQL server on http://%s:%d\n", displayHost, c.flagPort)
+		fmt.Printf("GraphQL Playground: http://%s:%d\n", displayHost, c.flagPort)
+		fmt.Printf("GraphQL API: http://%s:%d/graphql\n", displayHost, c.flagPort)
 		fmt.Println("Press Ctrl+C to stop")
 
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
@@ -179,17 +198,16 @@ func (c *ServerCommand) Run(args []string) int {
 	return 0
 }
 
-func (c *ServerCommand) setupServer(tmCache *cache.ThreatModelCache, port int) *http.Server {
+func (c *ServerCommand) setupServer(tmCache *cache.ThreatModelCache, listen string, port int) *http.Server {
 	router := chi.NewRouter()
 
-	// Middleware
-	router.Use(cors.New(cors.Options{
-		AllowedOrigins:   []string{"*"},
-		AllowedMethods:   []string{"GET", "POST", "OPTIONS"},
-		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type"},
-		AllowCredentials: false,
-		MaxAge:           300,
-	}).Handler)
+	// Middleware.
+	//
+	// We intentionally do NOT enable a permissive (wildcard) CORS policy here.
+	// The API exposes all loaded threat model data without authentication, so a
+	// wildcard "Access-Control-Allow-Origin: *" would let any website the user
+	// visits read that data cross-origin from a local server. The bundled
+	// GraphQL playground is served from the same origin and needs no CORS.
 	router.Use(middleware.Logger)
 	router.Use(middleware.Recoverer)
 	router.Use(middleware.RequestID)
@@ -217,7 +235,7 @@ func (c *ServerCommand) setupServer(tmCache *cache.ThreatModelCache, port int) *
 	})
 
 	return &http.Server{
-		Addr:         fmt.Sprintf(":%d", port),
+		Addr:         fmt.Sprintf("%s:%d", listen, port),
 		Handler:      router,
 		ReadTimeout:  15 * time.Second,
 		WriteTimeout: 15 * time.Second,

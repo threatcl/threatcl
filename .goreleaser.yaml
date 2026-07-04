@@ -58,6 +58,14 @@ checksum:
   name_template: "SHA256SUMS"
   algorithm: sha256
 
+# SPDX SBOM per archive (syft; must be on PATH — the workflows install it via
+# anchore/sbom-action/download-syft). The container image already gets an SBOM
+# from dockers_v2 (`sbom: true` default); this covers the shipped archives too.
+# The release workflow also attests the SBOM files (dist/*.sbom.json).
+sboms:
+  - id: archive-sboms
+    artifacts: archive
+
 snapshot:
   # Non-tag builds (PRs, pushes to main) get a stable "dev" version so the
   # rolling `dev` pre-release assets keep constant filenames and overwrite
