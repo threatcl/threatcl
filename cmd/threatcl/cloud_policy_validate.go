@@ -90,7 +90,8 @@ func (c *CloudPolicyValidateCommand) Run(args []string) int {
 	}
 
 	// Validate rego
-	result, err := validateRego(token, orgId, regoSource, httpClient, fsSvc)
+	client := NewCloudClient(token, orgId, getAPIBaseURL(fsSvc), httpClient)
+	result, err := client.ValidateRego(regoSource)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error validating policy: %s\n", err)
 		return 1

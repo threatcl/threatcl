@@ -62,17 +62,14 @@ func (c *CloudPoliciesCommand) Run(args []string) int {
 	flagSet.BoolVar(&c.flagJSON, "json", false, "Output as JSON")
 	flagSet.Parse(args)
 
-	// Initialize dependencies
-	httpClient, keyringSvc, fsSvc := c.initDependencies(10 * time.Second)
-
-	// Retrieve token and org ID
-	token, orgId, err := c.getTokenAndOrgId(c.flagOrgId, keyringSvc, fsSvc)
+	// Build the cloud client (resolves token + org)
+	client, _, err := c.newCloudClient(c.flagOrgId, 10*time.Second)
 	if err != nil {
 		return c.handleTokenError(err)
 	}
 
 	// Fetch policies
-	policies, err := fetchPolicies(token, orgId, httpClient, fsSvc)
+	policies, err := client.FetchPolicies()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error fetching policies: %s\n", err)
 		return 1

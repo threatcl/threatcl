@@ -387,7 +387,7 @@ func TestCloudPolicyEvaluatePolicies(t *testing.T) {
 	}
 	httpClient.transport.setResponse("POST", "/api/v1/org/org123/models/model-1/evaluate-policies", http.StatusCreated, jsonResponse(eval))
 
-	result, err := evaluatePolicies("token", "org123", "model-1", httpClient, fsSvc)
+	result, err := NewCloudClient("token", "org123", getAPIBaseURL(fsSvc), httpClient).EvaluatePolicies("model-1")
 
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)

@@ -41,6 +41,23 @@ func (b *CloudCommandBase) initDependencies(timeout time.Duration) (HTTPClient, 
 	return httpClient, keyringSvc, fsSvc
 }
 
+// newCloudClient resolves the token and organization, then builds a CloudClient
+// bound to them, the configured API base URL and an HTTP transport with the
+// given timeout. It collapses the initDependencies -> getTokenAndOrgId ->
+// construct-client boilerplate that every cloud command used to repeat. The
+// resolved FileSystemService is returned so commands can still do their own
+// local file I/O (reading a spec to upload, writing a downloaded model, etc.).
+func (b *CloudCommandBase) newCloudClient(flagOrgId string, timeout time.Duration) (*CloudClient, FileSystemService, error) {
+	httpClient, keyringSvc, fsSvc := b.initDependencies(timeout)
+
+	token, orgId, err := b.getTokenAndOrgId(flagOrgId, keyringSvc, fsSvc)
+	if err != nil {
+		return nil, fsSvc, err
+	}
+
+	return NewCloudClient(token, orgId, getAPIBaseURL(fsSvc), httpClient), fsSvc, nil
+}
+
 // getTokenWithDeps retrieves the authentication token using provided dependencies
 // Deprecated: Use getTokenAndOrgId for new code that needs org-aware token retrieval
 func (b *CloudCommandBase) getTokenWithDeps(keyringSvc KeyringService, fsSvc FileSystemService) (string, error) {
@@ -120,8 +137,8 @@ func (b *CloudCommandBase) resolveOrgId(token string, flagOrgId string, httpClie
 		return envOrgId, nil
 	}
 
-	// Fetch user info to get first organization
-	whoamiResp, err := fetchUserInfo(token, httpClient, fsSvc)
+	// Fetch user info to get first organization (org-agnostic call)
+	whoamiResp, err := NewCloudClient(token, "", getAPIBaseURL(fsSvc), httpClient).FetchUserInfo()
 	if err != nil {
 		return "", fmt.Errorf("error fetching user information: %w", err)
 	}

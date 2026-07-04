@@ -66,11 +66,8 @@ func (c *CloudPolicyDeleteCommand) Run(args []string) int {
 		return 1
 	}
 
-	// Initialize dependencies
-	httpClient, keyringSvc, fsSvc := c.initDependencies(10 * time.Second)
-
-	// Retrieve token and org ID
-	token, orgId, err := c.getTokenAndOrgId(c.flagOrgId, keyringSvc, fsSvc)
+	// Build the cloud client (resolves token + org)
+	client, _, err := c.newCloudClient(c.flagOrgId, 10*time.Second)
 	if err != nil {
 		return c.handleTokenError(err)
 	}
@@ -78,7 +75,7 @@ func (c *CloudPolicyDeleteCommand) Run(args []string) int {
 	// Confirmation prompt unless -force is set
 	if !c.flagForce {
 		// Fetch the policy first to show the name in the prompt
-		p, err := fetchPolicy(token, orgId, c.flagPolicyId, httpClient, fsSvc)
+		p, err := client.FetchPolicy(c.flagPolicyId)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error fetching policy: %s\n", err)
 			return 1
@@ -95,7 +92,7 @@ func (c *CloudPolicyDeleteCommand) Run(args []string) int {
 	}
 
 	// Delete policy
-	err = deletePolicy(token, orgId, c.flagPolicyId, httpClient, fsSvc)
+	err = client.DeletePolicy(c.flagPolicyId)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error deleting policy: %s\n", err)
 		return 1

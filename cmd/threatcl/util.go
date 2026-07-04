@@ -12,6 +12,7 @@ import (
 
 	"github.com/posener/complete"
 	"github.com/threatcl/spec"
+	"github.com/threatcl/threatcl/internal/tmloader"
 )
 
 // Autocomplete predictors for files and directories
@@ -413,11 +414,29 @@ func prettyBoolFromString(in string) bool {
 	return in == "Yes"
 }
 
-// findAllFiles wraps Json and Hcl file finding
+// findAllFiles wraps Json and Hcl file finding. Discovery lives in the shared
+// tmloader seam so the cache and the CLI commands agree on what counts as a
+// threat model file.
 func findAllFiles(files []string) []string {
-	out := findHclFiles(files)
-	out = append(out, findJsonFiles(files)...)
-	return out
+	return tmloader.FindFiles(files)
+}
+
+// writeStringToFile creates (truncating any existing file) path and writes
+// content to it, closing the file before returning. It is the single place the
+// render commands (dfd, mermaid, export) turn a rendered string into a file, so
+// the create + write + close dance isn't copied at each call site (dfd alone
+// had two copies, one of which leaked a per-iteration defer inside a loop).
+func writeStringToFile(path, content string) error {
+	f, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	if _, err := f.WriteString(content); err != nil {
+		return err
+	}
+	return nil
 }
 
 // fileExistenceCheck checks for the existence of provided files
@@ -431,68 +450,6 @@ func fileExistenceCheck(outfiles []string, overwrite bool) error {
 		}
 	}
 	return nil
-}
-
-// findJsonFiles iterates through a list of files or folders
-// looking for .json files
-// currently it does this recursively through folders too
-func findJsonFiles(files []string) []string {
-	out := []string{}
-	recurse := true // @TODO potentially in the future we may make this an argument / flag
-	for _, file := range files {
-		info, err := os.Stat(file)
-		if !os.IsNotExist(err) {
-			if !info.IsDir() {
-				if filepath.Ext(file) == ".json" {
-					out = append(out, file)
-				}
-			} else {
-				if recurse {
-					re_err := filepath.Walk(file, func(path string, re_info os.FileInfo, err error) error {
-						if !re_info.IsDir() && filepath.Ext(path) == ".json" {
-							out = append(out, path)
-						}
-						return nil
-					})
-					if re_err != nil {
-						panic(re_err) // @TODO - handle this error better
-					}
-				}
-			}
-		}
-	}
-	return out
-}
-
-// findHclFiles iterates through a list of files or folders
-// looking for .hcl files
-// currently it does this recursively through folders too
-func findHclFiles(files []string) []string {
-	out := []string{}
-	recurse := true // @TODO potentially in the future we may make this an argument / flag
-	for _, file := range files {
-		info, err := os.Stat(file)
-		if !os.IsNotExist(err) {
-			if !info.IsDir() {
-				if filepath.Ext(file) == ".hcl" {
-					out = append(out, file)
-				}
-			} else {
-				if recurse {
-					re_err := filepath.Walk(file, func(path string, re_info os.FileInfo, err error) error {
-						if !re_info.IsDir() && filepath.Ext(path) == ".hcl" {
-							out = append(out, path)
-						}
-						return nil
-					})
-					if re_err != nil {
-						panic(re_err) // @TODO - handle this error better
-					}
-				}
-			}
-		}
-	}
-	return out
 }
 
 func configFileLocation() (string, error) {

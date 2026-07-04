@@ -61,17 +61,14 @@ func (c *CloudThreatmodelDeleteCommand) Run(args []string) int {
 		return 1
 	}
 
-	// Initialize dependencies
-	httpClient, keyringSvc, fsSvc := c.initDependencies(10 * time.Second)
-
-	// Step 1: Retrieve token and org ID
-	token, orgId, err := c.getTokenAndOrgId(c.flagOrgId, keyringSvc, fsSvc)
+	// Build the cloud client (resolves token + org)
+	client, _, err := c.newCloudClient(c.flagOrgId, 10*time.Second)
 	if err != nil {
 		return c.handleTokenError(err)
 	}
 
-	// Step 2: Delete threat model
-	err = deleteThreatModel(token, orgId, c.flagModelId, httpClient, fsSvc)
+	// Delete threat model
+	err = client.DeleteThreatModel(c.flagModelId)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error deleting threat model: %s\n", err)
 		return 1

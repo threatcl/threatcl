@@ -80,17 +80,14 @@ func (c *CloudLibraryControlRefCommand) Run(args []string) int {
 	}
 	refId := remainingArgs[0]
 
-	// Initialize dependencies
-	httpClient, keyringSvc, fsSvc := c.initDependencies(30 * time.Second)
-
-	// Get token and org ID
-	token, orgId, err := c.getTokenAndOrgId(c.flagOrgId, keyringSvc, fsSvc)
+	// Build the cloud client (resolves token + org)
+	client, _, err := c.newCloudClient(c.flagOrgId, 30*time.Second)
 	if err != nil {
 		return c.handleTokenError(err)
 	}
 
 	// Fetch control by reference ID
-	control, err := fetchControlLibraryItemByRef(token, orgId, refId, httpClient, fsSvc)
+	control, err := client.FetchControlLibraryItemByRef(refId)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error fetching control library item: %s\n", err)
 		return 1

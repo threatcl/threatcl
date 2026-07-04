@@ -189,7 +189,8 @@ func (c *CloudPolicyUpdateCommand) Run(args []string) int {
 	}
 
 	// Update policy
-	p, err := updatePolicy(token, orgId, c.flagPolicyId, &payload, httpClient, fsSvc)
+	client := NewCloudClient(token, orgId, getAPIBaseURL(fsSvc), httpClient)
+	p, err := client.UpdatePolicy(c.flagPolicyId, &payload)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error updating policy: %s\n", err)
 		return 1

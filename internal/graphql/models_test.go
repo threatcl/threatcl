@@ -22,7 +22,7 @@ func TestMapThreatModelToGraphQL(t *testing.T) {
 	}
 
 	sourceFile := "/path/to/file.hcl"
-	result := MapThreatModelToGraphQL(tm, sourceFile)
+	result := mapThreatModelToGraphQL(tm, sourceFile)
 
 	if result == nil {
 		t.Fatal("Expected non-nil result")
@@ -74,7 +74,7 @@ func TestMapThreatModelToGraphQL_MermaidDiagrams(t *testing.T) {
 		},
 	}
 
-	result := MapThreatModelToGraphQL(tm, "test.hcl")
+	result := mapThreatModelToGraphQL(tm, "test.hcl")
 
 	if result == nil {
 		t.Fatal("Expected non-nil result")
@@ -94,7 +94,7 @@ func TestMapThreatModelToGraphQL_MermaidDiagrams(t *testing.T) {
 }
 
 func TestMapThreatModelToGraphQL_NilInput(t *testing.T) {
-	result := MapThreatModelToGraphQL(nil, "test.hcl")
+	result := mapThreatModelToGraphQL(nil, "test.hcl")
 	if result != nil {
 		t.Error("Expected nil result for nil input")
 	}
@@ -106,7 +106,7 @@ func TestMapThreatModelToGraphQL_NoAttributes(t *testing.T) {
 		Author: "test@example.com",
 	}
 
-	result := MapThreatModelToGraphQL(tm, "test.hcl")
+	result := mapThreatModelToGraphQL(tm, "test.hcl")
 	if result == nil {
 		t.Fatal("Expected non-nil result")
 	}
@@ -122,7 +122,7 @@ func TestMapProcessToGraphQL(t *testing.T) {
 		TrustZone: "Public Zone",
 	}
 
-	result := MapProcessToGraphQL(process)
+	result := mapProcessToGraphQL(process)
 	if result == nil {
 		t.Fatal("Expected non-nil result")
 	}
@@ -142,7 +142,7 @@ func TestMapProcessesToGraphQL(t *testing.T) {
 		{Name: "Process 2", TrustZone: "Zone B"},
 	}
 
-	result := MapProcessesToGraphQL(processes)
+	result := mapProcessesToGraphQL(processes)
 	if len(result) != 2 {
 		t.Fatalf("Expected 2 processes, got %d", len(result))
 	}
@@ -159,7 +159,7 @@ func TestMapDataStoreToGraphQL(t *testing.T) {
 		IaLink:    "user_credentials",
 	}
 
-	result := MapDataStoreToGraphQL(dataStore)
+	result := mapDataStoreToGraphQL(dataStore)
 	if result == nil {
 		t.Fatal("Expected non-nil result")
 	}
@@ -179,7 +179,7 @@ func TestMapExternalElementToGraphQL(t *testing.T) {
 		TrustZone: "Internet",
 	}
 
-	result := MapExternalElementToGraphQL(element)
+	result := mapExternalElementToGraphQL(element)
 	if result == nil {
 		t.Fatal("Expected non-nil result")
 	}
@@ -196,7 +196,7 @@ func TestMapFlowToGraphQL(t *testing.T) {
 		To:   "Web Server",
 	}
 
-	result := MapFlowToGraphQL(flow)
+	result := mapFlowToGraphQL(flow)
 	if result == nil {
 		t.Fatal("Expected non-nil result")
 	}
@@ -219,7 +219,7 @@ func TestMapTrustZoneToGraphQL(t *testing.T) {
 		Name: "DMZ",
 	}
 
-	result := MapTrustZoneToGraphQL(trustZone)
+	result := mapTrustZoneToGraphQL(trustZone)
 	if result == nil {
 		t.Fatal("Expected non-nil result")
 	}
@@ -267,7 +267,7 @@ func TestInt64PtrToIntPtr(t *testing.T) {
 
 func TestMapNilSlices(t *testing.T) {
 	// Test that nil slices return empty slices, not nil
-	processes := MapProcessesToGraphQL(nil)
+	processes := mapProcessesToGraphQL(nil)
 	if processes == nil {
 		t.Error("Expected empty slice, got nil")
 	}
@@ -275,22 +275,22 @@ func TestMapNilSlices(t *testing.T) {
 		t.Errorf("Expected empty slice, got length %d", len(processes))
 	}
 
-	dataStores := MapDataStoresToGraphQL(nil)
+	dataStores := mapDataStoresToGraphQL(nil)
 	if dataStores == nil {
 		t.Error("Expected empty slice, got nil")
 	}
 
-	elements := MapExternalElementsToGraphQL(nil)
+	elements := mapExternalElementsToGraphQL(nil)
 	if elements == nil {
 		t.Error("Expected empty slice, got nil")
 	}
 
-	flows := MapFlowsToGraphQL(nil)
+	flows := mapFlowsToGraphQL(nil)
 	if flows == nil {
 		t.Error("Expected empty slice, got nil")
 	}
 
-	trustZones := MapTrustZonesToGraphQL(nil)
+	trustZones := mapTrustZonesToGraphQL(nil)
 	if trustZones == nil {
 		t.Error("Expected empty slice, got nil")
 	}
@@ -303,7 +303,7 @@ func TestMapThreatModelToGraphQL_Repository(t *testing.T) {
 		Repository: []string{"https://github.com/x/y", "https://github.com/x/z"},
 	}
 
-	result := MapThreatModelToGraphQL(tm, "f.hcl")
+	result := mapThreatModelToGraphQL(tm, "f.hcl")
 	if len(result.Repository) != 2 {
 		t.Fatalf("Expected 2 repositories, got %d", len(result.Repository))
 	}
@@ -328,7 +328,7 @@ func TestMapRiskRatingToGraphQL(t *testing.T) {
 		},
 	}
 
-	rr := MapRiskRatingToGraphQL(threat)
+	rr := mapRiskRatingToGraphQL(threat)
 	if rr == nil {
 		t.Fatal("Expected non-nil RiskRating")
 	}
@@ -357,10 +357,10 @@ func TestMapRiskRatingToGraphQL(t *testing.T) {
 }
 
 func TestMapRiskRatingToGraphQL_NoRisk(t *testing.T) {
-	if rr := MapRiskRatingToGraphQL(&spec.Threat{Name: "no risk"}); rr != nil {
+	if rr := mapRiskRatingToGraphQL(&spec.Threat{Name: "no risk"}); rr != nil {
 		t.Errorf("Expected nil for threat without a risk block, got %+v", rr)
 	}
-	if rr := MapRiskRatingToGraphQL(nil); rr != nil {
+	if rr := mapRiskRatingToGraphQL(nil); rr != nil {
 		t.Errorf("Expected nil for nil threat, got %+v", rr)
 	}
 }

@@ -180,30 +180,6 @@ func TestGetFileToModelMapping(t *testing.T) {
 	}
 }
 
-func TestFindHclFiles(t *testing.T) {
-	examplesDir := filepath.Join("..", "..", "examples")
-
-	if _, err := os.Stat(examplesDir); os.IsNotExist(err) {
-		t.Skip("Examples directory not found, skipping test")
-	}
-
-	cfg := &spec.ThreatmodelSpecConfig{}
-	cache := NewThreatModelCache(cfg, examplesDir)
-
-	files := cache.findHclFiles([]string{examplesDir})
-	if len(files) == 0 {
-		t.Error("Expected to find at least one HCL file")
-	}
-
-	for _, file := range files {
-		if filepath.Ext(file) != ".hcl" {
-			t.Errorf("Expected only .hcl files, got %s", file)
-		}
-	}
-
-	t.Logf("Found %d HCL files", len(files))
-}
-
 func TestConcurrentAccess(t *testing.T) {
 	examplesDir := filepath.Join("..", "..", "examples")
 
