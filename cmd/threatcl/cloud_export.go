@@ -141,6 +141,9 @@ func (c *CloudExportCommand) Run(args []string) int {
 	// parser will accept the file. Local descriptions, if any, are preserved.
 	processed := preprocessHCLForControls(hclBytes)
 	processed = preprocessHCLForThreats(processed)
+	// This HCL was downloaded from the cloud; strip remote-fetch directives so
+	// parsing it cannot drive go-getter requests from this machine (SSRF/LFI).
+	processed = stripRemoteFetchDirectives(processed)
 
 	tmpDir, err := os.MkdirTemp("", "threatcl-cloud-export-")
 	if err != nil {
