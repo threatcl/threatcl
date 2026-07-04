@@ -4,9 +4,9 @@ import (
 	"github.com/threatcl/spec"
 )
 
-// MapThreatModelToGraphQL converts a spec.Threatmodel to a GraphQL ThreatModel
+// mapThreatModelToGraphQL converts a spec.Threatmodel to a GraphQL ThreatModel
 // including the sourceFile field which is not part of the spec
-func MapThreatModelToGraphQL(tm *spec.Threatmodel, sourceFile string) *ThreatModel {
+func mapThreatModelToGraphQL(tm *spec.Threatmodel, sourceFile string) *ThreatModel {
 	if tm == nil {
 		return nil
 	}
@@ -33,12 +33,12 @@ func MapThreatModelToGraphQL(tm *spec.Threatmodel, sourceFile string) *ThreatMod
 	}
 }
 
-// MapRiskRatingToGraphQL converts a threat's optional risk block into a GraphQL
+// mapRiskRatingToGraphQL converts a threat's optional risk block into a GraphQL
 // RiskRating. The severity and score values are computed (they are methods on
 // the spec types), and the residual view needs the parent threat in scope to
 // account for implemented controls, so the whole threat is passed in. Returns
 // nil when the threat has no risk block.
-func MapRiskRatingToGraphQL(t *spec.Threat) *RiskRating {
+func mapRiskRatingToGraphQL(t *spec.Threat) *RiskRating {
 	if t == nil || t.Risk == nil {
 		return nil
 	}
@@ -68,8 +68,8 @@ func mapAttributesToGraphQL(attr *spec.Attribute) *Attributes {
 	}
 }
 
-// MapProcessToGraphQL converts spec.DfdProcess to GraphQL Process
-func MapProcessToGraphQL(p *spec.DfdProcess) *Process {
+// mapProcessToGraphQL converts spec.DfdProcess to GraphQL Process
+func mapProcessToGraphQL(p *spec.DfdProcess) *Process {
 	if p == nil {
 		return nil
 	}
@@ -80,21 +80,21 @@ func MapProcessToGraphQL(p *spec.DfdProcess) *Process {
 	}
 }
 
-// MapProcessesToGraphQL converts a slice of spec.DfdProcess to GraphQL Process
-func MapProcessesToGraphQL(processes []*spec.DfdProcess) []*Process {
+// mapProcessesToGraphQL converts a slice of spec.DfdProcess to GraphQL Process
+func mapProcessesToGraphQL(processes []*spec.DfdProcess) []*Process {
 	if processes == nil {
 		return []*Process{}
 	}
 
 	result := make([]*Process, len(processes))
 	for i, p := range processes {
-		result[i] = MapProcessToGraphQL(p)
+		result[i] = mapProcessToGraphQL(p)
 	}
 	return result
 }
 
-// MapDataStoreToGraphQL converts spec.DfdData to GraphQL DataStore
-func MapDataStoreToGraphQL(ds *spec.DfdData) *DataStore {
+// mapDataStoreToGraphQL converts spec.DfdData to GraphQL DataStore
+func mapDataStoreToGraphQL(ds *spec.DfdData) *DataStore {
 	if ds == nil {
 		return nil
 	}
@@ -106,21 +106,21 @@ func MapDataStoreToGraphQL(ds *spec.DfdData) *DataStore {
 	}
 }
 
-// MapDataStoresToGraphQL converts a slice of spec.DfdData to GraphQL DataStore
-func MapDataStoresToGraphQL(dataStores []*spec.DfdData) []*DataStore {
+// mapDataStoresToGraphQL converts a slice of spec.DfdData to GraphQL DataStore
+func mapDataStoresToGraphQL(dataStores []*spec.DfdData) []*DataStore {
 	if dataStores == nil {
 		return []*DataStore{}
 	}
 
 	result := make([]*DataStore, len(dataStores))
 	for i, ds := range dataStores {
-		result[i] = MapDataStoreToGraphQL(ds)
+		result[i] = mapDataStoreToGraphQL(ds)
 	}
 	return result
 }
 
-// MapExternalElementToGraphQL converts spec.DfdExternal to GraphQL ExternalElement
-func MapExternalElementToGraphQL(ext *spec.DfdExternal) *ExternalElement {
+// mapExternalElementToGraphQL converts spec.DfdExternal to GraphQL ExternalElement
+func mapExternalElementToGraphQL(ext *spec.DfdExternal) *ExternalElement {
 	if ext == nil {
 		return nil
 	}
@@ -131,21 +131,21 @@ func MapExternalElementToGraphQL(ext *spec.DfdExternal) *ExternalElement {
 	}
 }
 
-// MapExternalElementsToGraphQL converts a slice of spec.DfdExternal to GraphQL ExternalElement
-func MapExternalElementsToGraphQL(elements []*spec.DfdExternal) []*ExternalElement {
+// mapExternalElementsToGraphQL converts a slice of spec.DfdExternal to GraphQL ExternalElement
+func mapExternalElementsToGraphQL(elements []*spec.DfdExternal) []*ExternalElement {
 	if elements == nil {
 		return []*ExternalElement{}
 	}
 
 	result := make([]*ExternalElement, len(elements))
 	for i, ext := range elements {
-		result[i] = MapExternalElementToGraphQL(ext)
+		result[i] = mapExternalElementToGraphQL(ext)
 	}
 	return result
 }
 
-// MapFlowToGraphQL converts spec.DfdFlow to GraphQL Flow
-func MapFlowToGraphQL(f *spec.DfdFlow) *Flow {
+// mapFlowToGraphQL converts spec.DfdFlow to GraphQL Flow
+func mapFlowToGraphQL(f *spec.DfdFlow) *Flow {
 	if f == nil {
 		return nil
 	}
@@ -157,21 +157,21 @@ func MapFlowToGraphQL(f *spec.DfdFlow) *Flow {
 	}
 }
 
-// MapFlowsToGraphQL converts a slice of spec.DfdFlow to GraphQL Flow
-func MapFlowsToGraphQL(flows []*spec.DfdFlow) []*Flow {
+// mapFlowsToGraphQL converts a slice of spec.DfdFlow to GraphQL Flow
+func mapFlowsToGraphQL(flows []*spec.DfdFlow) []*Flow {
 	if flows == nil {
 		return []*Flow{}
 	}
 
 	result := make([]*Flow, len(flows))
 	for i, f := range flows {
-		result[i] = MapFlowToGraphQL(f)
+		result[i] = mapFlowToGraphQL(f)
 	}
 	return result
 }
 
-// MapTrustZoneToGraphQL converts spec.DfdTrustZone to GraphQL TrustZone
-func MapTrustZoneToGraphQL(tz *spec.DfdTrustZone) *TrustZone {
+// mapTrustZoneToGraphQL converts spec.DfdTrustZone to GraphQL TrustZone
+func mapTrustZoneToGraphQL(tz *spec.DfdTrustZone) *TrustZone {
 	if tz == nil {
 		return nil
 	}
@@ -181,15 +181,15 @@ func MapTrustZoneToGraphQL(tz *spec.DfdTrustZone) *TrustZone {
 	}
 }
 
-// MapTrustZonesToGraphQL converts a slice of spec.DfdTrustZone to GraphQL TrustZone
-func MapTrustZonesToGraphQL(trustZones []*spec.DfdTrustZone) []*TrustZone {
+// mapTrustZonesToGraphQL converts a slice of spec.DfdTrustZone to GraphQL TrustZone
+func mapTrustZonesToGraphQL(trustZones []*spec.DfdTrustZone) []*TrustZone {
 	if trustZones == nil {
 		return []*TrustZone{}
 	}
 
 	result := make([]*TrustZone, len(trustZones))
 	for i, tz := range trustZones {
-		result[i] = MapTrustZoneToGraphQL(tz)
+		result[i] = mapTrustZoneToGraphQL(tz)
 	}
 	return result
 }
