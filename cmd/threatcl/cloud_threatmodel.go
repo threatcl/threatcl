@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -76,26 +75,23 @@ func (c *CloudThreatmodelCommand) Run(args []string) int {
 		return 1
 	}
 
-	// Initialize dependencies
-	httpClient, keyringSvc, fsSvc := c.initDependencies(10 * time.Second)
-
-	// Step 1: Retrieve token and org ID
-	token, orgId, err := c.getTokenAndOrgId(c.flagOrgId, keyringSvc, fsSvc)
+	// Build the cloud client (resolves token + org)
+	client, fsSvc, err := c.newCloudClient(c.flagOrgId, 10*time.Second)
 	if err != nil {
 		return c.handleTokenError(err)
 	}
 
-	// Step 2: Fetch threat model
-	threatModel, err := fetchThreatModel(token, orgId, c.flagModelId, httpClient, fsSvc)
+	// Fetch threat model
+	threatModel, err := client.FetchThreatModel(c.flagModelId)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error fetching threat model: %s\n", err)
 		return 1
 	}
 
-	// Step 4: Download threat model file
+	// Download threat model file
 	if c.flagDownload != "" {
-		apiURL := fmt.Sprintf("%s/api/v1/org/%s/models/%s/download", getAPIBaseURL(fsSvc), url.PathEscape(orgId), url.PathEscape(c.flagModelId))
-		err = downloadFile(apiURL, token, c.flagDownload, c.flagOverwrite, httpClient, fsSvc)
+		apiURL := client.DownloadModelURL(c.flagModelId)
+		err = downloadToFile(client, apiURL, c.flagDownload, c.flagOverwrite, fsSvc)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error downloading threat model file: %s\n", err)
 			return 1

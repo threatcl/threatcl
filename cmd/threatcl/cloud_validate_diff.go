@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"net/url"
 	"os"
 	"path/filepath"
 	"sort"
@@ -23,10 +22,9 @@ import (
 // in the cloud version, removals ("-") are cloud-only, and "~" marks entities
 // present in both but changed.
 func runCloudValidateDiff(
-	token, orgId, modelIdOrSlug, filePath string,
+	client *CloudClient,
+	modelIdOrSlug, filePath string,
 	localWrapped *spec.ThreatmodelWrapped,
-	httpClient HTTPClient,
-	fsSvc FileSystemService,
 	specCfg *spec.ThreatmodelSpecConfig,
 ) error {
 	// Re-read the raw local bytes (the same content validateThreatModel hashed).
@@ -36,12 +34,7 @@ func runCloudValidateDiff(
 	}
 
 	// Download the current cloud HCL. URL shape matches 'cloud export'.
-	downloadURL := fmt.Sprintf("%s/api/v1/org/%s/models/%s/download",
-		getAPIBaseURL(fsSvc),
-		url.PathEscape(orgId),
-		url.PathEscape(modelIdOrSlug),
-	)
-	cloudRaw, err := downloadFileContent(downloadURL, token, httpClient)
+	cloudRaw, err := client.DownloadContent(client.DownloadModelURL(modelIdOrSlug))
 	if err != nil {
 		return fmt.Errorf("downloading cloud version: %w", err)
 	}
@@ -89,6 +82,9 @@ func runCloudValidateDiff(
 func parseCloudHCL(raw []byte, modelId string, specCfg *spec.ThreatmodelSpecConfig) (*spec.ThreatmodelWrapped, error) {
 	processed := preprocessHCLForControls(raw)
 	processed = preprocessHCLForThreats(processed)
+	// This HCL was downloaded from the cloud; strip remote-fetch directives so
+	// parsing it cannot drive go-getter requests from this machine (SSRF/LFI).
+	processed = stripRemoteFetchDirectives(processed)
 
 	tmpDir, err := os.MkdirTemp("", "threatcl-validate-diff-")
 	if err != nil {

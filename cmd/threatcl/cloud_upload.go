@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -121,16 +122,22 @@ func (c *CloudUploadCommand) Run(args []string) int {
 		return 1
 	}
 
-	// Step 2: Retrieve token and org ID
+	// Retrieve token and org ID, then build the cloud client
 	token, orgId, err := c.getTokenAndOrgId(c.flagOrgId, keyringSvc, fsSvc)
 	if err != nil {
 		return c.handleTokenError(err)
 	}
+	client := NewCloudClient(token, orgId, getAPIBaseURL(fsSvc), httpClient)
 
-	// Step 3: Upload the file
-	err = uploadFile(token, orgId, c.flagModelId, filePath, false, httpClient, fsSvc)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error uploading file: %s\n", err)
+	// Upload the file. The caller reads it so the client stays filesystem-free.
+	content, uploadErr := fsSvc.ReadFile(filePath)
+	if uploadErr == nil {
+		uploadErr = client.Upload(c.flagModelId, filepath.Base(filePath), content, false)
+	} else {
+		uploadErr = fmt.Errorf("%s: %w", ErrFailedToReadFile, uploadErr)
+	}
+	if uploadErr != nil {
+		fmt.Fprintf(os.Stderr, "Error uploading file: %s\n", uploadErr)
 		return 1
 	}
 

@@ -6,12 +6,33 @@
 # the pre-built binary (no build stage); the binary is byte-identical to the one
 # in the released archive.
 #
+# The runtime is `FROM scratch`: the binary is fully static (CGO_ENABLED=0),
+# so beyond it the image only needs CA certificates (TLS to Threatcl Cloud and
+# remote `imports` in threat model files) and passwd/group entries for the
+# nonroot user. A digest-pinned alpine donor stage provides those three files;
+# nothing else from alpine (musl, busybox, apk, openssl) ships in the final
+# image — no shell, no package manager, effectively no base-layer CVE surface.
+# Trade-off: `docker exec` into a running container is no longer possible.
+#
 # For local from-source image builds use the top-level `Dockerfile` (`make image`).
-FROM alpine:3.24
+FROM alpine:3.24@sha256:28bd5fe8b56d1bd048e5babf5b10710ebe0bae67db86916198a6eec434943f8b AS donor
+
+RUN addgroup -S threatcl && adduser -S -G threatcl threatcl
+
+FROM scratch
 
 ARG TARGETPLATFORM
 
-RUN addgroup -S threatcl && adduser -S -G threatcl threatcl
+# ca-certificates.crt comes from alpine's ca-certificates-bundle package,
+# which is part of the base image (no apk install — no network at build time).
+COPY --from=donor /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
+COPY --from=donor /etc/passwd /etc/passwd
+COPY --from=donor /etc/group /etc/group
+
+# scratch has no /tmp or home dir; the remote-imports loader stages downloads
+# under os.TempDir(). Owned by the nonroot user so both are writable.
+COPY --from=donor --chown=threatcl:threatcl /tmp /tmp
+COPY --from=donor --chown=threatcl:threatcl /home/threatcl /home/threatcl
 
 COPY $TARGETPLATFORM/threatcl /usr/bin/threatcl
 

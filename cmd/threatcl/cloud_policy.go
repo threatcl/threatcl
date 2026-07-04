@@ -93,17 +93,14 @@ func (c *CloudPolicyCommand) Run(args []string) int {
 		return 1
 	}
 
-	// Initialize dependencies
-	httpClient, keyringSvc, fsSvc := c.initDependencies(10 * time.Second)
-
-	// Retrieve token and org ID
-	token, orgId, err := c.getTokenAndOrgId(c.flagOrgId, keyringSvc, fsSvc)
+	// Build the cloud client (resolves token + org)
+	client, _, err := c.newCloudClient(c.flagOrgId, 10*time.Second)
 	if err != nil {
 		return c.handleTokenError(err)
 	}
 
 	// Fetch policy
-	p, err := fetchPolicy(token, orgId, c.flagPolicyId, httpClient, fsSvc)
+	p, err := client.FetchPolicy(c.flagPolicyId)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error fetching policy: %s\n", err)
 		return 1

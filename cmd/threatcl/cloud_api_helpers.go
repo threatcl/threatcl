@@ -23,10 +23,10 @@ import (
 )
 
 // fetchUserInfo retrieves user information from the API
-func fetchUserInfo(token string, httpClient HTTPClient, fsSvc FileSystemService) (*whoamiResponse, error) {
-	url := fmt.Sprintf("%s/api/v1/users/me", getAPIBaseURL(fsSvc))
+func (c *CloudClient) FetchUserInfo() (*whoamiResponse, error) {
+	url := fmt.Sprintf("%s/api/v1/users/me", c.baseURL)
 
-	resp, err := makeAuthenticatedRequest("GET", url, token, nil, httpClient)
+	resp, err := makeAuthenticatedRequest("GET", url, c.token, nil, c.http)
 	if err != nil {
 		return nil, err
 	}
@@ -44,27 +44,23 @@ func fetchUserInfo(token string, httpClient HTTPClient, fsSvc FileSystemService)
 	return &whoamiResp, nil
 }
 
-// uploadFile uploads a threat model file to the API
-func uploadFile(token, orgId, modelIdOrSlug, filePath string, ignoreLinkedControls bool, httpClient HTTPClient, fsSvc FileSystemService) error {
-	apiURL := fmt.Sprintf("%s/api/v1/org/%s/models/%s/upload", getAPIBaseURL(fsSvc), url.PathEscape(orgId), url.PathEscape(modelIdOrSlug))
-
-	// Read the file
-	fileData, err := fsSvc.ReadFile(filePath)
-	if err != nil {
-		return fmt.Errorf("%s: %w", ErrFailedToReadFile, err)
-	}
+// Upload uploads a threat model spec (already-read file bytes) to the API. The
+// caller reads the file itself and passes the base filename, so the client
+// stays free of filesystem concerns.
+func (c *CloudClient) Upload(modelIdOrSlug, filename string, content []byte, ignoreLinkedControls bool) error {
+	apiURL := fmt.Sprintf("%s/api/v1/org/%s/models/%s/upload", c.baseURL, url.PathEscape(c.orgId), url.PathEscape(modelIdOrSlug))
 
 	// Create multipart form
 	var requestBody bytes.Buffer
 	writer := multipart.NewWriter(&requestBody)
 
 	// Add file field
-	fileWriter, err := writer.CreateFormFile("file", filepath.Base(filePath))
+	fileWriter, err := writer.CreateFormFile("file", filename)
 	if err != nil {
 		return fmt.Errorf("failed to create form file: %w", err)
 	}
 
-	_, err = fileWriter.Write(fileData)
+	_, err = fileWriter.Write(content)
 	if err != nil {
 		return fmt.Errorf("failed to write file data: %w", err)
 	}
@@ -89,11 +85,11 @@ func uploadFile(token, orgId, modelIdOrSlug, filePath string, ignoreLinkedContro
 		return fmt.Errorf("%s: %w", ErrFailedToCreateReq, err)
 	}
 
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", c.token))
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 
 	// Send request
-	resp, err := httpClient.Do(req)
+	resp, err := c.http.Do(req)
 	if err != nil {
 		return fmt.Errorf("%s: %w", ErrFailedToConnect, err)
 	}
@@ -115,8 +111,8 @@ func uploadFile(token, orgId, modelIdOrSlug, filePath string, ignoreLinkedContro
 
 // downloadFileContent downloads a threat model file from the API and returns
 // its bytes without touching the filesystem.
-func downloadFileContent(apiURL, token string, httpClient HTTPClient) ([]byte, error) {
-	resp, err := makeAuthenticatedRequest("GET", apiURL, token, nil, httpClient)
+func (c *CloudClient) DownloadContent(apiURL string) ([]byte, error) {
+	resp, err := makeAuthenticatedRequest("GET", apiURL, c.token, nil, c.http)
 	if err != nil {
 		return nil, err
 	}
@@ -134,8 +130,10 @@ func downloadFileContent(apiURL, token string, httpClient HTTPClient) ([]byte, e
 	return body, nil
 }
 
-// downloadFile downloads a threat model file from the API and writes it to disk
-func downloadFile(apiURL, token, downloadPath string, overwrite bool, httpClient HTTPClient, fsSvc FileSystemService) error {
+// downloadToFile downloads a threat model file from the API and writes it to
+// disk. The network fetch lives on the client (DownloadContent); the overwrite
+// check and write stay here so the client stays filesystem-free.
+func downloadToFile(client *CloudClient, apiURL, downloadPath string, overwrite bool, fsSvc FileSystemService) error {
 	// Check if file exists and overwrite flag is not set
 	if !overwrite {
 		if _, err := fsSvc.Stat(downloadPath); err == nil {
@@ -143,7 +141,7 @@ func downloadFile(apiURL, token, downloadPath string, overwrite bool, httpClient
 		}
 	}
 
-	body, err := downloadFileContent(apiURL, token, httpClient)
+	body, err := client.DownloadContent(apiURL)
 	if err != nil {
 		return err
 	}
@@ -156,10 +154,10 @@ func downloadFile(apiURL, token, downloadPath string, overwrite bool, httpClient
 }
 
 // fetchThreatModel retrieves a single threat model
-func fetchThreatModel(token, orgId, modelIdOrSlug string, httpClient HTTPClient, fsSvc FileSystemService) (*threatModel, error) {
-	apiURL := fmt.Sprintf("%s/api/v1/org/%s/models/%s", getAPIBaseURL(fsSvc), url.PathEscape(orgId), url.PathEscape(modelIdOrSlug))
+func (c *CloudClient) FetchThreatModel(modelIdOrSlug string) (*threatModel, error) {
+	apiURL := fmt.Sprintf("%s/api/v1/org/%s/models/%s", c.baseURL, url.PathEscape(c.orgId), url.PathEscape(modelIdOrSlug))
 
-	resp, err := makeAuthenticatedRequest("GET", apiURL, token, nil, httpClient)
+	resp, err := makeAuthenticatedRequest("GET", apiURL, c.token, nil, c.http)
 	if err != nil {
 		return nil, err
 	}
@@ -185,10 +183,10 @@ func fetchThreatModel(token, orgId, modelIdOrSlug string, httpClient HTTPClient,
 }
 
 // deleteThreatModel deletes a threat model
-func deleteThreatModel(token, orgId, modelIdOrSlug string, httpClient HTTPClient, fsSvc FileSystemService) error {
-	apiURL := fmt.Sprintf("%s/api/v1/org/%s/models/%s", getAPIBaseURL(fsSvc), url.PathEscape(orgId), url.PathEscape(modelIdOrSlug))
+func (c *CloudClient) DeleteThreatModel(modelIdOrSlug string) error {
+	apiURL := fmt.Sprintf("%s/api/v1/org/%s/models/%s", c.baseURL, url.PathEscape(c.orgId), url.PathEscape(modelIdOrSlug))
 
-	resp, err := makeAuthenticatedRequest("DELETE", apiURL, token, nil, httpClient)
+	resp, err := makeAuthenticatedRequest("DELETE", apiURL, c.token, nil, c.http)
 	if err != nil {
 		return err
 	}
@@ -202,8 +200,8 @@ func deleteThreatModel(token, orgId, modelIdOrSlug string, httpClient HTTPClient
 }
 
 // updateThreatmodelStatus updates the status of a threat model
-func updateThreatmodelStatus(token, orgId, modelIdOrSlug, status string, httpClient HTTPClient, fsSvc FileSystemService) error {
-	apiURL := fmt.Sprintf("%s/api/v1/org/%s/models/%s/status", getAPIBaseURL(fsSvc), url.PathEscape(orgId), url.PathEscape(modelIdOrSlug))
+func (c *CloudClient) UpdateThreatmodelStatus(modelIdOrSlug, status string) error {
+	apiURL := fmt.Sprintf("%s/api/v1/org/%s/models/%s/status", c.baseURL, url.PathEscape(c.orgId), url.PathEscape(modelIdOrSlug))
 
 	// Create the request payload
 	payload := map[string]string{
@@ -220,10 +218,10 @@ func updateThreatmodelStatus(token, orgId, modelIdOrSlug, status string, httpCli
 		return fmt.Errorf("failed to create request: %w", err)
 	}
 
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", c.token))
 	req.Header.Set("Content-Type", "application/json")
 
-	resp, err := httpClient.Do(req)
+	resp, err := c.http.Do(req)
 	if err != nil {
 		return err
 	}
@@ -237,10 +235,10 @@ func updateThreatmodelStatus(token, orgId, modelIdOrSlug, status string, httpCli
 }
 
 // fetchThreatModels retrieves all threat models for an organization
-func fetchThreatModels(token, orgId string, httpClient HTTPClient, fsSvc FileSystemService) ([]threatModel, error) {
-	apiURL := fmt.Sprintf("%s/api/v1/org/%s/models", getAPIBaseURL(fsSvc), url.PathEscape(orgId))
+func (c *CloudClient) FetchThreatModels() ([]threatModel, error) {
+	apiURL := fmt.Sprintf("%s/api/v1/org/%s/models", c.baseURL, url.PathEscape(c.orgId))
 
-	resp, err := makeAuthenticatedRequest("GET", apiURL, token, nil, httpClient)
+	resp, err := makeAuthenticatedRequest("GET", apiURL, c.token, nil, c.http)
 	if err != nil {
 		return nil, err
 	}
@@ -259,10 +257,10 @@ func fetchThreatModels(token, orgId string, httpClient HTTPClient, fsSvc FileSys
 }
 
 // fetchThreatModelVersions retrieves all versions of a threat model
-func fetchThreatModelVersions(token, orgId, modelId string, httpClient HTTPClient, fsSvc FileSystemService) (*threatModelVersionsResponse, error) {
-	apiURL := fmt.Sprintf("%s/api/v1/org/%s/models/%s/versions", getAPIBaseURL(fsSvc), url.PathEscape(orgId), url.PathEscape(modelId))
+func (c *CloudClient) FetchThreatModelVersions(modelId string) (*threatModelVersionsResponse, error) {
+	apiURL := fmt.Sprintf("%s/api/v1/org/%s/models/%s/versions", c.baseURL, url.PathEscape(c.orgId), url.PathEscape(modelId))
 
-	resp, err := makeAuthenticatedRequest("GET", apiURL, token, nil, httpClient)
+	resp, err := makeAuthenticatedRequest("GET", apiURL, c.token, nil, c.http)
 	if err != nil {
 		return nil, err
 	}
@@ -288,8 +286,8 @@ func fetchThreatModelVersions(token, orgId, modelId string, httpClient HTTPClien
 }
 
 // createThreatModel creates a new threat model in the cloud
-func createThreatModel(token, orgId, name, description string, httpClient HTTPClient, fsSvc FileSystemService) (*threatModel, error) {
-	apiURL := fmt.Sprintf("%s/api/v1/org/%s/models", getAPIBaseURL(fsSvc), url.PathEscape(orgId))
+func (c *CloudClient) CreateThreatModel(name, description string) (*threatModel, error) {
+	apiURL := fmt.Sprintf("%s/api/v1/org/%s/models", c.baseURL, url.PathEscape(c.orgId))
 
 	// Create the request payload
 	payload := map[string]string{
@@ -308,11 +306,11 @@ func createThreatModel(token, orgId, name, description string, httpClient HTTPCl
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", c.token))
 	req.Header.Set("Content-Type", "application/json")
 
 	// Send request
-	resp, err := httpClient.Do(req)
+	resp, err := c.http.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to API: %w", err)
 	}
@@ -403,7 +401,7 @@ func updateHCLBackendThreatmodel(filePath, slug string, fsSvc FileSystemService)
 // - organization is valid and user can access - return orgid
 // - threatmodel name exists - return slug
 // - local file matches the latest version of the threatmodel - return version string
-func validateThreatModel(token, filePath string, httpClient HTTPClient, fsSvc FileSystemService, specCfg *spec.ThreatmodelSpecConfig) (*spec.ThreatmodelWrapped, string, string, string, error) {
+func validateThreatModel(client *CloudClient, filePath string, specCfg *spec.ThreatmodelSpecConfig) (*spec.ThreatmodelWrapped, string, string, string, error) {
 	orgValid := ""
 	tmNameValid := ""
 	tmFileMatchesVersion := ""
@@ -487,7 +485,7 @@ func validateThreatModel(token, filePath string, httpClient HTTPClient, fsSvc Fi
 	// fmt.Printf("✓ Backend organization specified: %s\n", backend.BackendOrg)
 
 	// Step 4: Fetch user information
-	whoamiResp, err := fetchUserInfo(token, httpClient, fsSvc)
+	whoamiResp, err := client.FetchUserInfo()
 	if err != nil {
 		return wrapped, orgValid, tmNameValid, tmFileMatchesVersion, fmt.Errorf("error fetching user information: %s", err)
 	}
@@ -521,8 +519,11 @@ func validateThreatModel(token, filePath string, httpClient HTTPClient, fsSvc Fi
 	// 	foundOrg.Role)
 
 	if backend.BackendTMShort != "" {
-		// Try and match this threat model
-		threatModel, err := fetchThreatModel(token, foundOrg.Organization.ID, backend.BackendTMShort, httpClient, fsSvc)
+		// Try and match this threat model. The org is resolved from the
+		// file's backend block (not the client's construction org), so scope a
+		// copy of the client to it.
+		orgClient := client.WithOrg(foundOrg.Organization.ID)
+		threatModel, err := orgClient.FetchThreatModel(backend.BackendTMShort)
 		if err != nil && !strings.Contains(err.Error(), "threat model not found") {
 			return wrapped, orgValid, tmNameValid, tmFileMatchesVersion, fmt.Errorf("error fetching threat models: %s", err)
 		}
@@ -532,7 +533,7 @@ func validateThreatModel(token, filePath string, httpClient HTTPClient, fsSvc Fi
 			tmNameValid = threatModel.Slug
 			// fmt.Printf("✓ Threat model '%s' found\n", threatModel.Name)
 
-			threatModelVersions, err := fetchThreatModelVersions(token, foundOrg.Organization.ID, threatModel.ID, httpClient, fsSvc)
+			threatModelVersions, err := orgClient.FetchThreatModelVersions(threatModel.ID)
 			if err != nil {
 				return wrapped, orgValid, tmNameValid, tmFileMatchesVersion, fmt.Errorf("error fetching threat model versions: %s", err)
 			}
@@ -639,6 +640,54 @@ func preprocessHCLForThreats(content []byte) []byte {
 	return content
 }
 
+// stripRemoteFetchDirectives removes the HCL constructs that make the spec
+// parser fetch remote content via go-getter: the top-level "imports" attribute
+// and each threatmodel block's "including" attribute. Both take a source
+// string that go-getter resolves with no scheme/host allowlist (http(s)://,
+// git::, s3::, file://, ...).
+//
+// This is applied to HCL *downloaded from the cloud API* before it is parsed.
+// That content is not authored by the local user - it can come from another
+// member of a shared org (or a compromised backend) - so resolving these
+// directives on the user's machine would be an SSRF / local-file-read
+// primitive. Locally-authored files (cloud push/validate of a user's own
+// file) are deliberately NOT passed through this, so their imports/including
+// continue to work.
+func stripRemoteFetchDirectives(content []byte) []byte {
+	// Parse with hclwrite (lenient parser for AST manipulation)
+	file, diags := hclwrite.ParseConfig(content, "", hcl.InitialPos)
+	if diags.HasErrors() {
+		// If parsing fails, return original content and let the normal parser
+		// report errors.
+		return content
+	}
+
+	modified := false
+	body := file.Body()
+
+	// Top-level "imports = [...]"
+	if body.GetAttribute("imports") != nil {
+		body.RemoveAttribute("imports")
+		modified = true
+	}
+
+	// Per-threatmodel "including = ..."
+	for _, tmBlock := range body.Blocks() {
+		if tmBlock.Type() != "threatmodel" {
+			continue
+		}
+		if tmBlock.Body().GetAttribute("including") != nil {
+			tmBlock.Body().RemoveAttribute("including")
+			modified = true
+		}
+	}
+
+	if modified {
+		return file.Bytes()
+	}
+	return content
+}
+
 // extractControlRefs extracts all unique control refs from a wrapped threatmodel
 func extractControlRefs(wrapped *spec.ThreatmodelWrapped) []string {
 	if wrapped == nil {
@@ -710,12 +759,12 @@ func extractInformationAssetRefs(wrapped *spec.ThreatmodelWrapped) []string {
 
 // validateControlRefs validates that control refs exist in the library
 // Returns a map of ref -> *controlLibraryItem (for found items), a slice of missing refs, and an error
-func validateControlRefs(token, orgId string, refs []string, httpClient HTTPClient, fsSvc FileSystemService) (map[string]*controlLibraryItem, []string, error) {
+func (c *CloudClient) ValidateControlRefs(refs []string) (map[string]*controlLibraryItem, []string, error) {
 	if len(refs) == 0 {
 		return nil, nil, nil
 	}
 
-	items, err := fetchControlLibraryItemsByRefs(token, orgId, refs, httpClient, fsSvc)
+	items, err := c.FetchControlLibraryItemsByRefs(refs)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -740,7 +789,7 @@ func validateControlRefs(token, orgId string, refs []string, httpClient HTTPClie
 }
 
 // fetchControlLibraryItemByRef retrieves a control library item by its reference ID
-func fetchControlLibraryItemByRef(token, orgId, refId string, httpClient HTTPClient, fsSvc FileSystemService) (*controlLibraryItem, error) {
+func (c *CloudClient) FetchControlLibraryItemByRef(refId string) (*controlLibraryItem, error) {
 	query := `query controlLibraryItemByRef($orgId: ID!, $referenceId: String!) {
   controlLibraryItemByRef(orgId: $orgId, referenceId: $referenceId) {
     id
@@ -779,7 +828,7 @@ func fetchControlLibraryItemByRef(token, orgId, refId string, httpClient HTTPCli
 	reqBody := graphQLRequest{
 		Query: query,
 		Variables: map[string]interface{}{
-			"orgId":       orgId,
+			"orgId":       c.orgId,
 			"referenceId": refId,
 		},
 	}
@@ -789,8 +838,8 @@ func fetchControlLibraryItemByRef(token, orgId, refId string, httpClient HTTPCli
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	url := fmt.Sprintf("%s/api/v1/graphql", getAPIBaseURL(fsSvc))
-	resp, err := makeAuthenticatedRequest("POST", url, token, bytes.NewReader(jsonData), httpClient)
+	url := fmt.Sprintf("%s/api/v1/graphql", c.baseURL)
+	resp, err := makeAuthenticatedRequest("POST", url, c.token, bytes.NewReader(jsonData), c.http)
 	if err != nil {
 		return nil, err
 	}
@@ -824,7 +873,7 @@ func fetchControlLibraryItemByRef(token, orgId, refId string, httpClient HTTPCli
 }
 
 // fetchControlLibraryItemsByRefs retrieves multiple control library items by their reference IDs
-func fetchControlLibraryItemsByRefs(token, orgId string, refIds []string, httpClient HTTPClient, fsSvc FileSystemService) ([]*controlLibraryItem, error) {
+func (c *CloudClient) FetchControlLibraryItemsByRefs(refIds []string) ([]*controlLibraryItem, error) {
 	query := `query controlLibraryItemsByRefs($orgId: ID!, $referenceIds: [String!]!) {
   controlLibraryItemsByRefs(orgId: $orgId, referenceIds: $referenceIds) {
     id
@@ -863,7 +912,7 @@ func fetchControlLibraryItemsByRefs(token, orgId string, refIds []string, httpCl
 	reqBody := graphQLRequest{
 		Query: query,
 		Variables: map[string]any{
-			"orgId":        orgId,
+			"orgId":        c.orgId,
 			"referenceIds": refIds,
 		},
 	}
@@ -873,8 +922,8 @@ func fetchControlLibraryItemsByRefs(token, orgId string, refIds []string, httpCl
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	url := fmt.Sprintf("%s/api/v1/graphql", getAPIBaseURL(fsSvc))
-	resp, err := makeAuthenticatedRequest("POST", url, token, bytes.NewReader(jsonData), httpClient)
+	url := fmt.Sprintf("%s/api/v1/graphql", c.baseURL)
+	resp, err := makeAuthenticatedRequest("POST", url, c.token, bytes.NewReader(jsonData), c.http)
 	if err != nil {
 		return nil, err
 	}
@@ -904,7 +953,7 @@ func fetchControlLibraryItemsByRefs(token, orgId string, refIds []string, httpCl
 }
 
 // fetchThreatLibraryItemByRef retrieves a threat library item by its reference ID
-func fetchThreatLibraryItemByRef(token, orgId, refId string, httpClient HTTPClient, fsSvc FileSystemService) (*threatLibraryItem, error) {
+func (c *CloudClient) FetchThreatLibraryItemByRef(refId string) (*threatLibraryItem, error) {
 	query := `query threatLibraryItemByRef($orgId: ID!, $referenceId: String!) {
   threatLibraryItemByRef(orgId: $orgId, referenceId: $referenceId) {
     id
@@ -938,7 +987,7 @@ func fetchThreatLibraryItemByRef(token, orgId, refId string, httpClient HTTPClie
 	reqBody := graphQLRequest{
 		Query: query,
 		Variables: map[string]any{
-			"orgId":       orgId,
+			"orgId":       c.orgId,
 			"referenceId": refId,
 		},
 	}
@@ -948,8 +997,8 @@ func fetchThreatLibraryItemByRef(token, orgId, refId string, httpClient HTTPClie
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	url := fmt.Sprintf("%s/api/v1/graphql", getAPIBaseURL(fsSvc))
-	resp, err := makeAuthenticatedRequest("POST", url, token, bytes.NewReader(jsonData), httpClient)
+	url := fmt.Sprintf("%s/api/v1/graphql", c.baseURL)
+	resp, err := makeAuthenticatedRequest("POST", url, c.token, bytes.NewReader(jsonData), c.http)
 	if err != nil {
 		return nil, err
 	}
@@ -984,7 +1033,7 @@ func fetchThreatLibraryItemByRef(token, orgId, refId string, httpClient HTTPClie
 
 // fetchThreatLibraryItemsByRefs retrieves multiple threat library items by their reference IDs
 // If includeRecommendedControls is true, the query will also fetch full details for recommended controls
-func fetchThreatLibraryItemsByRefs(token, orgId string, refIds []string, includeRecommendedControls bool, httpClient HTTPClient, fsSvc FileSystemService) ([]*threatLibraryItem, error) {
+func (c *CloudClient) FetchThreatLibraryItemsByRefs(refIds []string, includeRecommendedControls bool) ([]*threatLibraryItem, error) {
 	// Base query without recommended controls
 	query := `query threatLibraryItemsByRefs($orgId: ID!, $referenceIds: [String!]!) {
   threatLibraryItemsByRefs(orgId: $orgId, referenceIds: $referenceIds) {
@@ -1071,7 +1120,7 @@ func fetchThreatLibraryItemsByRefs(token, orgId string, refIds []string, include
 	reqBody := graphQLRequest{
 		Query: query,
 		Variables: map[string]any{
-			"orgId":        orgId,
+			"orgId":        c.orgId,
 			"referenceIds": refIds,
 		},
 	}
@@ -1081,8 +1130,8 @@ func fetchThreatLibraryItemsByRefs(token, orgId string, refIds []string, include
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	url := fmt.Sprintf("%s/api/v1/graphql", getAPIBaseURL(fsSvc))
-	resp, err := makeAuthenticatedRequest("POST", url, token, bytes.NewReader(jsonData), httpClient)
+	url := fmt.Sprintf("%s/api/v1/graphql", c.baseURL)
+	resp, err := makeAuthenticatedRequest("POST", url, c.token, bytes.NewReader(jsonData), c.http)
 	if err != nil {
 		return nil, err
 	}
@@ -1114,12 +1163,12 @@ func fetchThreatLibraryItemsByRefs(token, orgId string, refIds []string, include
 // validateThreatRefs validates that threat refs exist in the library
 // If includeRecommendedControls is true, the returned items will include full details for recommended controls
 // Returns a map of ref -> *threatLibraryItem (for found items), a slice of missing refs, and an error
-func validateThreatRefs(token, orgId string, refs []string, includeRecommendedControls bool, httpClient HTTPClient, fsSvc FileSystemService) (map[string]*threatLibraryItem, []string, error) {
+func (c *CloudClient) ValidateThreatRefs(refs []string, includeRecommendedControls bool) (map[string]*threatLibraryItem, []string, error) {
 	if len(refs) == 0 {
 		return nil, nil, nil
 	}
 
-	items, err := fetchThreatLibraryItemsByRefs(token, orgId, refs, includeRecommendedControls, httpClient, fsSvc)
+	items, err := c.FetchThreatLibraryItemsByRefs(refs, includeRecommendedControls)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -1145,7 +1194,7 @@ func validateThreatRefs(token, orgId string, refs []string, includeRecommendedCo
 
 // fetchInformationAssetLibraryItemByRef retrieves an information-asset library
 // item by its reference ID.
-func fetchInformationAssetLibraryItemByRef(token, orgId, refId string, httpClient HTTPClient, fsSvc FileSystemService) (*informationAssetLibraryItem, error) {
+func (c *CloudClient) FetchInformationAssetLibraryItemByRef(refId string) (*informationAssetLibraryItem, error) {
 	query := `query informationAssetLibraryItemByRef($orgId: ID!, $referenceId: String!) {
   informationAssetLibraryItemByRef(orgId: $orgId, referenceId: $referenceId) {
     id
@@ -1181,7 +1230,7 @@ func fetchInformationAssetLibraryItemByRef(token, orgId, refId string, httpClien
 	reqBody := graphQLRequest{
 		Query: query,
 		Variables: map[string]any{
-			"orgId":       orgId,
+			"orgId":       c.orgId,
 			"referenceId": refId,
 		},
 	}
@@ -1191,8 +1240,8 @@ func fetchInformationAssetLibraryItemByRef(token, orgId, refId string, httpClien
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	url := fmt.Sprintf("%s/api/v1/graphql", getAPIBaseURL(fsSvc))
-	resp, err := makeAuthenticatedRequest("POST", url, token, bytes.NewReader(jsonData), httpClient)
+	url := fmt.Sprintf("%s/api/v1/graphql", c.baseURL)
+	resp, err := makeAuthenticatedRequest("POST", url, c.token, bytes.NewReader(jsonData), c.http)
 	if err != nil {
 		return nil, err
 	}
@@ -1227,7 +1276,7 @@ func fetchInformationAssetLibraryItemByRef(token, orgId, refId string, httpClien
 
 // fetchInformationAssetLibraryItemsByRefs retrieves multiple information-asset
 // library items by their reference IDs.
-func fetchInformationAssetLibraryItemsByRefs(token, orgId string, refIds []string, httpClient HTTPClient, fsSvc FileSystemService) ([]*informationAssetLibraryItem, error) {
+func (c *CloudClient) FetchInformationAssetLibraryItemsByRefs(refIds []string) ([]*informationAssetLibraryItem, error) {
 	query := `query informationAssetLibraryItemsByRefs($orgId: ID!, $referenceIds: [String!]!) {
   informationAssetLibraryItemsByRefs(orgId: $orgId, referenceIds: $referenceIds) {
     id
@@ -1263,7 +1312,7 @@ func fetchInformationAssetLibraryItemsByRefs(token, orgId string, refIds []strin
 	reqBody := graphQLRequest{
 		Query: query,
 		Variables: map[string]any{
-			"orgId":        orgId,
+			"orgId":        c.orgId,
 			"referenceIds": refIds,
 		},
 	}
@@ -1273,8 +1322,8 @@ func fetchInformationAssetLibraryItemsByRefs(token, orgId string, refIds []strin
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	url := fmt.Sprintf("%s/api/v1/graphql", getAPIBaseURL(fsSvc))
-	resp, err := makeAuthenticatedRequest("POST", url, token, bytes.NewReader(jsonData), httpClient)
+	url := fmt.Sprintf("%s/api/v1/graphql", c.baseURL)
+	resp, err := makeAuthenticatedRequest("POST", url, c.token, bytes.NewReader(jsonData), c.http)
 	if err != nil {
 		return nil, err
 	}
@@ -1306,12 +1355,12 @@ func fetchInformationAssetLibraryItemsByRefs(token, orgId string, refIds []strin
 // validateInformationAssetRefs validates that information-asset refs exist in
 // the library. Returns a map of ref -> *informationAssetLibraryItem (for found
 // items), a slice of missing refs, and an error.
-func validateInformationAssetRefs(token, orgId string, refs []string, httpClient HTTPClient, fsSvc FileSystemService) (map[string]*informationAssetLibraryItem, []string, error) {
+func (c *CloudClient) ValidateInformationAssetRefs(refs []string) (map[string]*informationAssetLibraryItem, []string, error) {
 	if len(refs) == 0 {
 		return nil, nil, nil
 	}
 
-	items, err := fetchInformationAssetLibraryItemsByRefs(token, orgId, refs, httpClient, fsSvc)
+	items, err := c.FetchInformationAssetLibraryItemsByRefs(refs)
 	if err != nil {
 		return nil, nil, err
 	}

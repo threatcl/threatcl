@@ -18,27 +18,27 @@ func (r *additionalAttributeResolver) Key(ctx context.Context, obj *spec.Additio
 
 // Processes is the resolver for the processes field.
 func (r *dataFlowDiagramResolver) Processes(ctx context.Context, obj *spec.DataFlowDiagram) ([]*Process, error) {
-	return MapProcessesToGraphQL(obj.Processes), nil
+	return mapProcessesToGraphQL(obj.Processes), nil
 }
 
 // DataStores is the resolver for the dataStores field.
 func (r *dataFlowDiagramResolver) DataStores(ctx context.Context, obj *spec.DataFlowDiagram) ([]*DataStore, error) {
-	return MapDataStoresToGraphQL(obj.DataStores), nil
+	return mapDataStoresToGraphQL(obj.DataStores), nil
 }
 
 // ExternalElements is the resolver for the externalElements field.
 func (r *dataFlowDiagramResolver) ExternalElements(ctx context.Context, obj *spec.DataFlowDiagram) ([]*ExternalElement, error) {
-	return MapExternalElementsToGraphQL(obj.ExternalElements), nil
+	return mapExternalElementsToGraphQL(obj.ExternalElements), nil
 }
 
 // Flows is the resolver for the flows field.
 func (r *dataFlowDiagramResolver) Flows(ctx context.Context, obj *spec.DataFlowDiagram) ([]*Flow, error) {
-	return MapFlowsToGraphQL(obj.Flows), nil
+	return mapFlowsToGraphQL(obj.Flows), nil
 }
 
 // TrustZones is the resolver for the trustZones field.
 func (r *dataFlowDiagramResolver) TrustZones(ctx context.Context, obj *spec.DataFlowDiagram) ([]*TrustZone, error) {
-	return MapTrustZonesToGraphQL(obj.TrustZones), nil
+	return mapTrustZonesToGraphQL(obj.TrustZones), nil
 }
 
 // ThreatModel is the resolver for the threatModel field.
@@ -49,7 +49,7 @@ func (r *informationAssetResolver) ThreatModel(ctx context.Context, obj *spec.In
 		for _, asset := range tm.InformationAssets {
 			if asset == obj {
 				sourceFile, _ := r.Cache.GetSourceFile(tm.Name)
-				return MapThreatModelToGraphQL(tm, sourceFile), nil
+				return mapThreatModelToGraphQL(tm, sourceFile), nil
 			}
 		}
 	}
@@ -65,7 +65,7 @@ func (r *queryResolver) ThreatModels(ctx context.Context, filter *ThreatModelFil
 	for _, tm := range allModels {
 		if matchesFilter(tm, filter) {
 			sourceFile, _ := r.Cache.GetSourceFile(tm.Name)
-			graphqlModel := MapThreatModelToGraphQL(tm, sourceFile)
+			graphqlModel := mapThreatModelToGraphQL(tm, sourceFile)
 			filtered = append(filtered, graphqlModel)
 		}
 	}
@@ -81,7 +81,7 @@ func (r *queryResolver) ThreatModel(ctx context.Context, name string) (*ThreatMo
 	}
 
 	sourceFile, _ := r.Cache.GetSourceFile(name)
-	return MapThreatModelToGraphQL(tm, sourceFile), nil
+	return mapThreatModelToGraphQL(tm, sourceFile), nil
 }
 
 // Threats is the resolver for the threats field.
@@ -183,7 +183,7 @@ func (r *threatResolver) Impacts(ctx context.Context, obj *spec.Threat) ([]strin
 
 // Risk is the resolver for the risk field.
 func (r *threatResolver) Risk(ctx context.Context, obj *spec.Threat) (*RiskRating, error) {
-	return MapRiskRatingToGraphQL(obj), nil
+	return mapRiskRatingToGraphQL(obj), nil
 }
 
 // ThreatModel is the resolver for the threatModel field.
@@ -194,7 +194,7 @@ func (r *threatResolver) ThreatModel(ctx context.Context, obj *spec.Threat) (*Th
 		for _, threat := range tm.Threats {
 			if threat.Name == obj.Name {
 				sourceFile, _ := r.Cache.GetSourceFile(tm.Name)
-				return MapThreatModelToGraphQL(tm, sourceFile), nil
+				return mapThreatModelToGraphQL(tm, sourceFile), nil
 			}
 		}
 	}

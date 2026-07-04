@@ -75,17 +75,14 @@ func (c *CloudPolicyEvaluationsCommand) Run(args []string) int {
 		return 1
 	}
 
-	// Initialize dependencies
-	httpClient, keyringSvc, fsSvc := c.initDependencies(10 * time.Second)
-
-	// Retrieve token and org ID
-	token, orgId, err := c.getTokenAndOrgId(c.flagOrgId, keyringSvc, fsSvc)
+	// Build the cloud client (resolves token + org)
+	client, _, err := c.newCloudClient(c.flagOrgId, 10*time.Second)
 	if err != nil {
 		return c.handleTokenError(err)
 	}
 
 	// Fetch evaluations
-	evals, err := fetchPolicyEvaluations(token, orgId, c.flagModelId, httpClient, fsSvc)
+	evals, err := client.FetchPolicyEvaluations(c.flagModelId)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error fetching evaluations: %s\n", err)
 		return 1

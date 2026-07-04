@@ -88,21 +88,24 @@ func (c *CloudValidateCommand) Run(args []string) int {
 		}
 	}
 
-	// Initialize dependencies
-	httpClient, keyringSvc, fsSvc := c.initDependencies(10 * time.Second)
-	token, _, err := c.getTokenAndOrgId("", keyringSvc, fsSvc)
+	// Build the cloud client. The org is resolved from the file's backend
+	// block, so start org-agnostic and re-scope with WithOrg once known.
+	client, _, err := c.newCloudClient("", 10*time.Second)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "❌ %s\n", err)
 		fmt.Fprintf(os.Stderr, "   %s\n", ErrPleaseLogin)
 		return 1
 	}
 
-	wrapped, orgValid, tmNameValid, tmFileMatchesVersion, err := validateThreatModel(token, filePath, httpClient, fsSvc, c.specCfg)
+	wrapped, orgValid, tmNameValid, tmFileMatchesVersion, err := validateThreatModel(client, filePath, c.specCfg)
 
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "❌ %s\n", err)
 		return 1
 	}
+
+	// Scope a client to the resolved org for the ref-library lookups below.
+	orgClient := client.WithOrg(orgValid)
 
 	if tmFileMatchesVersion != "" {
 		fmt.Printf("✓ Local Threat model file matches the latest version of the cloud threat model at org-id: %s, model-id: %s, version: %s\n", orgValid, tmNameValid, tmFileMatchesVersion)
@@ -112,7 +115,7 @@ func (c *CloudValidateCommand) Run(args []string) int {
 	} else if tmNameValid != "" {
 		fmt.Printf("✓ Local Threat model file (org-id: %s, model-id: %s) matches a cloud threat model, but doesn't match the latest version\nConsider running 'threatcl cloud push' to update the local file to the latest version.\n", orgValid, tmNameValid)
 		if c.flagDiff {
-			if diffErr := runCloudValidateDiff(token, orgValid, tmNameValid, filePath, wrapped, httpClient, fsSvc, c.specCfg); diffErr != nil {
+			if diffErr := runCloudValidateDiff(orgClient, tmNameValid, filePath, wrapped, c.specCfg); diffErr != nil {
 				// Non-fatal: the validation result itself is unchanged.
 				fmt.Fprintf(os.Stderr, "⚠ Warning: could not produce diff: %s\n", diffErr)
 			}
@@ -131,7 +134,7 @@ func (c *CloudValidateCommand) Run(args []string) int {
 	if orgValid != "" && wrapped != nil {
 		refs := extractControlRefs(wrapped)
 		if len(refs) > 0 {
-			found, missing, refErr := validateControlRefs(token, orgValid, refs, httpClient, fsSvc)
+			found, missing, refErr := orgClient.ValidateControlRefs(refs)
 			if refErr != nil {
 				fmt.Fprintf(os.Stderr, "⚠ Warning: could not validate control refs: %s\n", refErr)
 			} else {
@@ -160,7 +163,7 @@ func (c *CloudValidateCommand) Run(args []string) int {
 	if orgValid != "" && wrapped != nil {
 		refs := extractThreatRefs(wrapped)
 		if len(refs) > 0 {
-			found, missing, refErr := validateThreatRefs(token, orgValid, refs, false, httpClient, fsSvc)
+			found, missing, refErr := orgClient.ValidateThreatRefs(refs, false)
 			if refErr != nil {
 				fmt.Fprintf(os.Stderr, "⚠ Warning: could not validate threat refs: %s\n", refErr)
 			} else {
@@ -189,7 +192,7 @@ func (c *CloudValidateCommand) Run(args []string) int {
 	if orgValid != "" && wrapped != nil {
 		refs := extractInformationAssetRefs(wrapped)
 		if len(refs) > 0 {
-			found, missing, refErr := validateInformationAssetRefs(token, orgValid, refs, httpClient, fsSvc)
+			found, missing, refErr := orgClient.ValidateInformationAssetRefs(refs)
 			if refErr != nil {
 				fmt.Fprintf(os.Stderr, "⚠ Warning: could not validate information asset refs: %s\n", refErr)
 			} else {

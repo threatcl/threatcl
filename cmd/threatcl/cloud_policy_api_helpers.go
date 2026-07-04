@@ -34,10 +34,10 @@ type policyUpdateRequest struct {
 }
 
 // fetchPolicies retrieves all policies for an organization
-func fetchPolicies(token, orgId string, httpClient HTTPClient, fsSvc FileSystemService) ([]policy, error) {
-	apiURL := fmt.Sprintf("%s/api/v1/org/%s/policies", getAPIBaseURL(fsSvc), url.PathEscape(orgId))
+func (c *CloudClient) FetchPolicies() ([]policy, error) {
+	apiURL := fmt.Sprintf("%s/api/v1/org/%s/policies", c.baseURL, url.PathEscape(c.orgId))
 
-	resp, err := makeAuthenticatedRequest("GET", apiURL, token, nil, httpClient)
+	resp, err := makeAuthenticatedRequest("GET", apiURL, c.token, nil, c.http)
 	if err != nil {
 		return nil, err
 	}
@@ -56,10 +56,10 @@ func fetchPolicies(token, orgId string, httpClient HTTPClient, fsSvc FileSystemS
 }
 
 // fetchPolicy retrieves a single policy by ID
-func fetchPolicy(token, orgId, policyId string, httpClient HTTPClient, fsSvc FileSystemService) (*policy, error) {
-	apiURL := fmt.Sprintf("%s/api/v1/org/%s/policies/%s", getAPIBaseURL(fsSvc), url.PathEscape(orgId), url.PathEscape(policyId))
+func (c *CloudClient) FetchPolicy(policyId string) (*policy, error) {
+	apiURL := fmt.Sprintf("%s/api/v1/org/%s/policies/%s", c.baseURL, url.PathEscape(c.orgId), url.PathEscape(policyId))
 
-	resp, err := makeAuthenticatedRequest("GET", apiURL, token, nil, httpClient)
+	resp, err := makeAuthenticatedRequest("GET", apiURL, c.token, nil, c.http)
 	if err != nil {
 		return nil, err
 	}
@@ -85,8 +85,8 @@ func fetchPolicy(token, orgId, policyId string, httpClient HTTPClient, fsSvc Fil
 }
 
 // createPolicy creates a new policy
-func createPolicy(token, orgId string, payload *policyCreateRequest, httpClient HTTPClient, fsSvc FileSystemService) (*policy, error) {
-	apiURL := fmt.Sprintf("%s/api/v1/org/%s/policies", getAPIBaseURL(fsSvc), url.PathEscape(orgId))
+func (c *CloudClient) CreatePolicy(payload *policyCreateRequest) (*policy, error) {
+	apiURL := fmt.Sprintf("%s/api/v1/org/%s/policies", c.baseURL, url.PathEscape(c.orgId))
 
 	payloadBytes, err := json.Marshal(payload)
 	if err != nil {
@@ -98,10 +98,10 @@ func createPolicy(token, orgId string, payload *policyCreateRequest, httpClient 
 		return nil, fmt.Errorf("%s: %w", ErrFailedToCreateReq, err)
 	}
 
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", c.token))
 	req.Header.Set("Content-Type", "application/json")
 
-	resp, err := httpClient.Do(req)
+	resp, err := c.http.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", ErrFailedToConnect, err)
 	}
@@ -125,8 +125,8 @@ func createPolicy(token, orgId string, payload *policyCreateRequest, httpClient 
 }
 
 // updatePolicy updates an existing policy
-func updatePolicy(token, orgId, policyId string, payload *policyUpdateRequest, httpClient HTTPClient, fsSvc FileSystemService) (*policy, error) {
-	apiURL := fmt.Sprintf("%s/api/v1/org/%s/policies/%s", getAPIBaseURL(fsSvc), url.PathEscape(orgId), url.PathEscape(policyId))
+func (c *CloudClient) UpdatePolicy(policyId string, payload *policyUpdateRequest) (*policy, error) {
+	apiURL := fmt.Sprintf("%s/api/v1/org/%s/policies/%s", c.baseURL, url.PathEscape(c.orgId), url.PathEscape(policyId))
 
 	payloadBytes, err := json.Marshal(payload)
 	if err != nil {
@@ -138,10 +138,10 @@ func updatePolicy(token, orgId, policyId string, payload *policyUpdateRequest, h
 		return nil, fmt.Errorf("%s: %w", ErrFailedToCreateReq, err)
 	}
 
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", c.token))
 	req.Header.Set("Content-Type", "application/json")
 
-	resp, err := httpClient.Do(req)
+	resp, err := c.http.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", ErrFailedToConnect, err)
 	}
@@ -168,10 +168,10 @@ func updatePolicy(token, orgId, policyId string, payload *policyUpdateRequest, h
 }
 
 // deletePolicy deletes a policy
-func deletePolicy(token, orgId, policyId string, httpClient HTTPClient, fsSvc FileSystemService) error {
-	apiURL := fmt.Sprintf("%s/api/v1/org/%s/policies/%s", getAPIBaseURL(fsSvc), url.PathEscape(orgId), url.PathEscape(policyId))
+func (c *CloudClient) DeletePolicy(policyId string) error {
+	apiURL := fmt.Sprintf("%s/api/v1/org/%s/policies/%s", c.baseURL, url.PathEscape(c.orgId), url.PathEscape(policyId))
 
-	resp, err := makeAuthenticatedRequest("DELETE", apiURL, token, nil, httpClient)
+	resp, err := makeAuthenticatedRequest("DELETE", apiURL, c.token, nil, c.http)
 	if err != nil {
 		return err
 	}
@@ -202,16 +202,16 @@ type policyEvaluation struct {
 
 // policyEvaluationResult represents a single policy result within an evaluation
 type policyEvaluationResult struct {
-	ID             string                 `json:"id"`
-	EvaluationID   string                 `json:"evaluation_id"`
-	PolicyID       string                 `json:"policy_id"`
-	PolicyName     string                 `json:"policy_name"`
-	PolicySeverity string                 `json:"policy_severity"`
-	Passed         bool                   `json:"passed"`
-	Message        string                 `json:"message"`
+	ID             string         `json:"id"`
+	EvaluationID   string         `json:"evaluation_id"`
+	PolicyID       string         `json:"policy_id"`
+	PolicyName     string         `json:"policy_name"`
+	PolicySeverity string         `json:"policy_severity"`
+	Passed         bool           `json:"passed"`
+	Message        string         `json:"message"`
 	Details        map[string]any `json:"details,omitempty"`
-	DurationMs     int                    `json:"duration_ms"`
-	CreatedAt      string                 `json:"created_at"`
+	DurationMs     int            `json:"duration_ms"`
+	CreatedAt      string         `json:"created_at"`
 }
 
 // regoValidateRequest represents the request body for validating rego
@@ -226,8 +226,8 @@ type regoValidateResponse struct {
 }
 
 // validateRego validates rego source against the API
-func validateRego(token, orgId, regoSource string, httpClient HTTPClient, fsSvc FileSystemService) (*regoValidateResponse, error) {
-	apiURL := fmt.Sprintf("%s/api/v1/org/%s/policies/validate", getAPIBaseURL(fsSvc), url.PathEscape(orgId))
+func (c *CloudClient) ValidateRego(regoSource string) (*regoValidateResponse, error) {
+	apiURL := fmt.Sprintf("%s/api/v1/org/%s/policies/validate", c.baseURL, url.PathEscape(c.orgId))
 
 	payload := regoValidateRequest{RegoSource: regoSource}
 	payloadBytes, err := json.Marshal(payload)
@@ -235,7 +235,7 @@ func validateRego(token, orgId, regoSource string, httpClient HTTPClient, fsSvc 
 		return nil, fmt.Errorf("failed to marshal payload: %w", err)
 	}
 
-	resp, err := makeAuthenticatedRequest("POST", apiURL, token, bytes.NewReader(payloadBytes), httpClient)
+	resp, err := makeAuthenticatedRequest("POST", apiURL, c.token, bytes.NewReader(payloadBytes), c.http)
 	if err != nil {
 		return nil, err
 	}
@@ -254,10 +254,10 @@ func validateRego(token, orgId, regoSource string, httpClient HTTPClient, fsSvc 
 }
 
 // evaluatePolicies triggers policy evaluation against a threat model
-func evaluatePolicies(token, orgId, modelId string, httpClient HTTPClient, fsSvc FileSystemService) (*policyEvaluation, error) {
-	apiURL := fmt.Sprintf("%s/api/v1/org/%s/models/%s/evaluate-policies", getAPIBaseURL(fsSvc), url.PathEscape(orgId), url.PathEscape(modelId))
+func (c *CloudClient) EvaluatePolicies(modelId string) (*policyEvaluation, error) {
+	apiURL := fmt.Sprintf("%s/api/v1/org/%s/models/%s/evaluate-policies", c.baseURL, url.PathEscape(c.orgId), url.PathEscape(modelId))
 
-	resp, err := makeAuthenticatedRequest("POST", apiURL, token, nil, httpClient)
+	resp, err := makeAuthenticatedRequest("POST", apiURL, c.token, nil, c.http)
 	if err != nil {
 		return nil, err
 	}
@@ -283,10 +283,10 @@ func evaluatePolicies(token, orgId, modelId string, httpClient HTTPClient, fsSvc
 }
 
 // fetchPolicyEvaluations retrieves all evaluations for a threat model
-func fetchPolicyEvaluations(token, orgId, modelId string, httpClient HTTPClient, fsSvc FileSystemService) ([]policyEvaluation, error) {
-	apiURL := fmt.Sprintf("%s/api/v1/org/%s/models/%s/policy-evaluations", getAPIBaseURL(fsSvc), url.PathEscape(orgId), url.PathEscape(modelId))
+func (c *CloudClient) FetchPolicyEvaluations(modelId string) ([]policyEvaluation, error) {
+	apiURL := fmt.Sprintf("%s/api/v1/org/%s/models/%s/policy-evaluations", c.baseURL, url.PathEscape(c.orgId), url.PathEscape(modelId))
 
-	resp, err := makeAuthenticatedRequest("GET", apiURL, token, nil, httpClient)
+	resp, err := makeAuthenticatedRequest("GET", apiURL, c.token, nil, c.http)
 	if err != nil {
 		return nil, err
 	}
@@ -305,10 +305,10 @@ func fetchPolicyEvaluations(token, orgId, modelId string, httpClient HTTPClient,
 }
 
 // fetchPolicyEvaluation retrieves a single evaluation by ID
-func fetchPolicyEvaluation(token, orgId, modelId, evalId string, httpClient HTTPClient, fsSvc FileSystemService) (*policyEvaluation, error) {
-	apiURL := fmt.Sprintf("%s/api/v1/org/%s/models/%s/policy-evaluations/%s", getAPIBaseURL(fsSvc), url.PathEscape(orgId), url.PathEscape(modelId), url.PathEscape(evalId))
+func (c *CloudClient) FetchPolicyEvaluation(modelId, evalId string) (*policyEvaluation, error) {
+	apiURL := fmt.Sprintf("%s/api/v1/org/%s/models/%s/policy-evaluations/%s", c.baseURL, url.PathEscape(c.orgId), url.PathEscape(modelId), url.PathEscape(evalId))
 
-	resp, err := makeAuthenticatedRequest("GET", apiURL, token, nil, httpClient)
+	resp, err := makeAuthenticatedRequest("GET", apiURL, c.token, nil, c.http)
 	if err != nil {
 		return nil, err
 	}

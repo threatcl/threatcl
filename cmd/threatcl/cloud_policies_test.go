@@ -307,7 +307,7 @@ func TestCloudPoliciesFetchPolicies(t *testing.T) {
 	}
 	httpClient.transport.setResponse("GET", "/api/v1/org/org123/policies", http.StatusOK, jsonResponse(policies))
 
-	result, err := fetchPolicies("token", "org123", httpClient, fsSvc)
+	result, err := NewCloudClient("token", "org123", getAPIBaseURL(fsSvc), httpClient).FetchPolicies()
 
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)

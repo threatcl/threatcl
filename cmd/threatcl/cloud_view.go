@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"io"
-	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -133,9 +132,9 @@ func (c *CloudViewCommand) Run(args []string) int {
 		}
 	}
 
-	// Initialize dependencies
-	httpClient, keyringSvc, fsSvc := c.initDependencies(10 * time.Second)
-	token, orgId, err := c.getTokenAndOrgId(c.flagOrgId, keyringSvc, fsSvc)
+	// Build the cloud client. The construction org is used for the cloud
+	// download below; ref enrichment re-scopes with WithOrg(orgValid).
+	client, _, err := c.newCloudClient(c.flagOrgId, 10*time.Second)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %s\n", err)
 		fmt.Fprintf(os.Stderr, "   %s\n", ErrPleaseLogin)
@@ -147,26 +146,18 @@ func (c *CloudViewCommand) Run(args []string) int {
 	var tmpDir string
 
 	if c.flagModelId != "" {
-		// Download from cloud to a temp file
-		apiURL := fmt.Sprintf("%s/api/v1/org/%s/models/%s/download", getAPIBaseURL(fsSvc), url.PathEscape(orgId), url.PathEscape(c.flagModelId))
-		resp, dlErr := makeAuthenticatedRequest("GET", apiURL, token, nil, httpClient)
+		// Download from cloud to a temp file (construction-org client)
+		body, dlErr := client.DownloadContent(client.DownloadModelURL(c.flagModelId))
 		if dlErr != nil {
 			fmt.Fprintf(os.Stderr, "Error downloading threat model: %s\n", dlErr)
 			return 1
 		}
-		defer resp.Body.Close()
 
-		if resp.StatusCode != 200 {
-			errResp := handleAPIErrorResponse(resp)
-			fmt.Fprintf(os.Stderr, "Error downloading threat model: %s\n", errResp)
-			return 1
-		}
-
-		body, readErr := io.ReadAll(resp.Body)
-		if readErr != nil {
-			fmt.Fprintf(os.Stderr, "Error reading download response: %s\n", readErr)
-			return 1
-		}
+		// This HCL was downloaded from the cloud (not authored locally), so
+		// strip remote-fetch directives before it is parsed. Otherwise a model
+		// authored by another org member could drive go-getter requests from
+		// this machine (SSRF) or read local files via file:// sources.
+		body = stripRemoteFetchDirectives(body)
 
 		tmpDir, err = os.MkdirTemp("", "threatcl-cloud-view-")
 		if err != nil {
@@ -191,18 +182,21 @@ func (c *CloudViewCommand) Run(args []string) int {
 	}
 
 	// Validate threat model (reuse existing validateThreatModel)
-	wrapped, orgValid, _, _, err := validateThreatModel(token, filePath, httpClient, fsSvc, c.specCfg)
+	wrapped, orgValid, _, _, err := validateThreatModel(client, filePath, c.specCfg)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %s\n", err)
 		return 1
 	}
+
+	// Scope a client to the resolved org for the ref enrichment below.
+	orgClient := client.WithOrg(orgValid)
 
 	// If org is valid, check for control refs and enrich if needed
 	if orgValid != "" && wrapped != nil {
 		refs := extractControlRefs(wrapped)
 		if len(refs) > 0 {
 			// Fetch control data from cloud
-			found, missing, refErr := validateControlRefs(token, orgValid, refs, httpClient, fsSvc)
+			found, missing, refErr := orgClient.ValidateControlRefs(refs)
 			if refErr != nil {
 				fmt.Fprintf(os.Stderr, "Warning: could not fetch control refs: %s\n", refErr)
 			} else {
@@ -222,7 +216,7 @@ func (c *CloudViewCommand) Run(args []string) int {
 		if len(threatRefs) > 0 {
 			// Fetch threat data from cloud (include recommended controls unless flag is set)
 			includeLinkedControls := !c.flagIgnoreLinkedControls
-			foundThreats, missingThreats, threatErr := validateThreatRefs(token, orgValid, threatRefs, includeLinkedControls, httpClient, fsSvc)
+			foundThreats, missingThreats, threatErr := orgClient.ValidateThreatRefs(threatRefs, includeLinkedControls)
 			if threatErr != nil {
 				fmt.Fprintf(os.Stderr, "Warning: could not fetch threat refs: %s\n", threatErr)
 			} else {
@@ -240,7 +234,7 @@ func (c *CloudViewCommand) Run(args []string) int {
 		// Check for information asset refs and enrich if needed
 		assetRefs := extractInformationAssetRefs(wrapped)
 		if len(assetRefs) > 0 {
-			foundAssets, missingAssets, assetErr := validateInformationAssetRefs(token, orgValid, assetRefs, httpClient, fsSvc)
+			foundAssets, missingAssets, assetErr := orgClient.ValidateInformationAssetRefs(assetRefs)
 			if assetErr != nil {
 				fmt.Fprintf(os.Stderr, "Warning: could not fetch information asset refs: %s\n", assetErr)
 			} else {

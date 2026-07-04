@@ -681,3 +681,92 @@ func TestDashboardValidHtmlfile(t *testing.T) {
 	}
 
 }
+
+func TestDashboardHTMLSanitizesXSS(t *testing.T) {
+	srcDir, err := os.MkdirTemp("", "")
+	if err != nil {
+		t.Fatalf("Error creating tmp dir: %s", err)
+	}
+	defer os.RemoveAll(srcDir)
+
+	// Free-text threat-model fields can originate from untrusted .hcl files
+	// shared between users. When rendered to HTML they must not be able to
+	// execute script.
+	payload := "<script>alert(document.domain)</script><img src=x onerror=alert(1)>"
+	hcl := fmt.Sprintf(`
+spec_version = "0.4.0"
+
+threatmodel "xss model" {
+  description = "%s"
+  author = "test"
+
+  threat "a threat" {
+    description = "%s"
+    impacts = ["Confidentiality"]
+  }
+}
+`, payload, payload)
+
+	hclPath := filepath.Join(srcDir, "xss.hcl")
+	if err := os.WriteFile(hclPath, []byte(hcl), 0600); err != nil {
+		t.Fatalf("Error writing hcl: %s", err)
+	}
+
+	outDir, err := os.MkdirTemp("", "")
+	if err != nil {
+		t.Fatalf("Error creating out dir: %s", err)
+	}
+	defer os.RemoveAll(outDir)
+
+	cmd := testDashboardCommand(t)
+
+	var code int
+	out := capturer.CaptureStdout(func() {
+		code = cmd.Run([]string{
+			fmt.Sprintf("-outdir=%s", outDir),
+			"-overwrite",
+			"-dashboard-filename=index",
+			"-dashboard-html",
+			hclPath,
+		})
+	})
+
+	if code != 0 {
+		t.Fatalf("Code did not equal 0: %d\n%s", code, out)
+	}
+
+	// Inspect every generated per-model HTML file (everything except the
+	// dashboard index).
+	entries, err := os.ReadDir(outDir)
+	if err != nil {
+		t.Fatalf("Error reading out dir: %s", err)
+	}
+
+	checked := 0
+	for _, e := range entries {
+		if e.IsDir() || filepath.Ext(e.Name()) != ".html" || e.Name() == "index.html" {
+			continue
+		}
+
+		body, err := os.ReadFile(filepath.Join(outDir, e.Name()))
+		if err != nil {
+			t.Fatalf("Error reading %s: %s", e.Name(), err)
+		}
+		checked++
+
+		content := string(body)
+		if strings.Contains(content, "<script>") {
+			t.Errorf("per-model HTML %s contains an unescaped <script> tag:\n%s", e.Name(), content)
+		}
+		if strings.Contains(content, "onerror=") {
+			t.Errorf("per-model HTML %s contains an unsanitized onerror handler:\n%s", e.Name(), content)
+		}
+		if !strings.Contains(content, "<!DOCTYPE html>") {
+			t.Errorf("per-model HTML %s is not wrapped in an HTML document:\n%s", e.Name(), content)
+		}
+	}
+
+	if checked == 0 {
+		t.Fatal("no per-model HTML files were generated to check")
+	}
+}
