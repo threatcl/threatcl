@@ -1,3 +1,9 @@
+## Unreleased
+
+CHANGES:
+
+* Added invariants: org-wide, machine-checked rules evaluated against threat models via `threatcl validate -invariants=<file>`. Invariants live in their own HCL file, target a collection within each model (`threat`, `control`, DFD `process`/`flow`, ...), and express conditions as native HCL expressions with `item`/`tm`/`dfd` in scope. They support `error`/`warning` severities, `when` filters, interpolated `error_message`s, and per-model exemptions with justifications. See [docs/invariants.md](docs/invariants.md).
+
 ## 0.5.2
 
 ### Jun 28, 2026

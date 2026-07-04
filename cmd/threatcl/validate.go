@@ -9,13 +9,15 @@ import (
 
 	"github.com/posener/complete"
 	"github.com/threatcl/spec"
+	"github.com/threatcl/threatcl/internal/invariants"
 )
 
 type ValidateCommand struct {
 	*GlobalCmdOptions
-	specCfg       *spec.ThreatmodelSpecConfig
-	flagStdin     bool
-	flagStdinJson bool
+	specCfg        *spec.ThreatmodelSpecConfig
+	flagStdin      bool
+	flagStdinJson  bool
+	flagInvariants string
 }
 
 func (c *ValidateCommand) Help() string {
@@ -28,6 +30,10 @@ Options:
 
  -config=<file>
    Optional config file
+
+ -invariants=<file>
+   Optional HCL file of invariant blocks to evaluate against the validated
+   threat models. Invariant violations of severity "error" fail validation.
 
  -stdin
    If set, will expect a HCL file to be piped in
@@ -43,6 +49,7 @@ func (c *ValidateCommand) Run(args []string) int {
 	flagSet := c.GetFlagset("validate")
 	flagSet.BoolVar(&c.flagStdin, "stdin", false, "If set, will expect a HCL file to be piped in")
 	flagSet.BoolVar(&c.flagStdinJson, "stdinjson", false, "If set, will expect a JSON file to be piped in")
+	flagSet.StringVar(&c.flagInvariants, "invariants", "", "Optional HCL file of invariants to evaluate against the threat models")
 	flagSet.Parse(args)
 
 	if c.flagConfig != "" {
@@ -57,6 +64,16 @@ func (c *ValidateCommand) Run(args []string) int {
 	if c.flagStdin && c.flagStdinJson {
 		fmt.Printf("You can't -stdin and -stdinjson at the same time\n")
 		return 1
+	}
+
+	var invs []*invariants.Invariant
+	if c.flagInvariants != "" {
+		var err error
+		invs, err = invariants.ParseFile(c.flagInvariants)
+		if err != nil {
+			fmt.Printf("Error parsing invariants file %s: %s\n", c.flagInvariants, err)
+			return 1
+		}
 	}
 
 	if c.flagStdin || c.flagStdinJson {
@@ -111,6 +128,10 @@ func (c *ValidateCommand) Run(args []string) int {
 
 		fmt.Printf("Validated %d threatmodels\n", tmCount)
 
+		if invs != nil {
+			return c.runInvariants(invs, wrappedModels(tmParser.GetWrapped(), "STDIN"))
+		}
+
 		return 0
 	}
 
@@ -119,10 +140,10 @@ func (c *ValidateCommand) Run(args []string) int {
 		return 1
 	} else {
 
-		AllFiles := findAllFiles(args)
+		AllFiles := findAllFiles(flagSet.Args())
 
 		fileCount := 0
-		tmCount := 0
+		models := []*invariants.Model{}
 
 		for _, file := range AllFiles {
 			tmParser := spec.NewThreatmodelParser(c.specCfg)
@@ -144,13 +165,63 @@ func (c *ValidateCommand) Run(args []string) int {
 			}
 
 			fileCount = fileCount + 1
-			tmCount = tmCount + len(tmParser.GetWrapped().Threatmodels)
+			models = append(models, wrappedModels(tmParser.GetWrapped(), file)...)
 		}
 
-		fmt.Printf("Validated %d threatmodels in %d files\n", tmCount, fileCount)
+		fmt.Printf("Validated %d threatmodels in %d files\n", len(models), fileCount)
+
+		if invs != nil {
+			return c.runInvariants(invs, models)
+		}
 
 	}
 
+	return 0
+}
+
+// wrappedModels pairs each threat model in a parsed file with its source, for
+// invariant violation reporting.
+func wrappedModels(wrapped *spec.ThreatmodelWrapped, source string) []*invariants.Model {
+	models := make([]*invariants.Model, 0, len(wrapped.Threatmodels))
+	for i := range wrapped.Threatmodels {
+		models = append(models, &invariants.Model{
+			TM:   &wrapped.Threatmodels[i],
+			File: source,
+		})
+	}
+	return models
+}
+
+// runInvariants evaluates invariants against the validated models and prints
+// the outcome. Only error-severity violations make validation fail.
+func (c *ValidateCommand) runInvariants(invs []*invariants.Invariant, models []*invariants.Model) int {
+	report, err := invariants.Evaluate(invs, models)
+	if err != nil {
+		fmt.Printf("Error evaluating invariants: %s\n", err)
+		return 1
+	}
+
+	for _, ex := range report.Exemptions {
+		fmt.Printf("Invariant '%s' exempts threatmodel '%s' (%s): %s\n",
+			ex.Invariant.Name, ex.Model.TM.Name, ex.Model.File, ex.Justification)
+	}
+
+	for _, v := range report.Violations {
+		where := fmt.Sprintf("threatmodel '%s'", v.Model.TM.Name)
+		if v.ItemKind != "threatmodel" {
+			where = fmt.Sprintf("%s '%s' in %s", v.ItemKind, v.ItemName, where)
+		}
+		fmt.Printf("Invariant violation [%s] '%s': %s (%s): %s\n",
+			v.Invariant.Severity, v.Invariant.Name, where, v.Model.File, v.Message)
+	}
+
+	errCount := report.ErrorCount()
+	fmt.Printf("Checked %d invariants against %d threatmodels: %d errors, %d warnings, %d exemptions\n",
+		report.Invariants, report.Models, errCount, report.WarningCount(), len(report.Exemptions))
+
+	if errCount > 0 {
+		return 1
+	}
 	return 0
 }
 
@@ -161,6 +232,7 @@ func (c *ValidateCommand) Synopsis() string {
 func (c *ValidateCommand) AutocompleteArgs() complete.Predictor { return predictHCLOrJSON }
 func (c *ValidateCommand) AutocompleteFlags() complete.Flags {
 	return complete.Flags{
-		"-config":    predictHCL,
+		"-config":     predictHCL,
+		"-invariants": predictHCL,
 	}
 }
