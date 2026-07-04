@@ -91,8 +91,9 @@ own — it stays **Build L0** until Phase 3 adds attestations. What it buys:
 - **One ubuntu runner** cross-compiles all 5 targets (dropped the macOS/Windows
   runners — pure-Go `CGO_ENABLED=0`).
 - **Security-aware triggers**: PR = build-only dry-run (fork-safe, read-only);
-  push-to-main = rolling `dev` pre-release; tag `v*` = full release. Images are
-  pushed **only** on tags (`:v<version>` + `:latest`).
+  push-to-main = rolling `dev` pre-release (since Phase 6: the `threatcl-dev`
+  workflow artifact instead); tag `v*` = full release. Images are pushed
+  **only** on tags (`:v<version>` + `:latest`).
 
 ### Phase 3 (done) — Build L2, in substance L3
 
@@ -118,6 +119,75 @@ signing secret is ever exposed to build steps), the same posture accepted in
 `threatcl/spec`. We do not claim formal L3 certification — there is no third-party
 audit of the build platform — but the technical controls are L3-shaped.
 
+### Phase 6 — Immutable releases + gated release job
+
+Two controls that together approximate **trusted publishing** for GitHub
+Releases: artifacts that cannot change after publication, and a human approval
+between "a `v*` tag exists" and "artifacts get signed and published".
+
+**Immutable releases** (GitHub, GA since 2025-10-28) lock a release's assets
+and tag at publish time and add a GitHub-signed (Sigstore) release attestation
+binding tag + commit + assets. Once enabled, no account — even a
+later-compromised maintainer — can swap binaries under any version *released
+after enablement*. (Releases published before the toggle remain legacy-mutable
+unless individually republished; the back catalog keeps its provenance
+attestations but not immutability.) GoReleaser is compatible: it publishes
+draft-first and flips to published, which is the recommended flow for
+immutable releases.
+
+**Prerequisite — the rolling `dev` pre-release had to go.** A deleted
+immutable release burns its tag name *permanently* (even across repo
+re-creation), and re-publishing under a reused tag is impossible — a rolling,
+overwritten `dev` release cannot coexist with immutability. The `dev` job now
+uploads the same file set as workflow **artifacts** instead (`threatcl-dev`,
+30-day retention), and dropped from `contents: write` to a read-only token in
+the process.
+
+**Environment gate.** The `release` job declares `environment: release`. With
+a required reviewer configured, the job pauses before any step runs until a
+maintainer approves it in the GitHub UI — a second, interactive (web session +
+2FA) factor for cutting releases, so a stolen push credential alone can no
+longer publish artifacts. The OIDC subject for the job becomes
+`repo:threatcl/threatcl:environment:release`, which downstream verifiers can
+pin. Required reviewers on environments are available for public repos on the
+Free plan. Until the environment is configured in Settings it is inert (no
+approval prompt), so the workflow change merges safely ahead of the settings
+step.
+
+This gate matters more than it looks: the `v*` tag ruleset does **not**
+actually enforce tag signatures (see
+[Honest limitations](#honest-limitations-what-we-are-not-claiming)) — any
+write-access actor or leaked token can create a passing `v*` tag via the API.
+The environment approval and post-publish immutability are the *enforced*
+controls on the release path.
+
+#### Maintainer activation checklist (Phase 6)
+
+Do these **in order**, after the workflow change merges:
+
+- [ ] Delete the old rolling dev pre-release and its tag:
+  `gh release delete dev --repo threatcl/threatcl --cleanup-tag --yes`
+  (Doing this before the toggle is belt-and-braces ordering, not a hard
+  requirement — `dev` predates enablement so it stays legacy-mutable either
+  way, and deleting a *mutable* release never burns its tag name. Only
+  deleting an *immutable* release retires the tag permanently.)
+- [ ] Enable immutable releases: Settings → General → Releases →
+  **Immutable releases**. Existing releases stay legacy-mutable; every new
+  release (from the next `v*` tag) publishes immutable.
+- [ ] Protect the environment: Settings → Environments → `release` → add
+  **Required reviewers** (yourself; leave "Prevent self-review" off — solo
+  maintainer), and under **Deployment branches and tags** select "Selected
+  branches and tags" with a tag rule for `v*` (defense-in-depth: the
+  environment then refuses non-`v*` refs even if the workflow trigger were
+  ever loosened).
+- [ ] After the next real release: pull the harden-runner audit baseline for
+  the `release` job and flip it to `egress-policy: block` +
+  `allowed-endpoints` (the standing Phase 5 follow-up).
+
+The release flow becomes: push signed `v*` tag → `release` job pauses →
+approve in the UI → GoReleaser publishes (draft → immutable) → provenance
+attested. One extra click per release.
+
 ---
 
 ## Source track (v1.2 — 4 levels)
@@ -136,8 +206,8 @@ imported and enforcing:
     admin/maintainer.
   - `release tag protection` (tag, `refs/tags/v*`, enforcement **active**):
     `deletion` + `update` + `non_fast_forward` blocked, `required_signatures`.
-    `bypass_actors: []`. (The floating `latest` and rolling `dev` tags are
-    deliberately out of scope.)
+    `bypass_actors: []`. (The floating `latest` and rolling `dev` tags were
+    deliberately out of scope; the `dev` tag itself was retired in Phase 6.)
 - **Legacy classic branch protection — removed.** The old classic protection on
   `main` (1-approval PR, `enforce_admins: false`, no signatures, no status checks)
   was fully superseded by the ruleset and deleted on 2026-06-28
@@ -147,9 +217,13 @@ imported and enforcing:
   review required" merge block. The ruleset is now the single source of truth
   for `main`.
 - **CODEOWNERS** present (`.github/CODEOWNERS`, default owner `@xntrik`).
-- **Signing enforced**: commit + tag signing is configured locally (SSH signing
-  via Secretive / Secure Enclave); `required_signatures` now enforces it on both
-  `main` and `v*` tags. Recent `v*` tags are annotated, signed tag objects.
+- **Signing**: commit + tag signing is configured locally (SSH signing via
+  Secretive / Secure Enclave); `required_signatures` enforces **commit**
+  signatures on `main`. On `v*` tags the same rule does *not* verify the tag
+  object's signature (only commits newly introduced by the push — see
+  [Honest limitations](#honest-limitations-what-we-are-not-claiming)), so
+  signed annotated `v*` tags are maintainer convention, not platform
+  enforcement. Recent `v*` tags are annotated, signed tag objects.
 
 | Source requirement                                                   | Level | Status | Notes |
 |----------------------------------------------------------------------|-------|--------|-------|
@@ -182,7 +256,9 @@ imported and activated (see the record below):
   force-push, restrict deletion, require linear history, squash-only, and
   **required signed commits**.
 - `.github/rulesets/tag-protection.json` — importable tag ruleset for `v*` tags:
-  immutable (no delete / no update / no force) + **signed**.
+  immutable (no delete / no update / no force) + `required_signatures` (which
+  checks commits introduced by the push, **not** the tag object — see the
+  caveat in Step 3 below).
 
 **Two required status checks (threatcl-specific).** Unlike `threatcl/spec` (which
 gates on `testvet` alone), this repo *compiles and ships binaries and images*, so
@@ -269,14 +345,20 @@ It encodes:
 
 - [x] Block tag **deletion**, **update**, and **force** (`deletion`, `update`,
   `non_fast_forward`) — Source L2 tag immutability.
-- [x] **Require signed tags** (`required_signatures`). Applies to new tags only;
-  existing unsigned tags are unaffected. Don't activate before Step 1 or your next
-  `git push --tags` is rejected.
+- [x] `required_signatures` on `v*` tags — with a **caveat found later (Phase 6,
+  verified empirically):** this rule does *not* check the tag object's signature.
+  It only verifies signatures on commits **newly introduced** by the tag push, so
+  a lightweight or unsigned annotated `v*` tag pointing at the (already signed)
+  head of `main` passes the ruleset; only a tag introducing unsigned,
+  branch-unreachable commits is blocked. Signed tags (`git tag -s`) remain the
+  documented convention, but they are convention, not platform enforcement — the
+  Phase 6 environment gate is the enforced control on the release path.
 
 > **Scope is `refs/tags/v*` only — by design.** The floating `latest` tag
-> (`git tag -f latest`) and the rolling `dev` pre-release tag are **not** covered,
-> so the release flow's force-moved/unsigned non-version tags keep working. Only
-> the immutable `vX.Y.Z` release points are locked down.
+> (`git tag -f latest`) is **not** covered, so non-version tags keep working.
+> (The rolling `dev` pre-release tag this note used to cover was retired in
+> Phase 6 — dev builds are workflow artifacts now.) Only the `vX.Y.Z` release
+> points are locked down.
 
 **What this advanced.** With both rulesets active, the **Source track** moved from
 "L1 in substance" to the **L2/L3 technical-control** posture: continuous, enforced
@@ -298,7 +380,7 @@ These underpin both tracks (a compromised Action can forge provenance or push to
 | All Actions SHA-pinned with `# vX.Y.Z` comment       | ✅ (Phase 1) | Every `uses:` across all workflows pinned to a full commit SHA + version comment. The lone `@latest` left is inside a commented-out dead block. |
 | Dependabot (github-actions + gomod)                  | ✅ (Phase 1) | `.github/dependabot.yml` covers `github-actions`, `gomod`, and `docker` (base images), weekly, grouped. Will drive the older `docker/*` action pins up to current majors as CI-gated PRs. |
 | Least-privilege top-level `permissions: contents: read` | ✅ (Phase 1) | All workflows declare top-level `contents: read`; jobs that upload SARIF add `security-events: write` only. |
-| Job-scoped escalation only where needed              | ✅ (Phase 1) | Build-only jobs dropped to inherit `contents: read` (they only `upload-artifact`). Escalation kept only on jobs that need it: `release`/`pre-release` (`contents: write`, GitHub Release), image push (`packages: write`). `pre-build-image-test` dropped `packages: write` (it's `push: false`). |
+| Job-scoped escalation only where needed              | ✅ (Phase 1, tightened Phase 6) | Build-only jobs run with `contents: read` (they only build or `upload-artifact` — since Phase 6 that includes the `dev` job). Escalation exists only on the `release` job: `contents: write` (GitHub Release), `packages: write` (image push), `id-token`/`attestations: write` (provenance). |
 | CodeQL scanning                                      | ✅ (Phase 5: `security-extended`) | `.github/workflows/codeql.yml` runs on push/PR to `main` + weekly, with the `security-extended` query suite. Chosen **instead of** a second Go SAST (gosec): CodeQL's Go queries cover most gosec rules with interprocedural dataflow and fewer false positives; two SASTs would double triage noise. |
 | govulncheck (known-vuln Go deps, reachability-aware) | ✅ (Phase 5) | `.github/workflows/govulncheck.yml` on push/PR + weekly. Binary pinned; the vuln DB is fetched live so freshness doesn't depend on the pin. |
 | Dependency review gate on PRs                        | ✅ (Phase 5) | `.github/workflows/dependency-review.yml` fails PRs that *introduce* deps with known vulns (`fail-on-severity: low`). |
@@ -307,7 +389,7 @@ These underpin both tracks (a compromised Action can forge provenance or push to
 | harden-runner egress monitoring                      | 🔶 (Phase 5) | `step-security/harden-runner` on every job, `egress-policy: audit`. Follow-up: flip the `release` job (and then the rest) to `block` + `allowed-endpoints` once audit baselines exist. |
 | GoReleaser pinned to an exact version                | ✅ (Phase 5) | `goreleaser-action` previously floated `"~> v2"` — the binary is downloaded at run time, so the range was an unpinned build tool inside the most privileged job. Now `v2.16.0`, bumped deliberately. |
 | Base images digest-pinned                            | ✅ (Phase 5) | `Dockerfile` + `Dockerfile.goreleaser` pin `alpine`/`golang` bases by manifest-list digest; Dependabot's docker ecosystem updates digests alongside tags. |
-| SBOMs for released archives (SPDX, syft)             | ✅ (Phase 5) | `.goreleaser.yaml` `sboms:` emits one SBOM per archive; uploaded to releases (incl. the rolling `dev` pre-release) and covered by the release attestation step. The image already had an SBOM via `dockers_v2`. |
+| SBOMs for released archives (SPDX, syft)             | ✅ (Phase 5) | `.goreleaser.yaml` `sboms:` emits one SBOM per archive; uploaded to releases and included in the `threatcl-dev` workflow artifact (Phase 6 retired the rolling `dev` pre-release), and covered by the release attestation step. The image already had an SBOM via `dockers_v2`. |
 
 > **Carry-over resolved in Phase 2.5:** the old `docker/*` pins (`login-action`
 > v1.10.0, `metadata-action` v3.3.0, `build-push-action` v2.5.0) and the
@@ -330,7 +412,7 @@ These underpin both tracks (a compromised Action can forge provenance or push to
 | 2.5   | Deterministic artifact names + version ldflags injection               | Build groundwork                 | ✅ |
 | 2.5   | Multi-arch image via `dockers_v2`, image binary == archive binary + SBOM | Build groundwork (images)        | ✅ |
 | 2     | Branch ruleset on `main` (PR + `testvet`/`validate` checks + signed + linear + squash)| Source L2→L3 controls (in substance) | ✅ active¹ |
-| 2     | Tag ruleset on `v*` (immutable + signed)                               | Source L2/L3 (tag immutability)  | ✅ active¹ |
+| 2     | Tag ruleset on `v*` (immutable; `required_signatures` — checks pushed commits, not the tag object: see Honest limitations) | Source L2/L3 (tag immutability)  | ✅ active¹ |
 | 2     | `CODEOWNERS`                                                           | Source (review routing)          | ✅ |
 | 2     | Non-bypassable enforcement (empty bypass list; no admin escape hatch)  | Source L3 (enforcement)          | ✅ active¹ |
 | 3     | `SHA256SUMS` checksums file in releases                                | Build (integrity)                | ✅ (done in 2.5) |
@@ -343,6 +425,9 @@ These underpin both tracks (a compromised Action can forge provenance or push to
 | 5     | Exact GoReleaser version pin + digest-pinned base images                | Build (pinned toolchain + inputs)| ✅ |
 | 5     | SBOMs for released archives (syft, SPDX) — uploaded + attested          | Build (transparency)             | ✅ |
 | 5     | CodeQL `security-extended` suite (chosen over adding gosec)             | Hygiene (SAST depth)             | ✅ |
+| 6     | `dev` builds moved from rolling pre-release to workflow artifacts (read-only token; immutability prerequisite) | Build (release-path groundwork) | ✅ |
+| 6     | Immutable releases (assets + tag locked at publish; GitHub release attestation) | Build (artifact immutability — the trusted-publishing analogue for GitHub Releases) | 🔶 workflow ready; pending Settings toggle |
+| 6     | `release` job gated on protected `release` environment (required reviewer + `v*` tag rule) | Build (interactive second factor on release authorization) | 🔶 wired in workflow; pending environment config |
 
 > ¹ **Activated 2026-06-28.** Both rulesets were imported from the committed JSON
 > and are live + non-bypassable on `main`/`v*` (`bypass_actors: []`); the redundant
@@ -367,6 +452,15 @@ These underpin both tracks (a compromised Action can forge provenance or push to
   (`actions/attest-build-provenance`) rather than `slsa-framework/slsa-github-generator`.
   Rationale is recorded in Phase 3; the short version is a clean, first-party
   `gh attestation verify` UX with native multi-artifact + by-digest image support.
+- **The `v*` tag ruleset does not enforce tag signatures.** Verified empirically
+  (2026-07-04, against an exact replica of this repo's ruleset with an empty
+  bypass list): `required_signatures` on a tag ruleset only validates commits
+  *newly introduced* by the tag push — an unsigned or lightweight `v*` tag
+  pointing at the signed head of `main` is accepted, so any write-access
+  credential can start the release pipeline. There is also no API to create a
+  *signed* annotated tag, so this cannot be fixed by "signing harder" in CI.
+  Locally-signed tags are our convention; the enforced release-path controls are
+  the Phase 6 environment approval and post-publish release immutability.
 
 ---
 

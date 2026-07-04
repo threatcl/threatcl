@@ -103,7 +103,7 @@ Download the latest version from [releases](https://github.com/threatcl/threatcl
 
 ## Install with Homebrew
 
-The following will add a local tap, and install `threatcl` with [Homebrew](https://brew.sh/)
+Install `threatcl` with [Homebrew](https://brew.sh/) — the formula lives in homebrew-core:
 
 ```bash
 brew install threatcl
