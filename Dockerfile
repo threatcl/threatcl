@@ -1,5 +1,5 @@
 # Digest-pinned (tag alone is mutable); Dependabot keeps digests current.
-FROM golang:1.25.9-alpine3.23@sha256:5caaf1cca9dc351e13deafbc3879fd4754801acba8653fa9540cea125d01a71f AS builder
+FROM golang:1.25.11-alpine3.23@sha256:60e626bbde32def8694687d03536ea4341b19e5f068e9a630225a1dfbd0505c9 AS builder
 
 RUN apk update
 RUN apk upgrade
