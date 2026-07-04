@@ -1113,6 +1113,87 @@ threatmodel "Test" {
 	}
 }
 
+func TestStripRemoteFetchDirectives(t *testing.T) {
+	t.Run("removes imports and including", func(t *testing.T) {
+		input := `
+spec_version = "0.1.10"
+
+imports = ["https://attacker.example/evil.hcl"]
+
+threatmodel "Test" {
+  author = "test@example.com"
+  description = "Test"
+  including = "https://attacker.example/include.hcl"
+}
+`
+		output := string(stripRemoteFetchDirectives([]byte(input)))
+
+		if strings.Contains(output, "imports") {
+			t.Errorf("expected top-level imports to be stripped, got:\n%s", output)
+		}
+		if strings.Contains(output, "including") {
+			t.Errorf("expected threatmodel including to be stripped, got:\n%s", output)
+		}
+		if strings.Contains(output, "attacker.example") {
+			t.Errorf("expected remote sources to be stripped, got:\n%s", output)
+		}
+		// Legitimate attributes are preserved.
+		if !strings.Contains(output, `description = "Test"`) {
+			t.Errorf("expected description to be preserved, got:\n%s", output)
+		}
+	})
+
+	t.Run("leaves clean content unchanged", func(t *testing.T) {
+		input := `
+spec_version = "0.1.10"
+
+threatmodel "Test" {
+  author = "test@example.com"
+  description = "Test"
+}
+`
+		output := string(stripRemoteFetchDirectives([]byte(input)))
+		if output != input {
+			t.Errorf("expected clean content to be unchanged\nwant:\n%s\ngot:\n%s", input, output)
+		}
+	})
+
+	t.Run("stripped content parses without resolving remote sources", func(t *testing.T) {
+		// With the "including" present, the spec parser would hand the source
+		// to go-getter; a file:: source that does not exist would fail the
+		// parse. After stripping, the model parses cleanly with no fetch.
+		input := `
+spec_version = "0.1.10"
+
+threatmodel "Test" {
+  author = "test@example.com"
+  description = "Test"
+  including = "file::/nonexistent/threatcl/does-not-exist.hcl"
+}
+`
+		output := stripRemoteFetchDirectives([]byte(input))
+
+		tmpFile, err := os.CreateTemp("", "test-strip-*.hcl")
+		if err != nil {
+			t.Fatalf("failed to create temp file: %v", err)
+		}
+		defer os.Remove(tmpFile.Name())
+		if _, err := tmpFile.Write(output); err != nil {
+			t.Fatalf("failed to write temp file: %v", err)
+		}
+		tmpFile.Close()
+
+		cfg, err := spec.LoadSpecConfig()
+		if err != nil {
+			t.Fatalf("failed to load spec config: %v", err)
+		}
+		tmParser := spec.NewThreatmodelParser(cfg)
+		if err := tmParser.ParseFile(tmpFile.Name(), false); err != nil {
+			t.Errorf("stripped content should parse cleanly, got: %v", err)
+		}
+	})
+}
+
 func TestExtractThreatRefs(t *testing.T) {
 	tests := []struct {
 		name     string
