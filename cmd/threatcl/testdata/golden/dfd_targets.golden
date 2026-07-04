@@ -1,4 +1,3 @@
-[threatmodel: tm2 one] Deprecation warning: This threat model has defined `control` strings inside of `threat` blocks. As of v0.1.5 It's recommended that you update these to `expanded_control` blocks, as they may be cause errors in future versions of hcltm. Found in ./testdata/tm5.hcl
 Validated 1 threatmodels in 1 files
 Invariant violation [error] 'externals_have_trust_zones': external_element 'Google Analytics' in threatmodel 'tm2 one' (./testdata/tm5.hcl): external element 'Google Analytics' in diagram 'new dfd' has no trust zone
 Invariant violation [error] 'externals_have_trust_zones': external_element 'Google Analytics' in threatmodel 'tm2 one' (./testdata/tm5.hcl): external element 'Google Analytics' in diagram 'Legacy DFD' has no trust zone

@@ -4,6 +4,7 @@ import (
 	"flag"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/pmezard/go-difflib/difflib"
@@ -11,6 +12,23 @@ import (
 )
 
 var update = flag.Bool("update", false, "update golden files")
+
+// stripConstraintWarnings drops the spec parser's deprecation-warning lines
+// from validate output before golden comparison. When a model trips several
+// version constraints, which single warning spec.VersionConstraints reports
+// depends on Go map iteration order, and the wording is owned by the spec
+// module — neither belongs in this feature's snapshots.
+func stripConstraintWarnings(out string) string {
+	lines := strings.Split(out, "\n")
+	kept := lines[:0]
+	for _, l := range lines {
+		if strings.Contains(l, "Deprecation warning:") {
+			continue
+		}
+		kept = append(kept, l)
+	}
+	return strings.Join(kept, "\n")
+}
 
 // TestValidateInvariantsGolden snapshots the full stdout of
 // `threatcl validate -invariants=...` against golden files in
@@ -138,6 +156,7 @@ invariant "processes_have_trust_zones" {
 			out := capturer.CaptureStdout(func() {
 				code = cmd.Run(append([]string{"-invariants=" + invFile}, tc.files...))
 			})
+			out = stripConstraintWarnings(out)
 
 			if code != tc.code {
 				t.Errorf("Code did not equal %d: %d", tc.code, code)
