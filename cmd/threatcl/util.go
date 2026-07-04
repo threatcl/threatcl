@@ -421,6 +421,24 @@ func findAllFiles(files []string) []string {
 	return tmloader.FindFiles(files)
 }
 
+// writeStringToFile creates (truncating any existing file) path and writes
+// content to it, closing the file before returning. It is the single place the
+// render commands (dfd, mermaid, export) turn a rendered string into a file, so
+// the create + write + close dance isn't copied at each call site (dfd alone
+// had two copies, one of which leaked a per-iteration defer inside a loop).
+func writeStringToFile(path, content string) error {
+	f, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	if _, err := f.WriteString(content); err != nil {
+		return err
+	}
+	return nil
+}
+
 // fileExistenceCheck checks for the existence of provided files
 func fileExistenceCheck(outfiles []string, overwrite bool) error {
 	if !overwrite {

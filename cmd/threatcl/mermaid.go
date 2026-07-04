@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/posener/complete"
@@ -115,14 +114,7 @@ func printTooMany(entries []mermaidEntry, destination string) {
 
 // writeMermaidFile writes a single mermaid block to path.
 func (c *MermaidCommand) writeMermaidFile(path, content string) int {
-	f, err := os.Create(path)
-	if err != nil {
-		fmt.Printf("Error creating file: %s: %s\n", path, err)
-		return 1
-	}
-	defer f.Close()
-
-	if _, err := f.WriteString(mermaidSource(content)); err != nil {
+	if err := writeStringToFile(path, mermaidSource(content)); err != nil {
 		fmt.Printf("Error writing mermaid file to %s: %s\n", path, err)
 		return 1
 	}

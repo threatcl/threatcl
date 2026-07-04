@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/posener/complete"
@@ -101,15 +100,7 @@ func (e *ExportCommand) Run(args []string) int {
 				return 1
 			}
 
-			f, err := os.Create(e.flagOutput)
-			if err != nil {
-				fmt.Printf("Error creating file: %s: %s\n", e.flagOutput, err)
-				return 1
-			}
-			defer f.Close()
-
-			_, err = f.WriteString(outputString)
-			if err != nil {
+			if err := writeStringToFile(e.flagOutput, outputString); err != nil {
 				fmt.Printf("Error writing output to %s: %s\n", e.flagOutput, err)
 				return 1
 			}
@@ -127,9 +118,9 @@ func (e *ExportCommand) Synopsis() string {
 func (c *ExportCommand) AutocompleteArgs() complete.Predictor { return predictHCLOrJSON }
 func (c *ExportCommand) AutocompleteFlags() complete.Flags {
 	return complete.Flags{
-		"-config":    predictHCL,
-		"-format":    complete.PredictSet("json", "otm", "hcl"),
-		"-output":    complete.PredictFiles("*"),
-		"-template":  predictTpl,
+		"-config":   predictHCL,
+		"-format":   complete.PredictSet("json", "otm", "hcl"),
+		"-output":   complete.PredictFiles("*"),
+		"-template": predictTpl,
 	}
 }
