@@ -1,0 +1,42 @@
+# Scans the Go module graph for known vulnerabilities that are actually
+# reachable from this codebase (govulncheck is call-graph aware, so it only
+# reports vulns in code paths we can hit — low noise by design).
+#
+# Runs on PR/push (gate new deps) and weekly (new CVEs are disclosed against
+# old code; the schedule catches those without any code change).
+name: govulncheck
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '30 10 * * 3'
+
+permissions:
+  contents: read
+
+jobs:
+  govulncheck:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Harden runner (egress audit)
+        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
+        with:
+          egress-policy: audit
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+      - name: Setup Go
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
+        with:
+          go-version: '1.25.11'
+      # The binary version is pinned for supply-chain hygiene; vulnerability
+      # freshness comes from the vuln DB (vuln.go.dev), which is fetched live
+      # on every run — an old binary still sees new CVEs.
+      - name: Install govulncheck
+        run: go install golang.org/x/vuln/cmd/govulncheck@v1.5.0
+      - name: Run govulncheck
+        run: govulncheck ./...
