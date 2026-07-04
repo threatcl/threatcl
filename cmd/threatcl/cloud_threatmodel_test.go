@@ -263,7 +263,7 @@ func TestCloudThreatmodelFetchUserInfo(t *testing.T) {
 
 	_ = testCloudThreatmodelCommand(t, httpClient, nil, fsSvc)
 
-	resp, err := fetchUserInfo("token", httpClient, fsSvc)
+	resp, err := NewCloudClient("token", "", getAPIBaseURL(fsSvc), httpClient).FetchUserInfo()
 
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
@@ -298,7 +298,7 @@ func TestCloudThreatmodelFetchThreatModel(t *testing.T) {
 
 	_ = testCloudThreatmodelCommand(t, httpClient, nil, fsSvc)
 
-	model, err := fetchThreatModel("token", "org123", "tm1", httpClient, fsSvc)
+	model, err := NewCloudClient("token", "org123", getAPIBaseURL(fsSvc), httpClient).FetchThreatModel("tm1")
 
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
@@ -335,7 +335,7 @@ func TestCloudThreatmodelFetchThreatModelWithSlug(t *testing.T) {
 
 	_ = testCloudThreatmodelCommand(t, httpClient, nil, fsSvc)
 
-	model, err := fetchThreatModel("token", "org123", "threat-model-1", httpClient, fsSvc)
+	model, err := NewCloudClient("token", "org123", getAPIBaseURL(fsSvc), httpClient).FetchThreatModel("threat-model-1")
 
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
@@ -661,7 +661,7 @@ func TestCloudThreatmodelDownloadThreatModel(t *testing.T) {
 	_ = testCloudThreatmodelCommand(t, httpClient, nil, fsSvc)
 
 	url := fmt.Sprintf("%s/api/v1/org/%s/models/%s/download", getAPIBaseURL(fsSvc), "org123", "tm1")
-	err := downloadFile(url, "token", "test.hcl", false, httpClient, fsSvc)
+	err := downloadToFile(NewCloudClient("token", "", getAPIBaseURL(fsSvc), httpClient), url, "test.hcl", false, fsSvc)
 
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
@@ -688,7 +688,7 @@ func TestCloudThreatmodelDownloadThreatModelWithSlug(t *testing.T) {
 	_ = testCloudThreatmodelCommand(t, httpClient, nil, fsSvc)
 
 	url := fmt.Sprintf("%s/api/v1/org/%s/models/%s/download", getAPIBaseURL(fsSvc), "org123", "my-model-slug")
-	err := downloadFile(url, "token", "test.hcl", false, httpClient, fsSvc)
+	err := downloadToFile(NewCloudClient("token", "", getAPIBaseURL(fsSvc), httpClient), url, "test.hcl", false, fsSvc)
 
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
@@ -715,7 +715,7 @@ func TestCloudThreatmodelDownloadThreatModelFileExists(t *testing.T) {
 
 	// Try to download without overwrite flag - should fail
 	url := fmt.Sprintf("%s/api/v1/org/%s/models/%s/download", getAPIBaseURL(fsSvc), "org123", "tm1")
-	err := downloadFile(url, "token", "existing.hcl", false, httpClient, fsSvc)
+	err := downloadToFile(NewCloudClient("token", "", getAPIBaseURL(fsSvc), httpClient), url, "existing.hcl", false, fsSvc)
 
 	if err == nil {
 		t.Errorf("expected error when file exists without overwrite flag")
@@ -746,7 +746,7 @@ func TestCloudThreatmodelDownloadThreatModelFileExistsWithOverwrite(t *testing.T
 
 	// Try to download with overwrite flag - should succeed
 	url := fmt.Sprintf("%s/api/v1/org/%s/models/%s/download", getAPIBaseURL(fsSvc), "org123", "tm1")
-	err := downloadFile(url, "token", "existing.hcl", true, httpClient, fsSvc)
+	err := downloadToFile(NewCloudClient("token", "", getAPIBaseURL(fsSvc), httpClient), url, "existing.hcl", true, fsSvc)
 
 	if err != nil {
 		t.Errorf("unexpected error with overwrite flag: %v", err)

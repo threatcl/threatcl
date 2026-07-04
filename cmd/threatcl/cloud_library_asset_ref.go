@@ -80,17 +80,14 @@ func (c *CloudLibraryAssetRefCommand) Run(args []string) int {
 	}
 	refId := remainingArgs[0]
 
-	// Initialize dependencies
-	httpClient, keyringSvc, fsSvc := c.initDependencies(30 * time.Second)
-
-	// Get token and org ID
-	token, orgId, err := c.getTokenAndOrgId(c.flagOrgId, keyringSvc, fsSvc)
+	// Build the cloud client (resolves token + org)
+	client, _, err := c.newCloudClient(c.flagOrgId, 30*time.Second)
 	if err != nil {
 		return c.handleTokenError(err)
 	}
 
 	// Fetch asset by reference ID
-	asset, err := fetchInformationAssetLibraryItemByRef(token, orgId, refId, httpClient, fsSvc)
+	asset, err := client.FetchInformationAssetLibraryItemByRef(refId)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error fetching information asset library item: %s\n", err)
 		return 1

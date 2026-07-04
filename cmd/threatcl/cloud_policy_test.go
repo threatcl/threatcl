@@ -298,7 +298,7 @@ func TestCloudPolicyFetchPolicy(t *testing.T) {
 	}
 	httpClient.transport.setResponse("GET", "/api/v1/org/org123/policies/pol-1", http.StatusOK, jsonResponse(p))
 
-	result, err := fetchPolicy("token", "org123", "pol-1", httpClient, fsSvc)
+	result, err := NewCloudClient("token", "org123", getAPIBaseURL(fsSvc), httpClient).FetchPolicy("pol-1")
 
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
@@ -666,7 +666,7 @@ func TestCloudPolicyCreatePolicy(t *testing.T) {
 		Enabled:    &enabled,
 	}
 
-	result, err := createPolicy("token", "org123", payload, httpClient, fsSvc)
+	result, err := NewCloudClient("token", "org123", getAPIBaseURL(fsSvc), httpClient).CreatePolicy(payload)
 
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
@@ -937,7 +937,7 @@ func TestCloudPolicyUpdatePolicy(t *testing.T) {
 		Severity: &severity,
 	}
 
-	result, err := updatePolicy("token", "org123", "pol-1", payload, httpClient, fsSvc)
+	result, err := NewCloudClient("token", "org123", getAPIBaseURL(fsSvc), httpClient).UpdatePolicy("pol-1", payload)
 
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)

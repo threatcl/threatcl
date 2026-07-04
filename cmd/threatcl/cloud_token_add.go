@@ -73,9 +73,9 @@ func (c *CloudTokenAddCommand) Run(args []string) int {
 		return 1
 	}
 
-	// Validate token and get user info
+	// Validate token and get user info (org-agnostic call)
 	fmt.Println("Validating token...")
-	whoamiResp, err := fetchUserInfo(token, httpClient, fsSvc)
+	whoamiResp, err := NewCloudClient(token, "", getAPIBaseURL(fsSvc), httpClient).FetchUserInfo()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: invalid token or unable to connect to API: %s\n", err)
 		return 1
