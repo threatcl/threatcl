@@ -1,0 +1,3 @@
+Validated 2 threatmodels in 1 files
+Invariant 'models_have_threats' exempts threatmodel 'tm tm1 two' (./testdata/tm1.hcl): Attribute-only model; tracked in SEC-1
+Checked 2 invariants against 2 threatmodels: 0 errors, 0 warnings, 1 exemptions
