@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/posener/complete"
@@ -125,14 +124,7 @@ func (c *DfdCommand) writeSingle(allFiles []string, index int) int {
 			fmt.Printf("Error fetching DFD for output: %s\n", err)
 			return 1
 		}
-		f, err := os.Create(c.flagOutFile)
-		if err != nil {
-			fmt.Printf("Error creating file: %s: %s\n", c.flagOutFile, err)
-			return 1
-		}
-		defer f.Close()
-
-		if _, err := f.WriteString(text); err != nil {
+		if err := writeStringToFile(c.flagOutFile, text); err != nil {
 			fmt.Printf("Error writing %s file to %s: %s\n", strings.ToUpper(c.flagFormat), c.flagOutFile, err)
 			return 1
 		}
@@ -413,14 +405,7 @@ func (c *DfdCommand) Run(args []string) int {
 							return 1
 						}
 
-						f, err := os.Create(currentOutpath)
-						if err != nil {
-							fmt.Printf("Error creating file: %s: %s\n", currentOutpath, err)
-							return 1
-						}
-						defer f.Close()
-
-						if _, err := f.WriteString(text); err != nil {
+						if err := writeStringToFile(currentOutpath, text); err != nil {
 							fmt.Printf("Error writing %s file to %s: %s\n", strings.ToUpper(c.flagFormat), currentOutpath, err)
 							return 1
 						}

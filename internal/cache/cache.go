@@ -2,11 +2,10 @@ package cache
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
 	"sync"
 
 	"github.com/threatcl/spec"
+	"github.com/threatcl/threatcl/internal/tmloader"
 )
 
 // ThreatModelCache provides thread-safe in-memory storage for parsed threat models
@@ -40,8 +39,8 @@ func (c *ThreatModelCache) LoadAll() error {
 	c.fileToModel = make(map[string][]string)
 	c.modelToFile = make(map[string]string)
 
-	// Find all HCL and JSON files
-	files := c.findAllFiles([]string{c.rootDir})
+	// Find all HCL and JSON files via the shared loader seam
+	files := tmloader.FindFiles([]string{c.rootDir})
 
 	// Parse each file
 	for _, file := range files {
@@ -56,15 +55,9 @@ func (c *ThreatModelCache) LoadAll() error {
 // loadFile parses a single file and adds its threat models to the cache
 // Note: This method is NOT thread-safe and should only be called from within locked sections
 func (c *ThreatModelCache) loadFile(filepath string) error {
-	tmParser := spec.NewThreatmodelParser(c.specCfg)
-	err := tmParser.ParseFile(filepath, false)
+	wrapped, err := tmloader.ParseFile(c.specCfg, filepath)
 	if err != nil {
 		return err
-	}
-
-	wrapped := tmParser.GetWrapped()
-	if wrapped == nil {
-		return fmt.Errorf("no threat models found in %s", filepath)
 	}
 
 	modelNames := []string{}
@@ -145,68 +138,6 @@ func (c *ThreatModelCache) GetSourceFile(modelName string) (string, bool) {
 
 	filepath, exists := c.modelToFile[modelName]
 	return filepath, exists
-}
-
-// findAllFiles wraps Json and Hcl file finding
-// This is adapted from cmd/threatcl/util.go
-func (c *ThreatModelCache) findAllFiles(files []string) []string {
-	out := c.findHclFiles(files)
-	out = append(out, c.findJsonFiles(files)...)
-	return out
-}
-
-// findJsonFiles iterates through a list of files or folders looking for .json files
-func (c *ThreatModelCache) findJsonFiles(files []string) []string {
-	out := []string{}
-	for _, file := range files {
-		info, err := os.Stat(file)
-		if !os.IsNotExist(err) {
-			if !info.IsDir() {
-				if filepath.Ext(file) == ".json" {
-					out = append(out, file)
-				}
-			} else {
-				// Recursively walk directory
-				filepath.Walk(file, func(path string, info os.FileInfo, err error) error {
-					if err != nil {
-						return err
-					}
-					if !info.IsDir() && filepath.Ext(path) == ".json" {
-						out = append(out, path)
-					}
-					return nil
-				})
-			}
-		}
-	}
-	return out
-}
-
-// findHclFiles iterates through a list of files or folders looking for .hcl files
-func (c *ThreatModelCache) findHclFiles(files []string) []string {
-	out := []string{}
-	for _, file := range files {
-		info, err := os.Stat(file)
-		if !os.IsNotExist(err) {
-			if !info.IsDir() {
-				if filepath.Ext(file) == ".hcl" {
-					out = append(out, file)
-				}
-			} else {
-				// Recursively walk directory
-				filepath.Walk(file, func(path string, info os.FileInfo, err error) error {
-					if err != nil {
-						return err
-					}
-					if !info.IsDir() && filepath.Ext(path) == ".hcl" {
-						out = append(out, path)
-					}
-					return nil
-				})
-			}
-		}
-	}
-	return out
 }
 
 // GetFileToModelMapping returns a copy of the file-to-model mapping for debugging
