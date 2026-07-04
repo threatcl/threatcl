@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"html/template"
 	"io"
@@ -10,8 +11,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/microcosm-cc/bluemonday"
 	"github.com/posener/complete"
 	"github.com/threatcl/spec"
+	"github.com/yuin/goldmark"
 )
 
 type tmListEntryType struct {
@@ -252,6 +255,26 @@ func (c *DashboardCommand) Run(args []string) int {
 				return 1
 			}
 
+			rendered, err := io.ReadAll(tmBuffer)
+			if err != nil {
+				fmt.Printf("Error rendering threatmodel: %s\n", err)
+				return 1
+			}
+
+			// When emitting HTML, convert the rendered Markdown to sanitized
+			// HTML. RenderMarkdown uses text/template, so threat-model fields
+			// (which may originate from untrusted .hcl files) are not escaped;
+			// writing that Markdown verbatim under a .html extension would let
+			// embedded markup execute as stored XSS when the dashboard is
+			// served or opened in a browser.
+			if c.flagDashboardHTML {
+				rendered, err = markdownToSafeHTML(rendered, tm.Name)
+				if err != nil {
+					fmt.Printf("Error rendering HTML: %s\n", err)
+					return 1
+				}
+			}
+
 			outfile := outfilePath(c.flagOutDir, tm.Name, file, fmt.Sprintf(".%s", outExt))
 
 			f, err := os.Create(outfile)
@@ -261,7 +284,7 @@ func (c *DashboardCommand) Run(args []string) int {
 			}
 			defer f.Close()
 
-			_, err = io.Copy(f, tmBuffer)
+			_, err = f.Write(rendered)
 			if err != nil {
 				fmt.Printf("Error writing to file: %s\n", err)
 				return 1
@@ -347,6 +370,49 @@ func (c *DashboardCommand) Run(args []string) int {
 func unixToTime(unixtime int64) string {
 	utime := time.Unix(unixtime, 0)
 	return utime.Format("2006-01-02")
+}
+
+// tmHTMLDocTemplate wraps sanitized threat-model HTML in a minimal document.
+// The body is pre-sanitized (bluemonday) before being marked template.HTML;
+// the title is a plain string and is context-escaped by html/template.
+var tmHTMLDocTemplate = template.Must(template.New("tmHTMLDoc").Parse(`<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>{{ .Title }}</title>
+</head>
+<body>
+{{ .Body }}
+</body>
+</html>
+`))
+
+// markdownToSafeHTML converts rendered Markdown into a self-contained HTML
+// document. goldmark is used without the "unsafe" option (so raw HTML embedded
+// in the Markdown is not passed through), and the result is additionally run
+// through bluemonday's UGC policy. Together this ensures that HTML in untrusted
+// threat-model fields cannot execute as script when the dashboard is viewed.
+func markdownToSafeHTML(markdown []byte, title string) ([]byte, error) {
+	var htmlBuf bytes.Buffer
+	if err := goldmark.New().Convert(markdown, &htmlBuf); err != nil {
+		return nil, err
+	}
+
+	safe := bluemonday.UGCPolicy().SanitizeBytes(htmlBuf.Bytes())
+
+	var out bytes.Buffer
+	err := tmHTMLDocTemplate.Execute(&out, struct {
+		Title string
+		Body  template.HTML
+	}{
+		Title: title,
+		Body:  template.HTML(safe),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return out.Bytes(), nil
 }
 
 // Synopsis returns the synopsis for the "threatcl dashboard" command
