@@ -295,11 +295,19 @@ These underpin both tracks (a compromised Action can forge provenance or push to
 
 | Control                                              | Status | Notes |
 |------------------------------------------------------|--------|-------|
-| All Actions SHA-pinned with `# vX.Y.Z` comment       | ✅ (Phase 1) | Every `uses:` across all 4 workflows pinned to a full commit SHA + version comment. The lone `@latest` left is inside a commented-out dead block. |
+| All Actions SHA-pinned with `# vX.Y.Z` comment       | ✅ (Phase 1) | Every `uses:` across all workflows pinned to a full commit SHA + version comment. The lone `@latest` left is inside a commented-out dead block. |
 | Dependabot (github-actions + gomod)                  | ✅ (Phase 1) | `.github/dependabot.yml` covers `github-actions`, `gomod`, and `docker` (base images), weekly, grouped. Will drive the older `docker/*` action pins up to current majors as CI-gated PRs. |
-| Least-privilege top-level `permissions: contents: read` | ✅ (Phase 1) | All 4 workflows now declare top-level `contents: read` (added to `threatcl-testvet.yml` + `codeql.yml`; already present on the release workflows). |
+| Least-privilege top-level `permissions: contents: read` | ✅ (Phase 1) | All workflows declare top-level `contents: read`; jobs that upload SARIF add `security-events: write` only. |
 | Job-scoped escalation only where needed              | ✅ (Phase 1) | Build-only jobs dropped to inherit `contents: read` (they only `upload-artifact`). Escalation kept only on jobs that need it: `release`/`pre-release` (`contents: write`, GitHub Release), image push (`packages: write`). `pre-build-image-test` dropped `packages: write` (it's `push: false`). |
-| CodeQL scanning                                      | ✅     | `.github/workflows/codeql.yml` runs on push/PR to `main` + weekly. |
+| CodeQL scanning                                      | ✅ (Phase 5: `security-extended`) | `.github/workflows/codeql.yml` runs on push/PR to `main` + weekly, with the `security-extended` query suite. Chosen **instead of** a second Go SAST (gosec): CodeQL's Go queries cover most gosec rules with interprocedural dataflow and fewer false positives; two SASTs would double triage noise. |
+| govulncheck (known-vuln Go deps, reachability-aware) | ✅ (Phase 5) | `.github/workflows/govulncheck.yml` on push/PR + weekly. Binary pinned; the vuln DB is fetched live so freshness doesn't depend on the pin. |
+| Dependency review gate on PRs                        | ✅ (Phase 5) | `.github/workflows/dependency-review.yml` fails PRs that *introduce* deps with known vulns (`fail-on-severity: low`). |
+| zizmor (workflow static analysis)                    | ✅ (Phase 5) | `.github/workflows/zizmor.yml`, SARIF → code scanning. Baseline findings fixed: `persist-credentials: false` on every checkout; `cache: false` on `setup-go` in the artifact-building `release.yml` jobs (cache-poisoning). |
+| Trivy scan of the **published** image                | ✅ (Phase 5) | `.github/workflows/trivy.yml`, weekly + manual, scans `ghcr.io/threatcl/threatcl:latest` for newly disclosed base-layer (alpine) CVEs post-publication; SARIF → code scanning. Token-free replacement for the old Snyk container scan. |
+| harden-runner egress monitoring                      | 🔶 (Phase 5) | `step-security/harden-runner` on every job, `egress-policy: audit`. Follow-up: flip the `release` job (and then the rest) to `block` + `allowed-endpoints` once audit baselines exist. |
+| GoReleaser pinned to an exact version                | ✅ (Phase 5) | `goreleaser-action` previously floated `"~> v2"` — the binary is downloaded at run time, so the range was an unpinned build tool inside the most privileged job. Now `v2.16.0`, bumped deliberately. |
+| Base images digest-pinned                            | ✅ (Phase 5) | `Dockerfile` + `Dockerfile.goreleaser` pin `alpine`/`golang` bases by manifest-list digest; Dependabot's docker ecosystem updates digests alongside tags. |
+| SBOMs for released archives (SPDX, syft)             | ✅ (Phase 5) | `.goreleaser.yaml` `sboms:` emits one SBOM per archive; uploaded to releases (incl. the rolling `dev` pre-release) and covered by the release attestation step. The image already had an SBOM via `dockers_v2`. |
 
 > **Carry-over resolved in Phase 2.5:** the old `docker/*` pins (`login-action`
 > v1.10.0, `metadata-action` v3.3.0, `build-push-action` v2.5.0) and the
@@ -329,6 +337,12 @@ These underpin both tracks (a compromised Action can forge provenance or push to
 | 3     | `attest-build-provenance` on every binary + checksums                  | **Build L0→L2 (in substance L3)**| ✅ |
 | 3     | Attest Docker image **by digest**                                      | Build L2 (images)                | ✅ |
 | 3     | README `gh attestation verify` docs (binaries + images-by-digest)      | Build L2 (consumer validation)   | ✅ |
+| 5     | Vuln scanning: `govulncheck` (push/PR + weekly) + PR dependency-review + weekly Trivy of the published image | Hygiene (vuln detection at source + post-publish) | ✅ |
+| 5     | zizmor workflow static analysis + baseline fixes (`persist-credentials: false` everywhere, no Go build cache in `release.yml`) | Hygiene (workflow control plane) | ✅ |
+| 5     | harden-runner on every job (`egress-policy: audit`)                     | Hygiene / Build isolation        | 🔶 audit; block pending baselines |
+| 5     | Exact GoReleaser version pin + digest-pinned base images                | Build (pinned toolchain + inputs)| ✅ |
+| 5     | SBOMs for released archives (syft, SPDX) — uploaded + attested          | Build (transparency)             | ✅ |
+| 5     | CodeQL `security-extended` suite (chosen over adding gosec)             | Hygiene (SAST depth)             | ✅ |
 
 > ¹ **Activated 2026-06-28.** Both rulesets were imported from the committed JSON
 > and are live + non-bypassable on `main`/`v*` (`bypass_actors: []`); the redundant
