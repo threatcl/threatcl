@@ -1,6 +1,6 @@
 module github.com/threatcl/threatcl
 
-go 1.25.9
+go 1.25.11
 
 require (
 	github.com/99designs/gqlgen v0.17.55
@@ -166,7 +166,7 @@ require (
 	go.opentelemetry.io/otel/sdk/metric v1.43.0 // indirect
 	go.opentelemetry.io/otel/trace v1.43.0 // indirect
 	golang.org/x/crypto v0.51.0 // indirect
-	golang.org/x/image v0.38.0 // indirect
+	golang.org/x/image v0.43.0 // indirect
 	golang.org/x/mod v0.36.0 // indirect
 	golang.org/x/net v0.55.0 // indirect
 	golang.org/x/oauth2 v0.36.0 // indirect

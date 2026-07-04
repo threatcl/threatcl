@@ -7,7 +7,9 @@
 # in the released archive.
 #
 # For local from-source image builds use the top-level `Dockerfile` (`make image`).
-FROM alpine:3.24
+# Digest-pinned (tag alone is mutable). Dependabot's docker ecosystem keeps
+# the digest current alongside the tag.
+FROM alpine:3.24@sha256:28bd5fe8b56d1bd048e5babf5b10710ebe0bae67db86916198a6eec434943f8b
 
 ARG TARGETPLATFORM
 
