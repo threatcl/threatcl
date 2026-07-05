@@ -40,7 +40,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
         with:
-          go-version: '1.25.11'
+          go-version: '1.26.4'
           # No cache in the artifact-building workflow: a poisoned cache entry
           # would flow straight into released binaries (zizmor: cache-poisoning).
           cache: false
@@ -81,7 +81,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
         with:
-          go-version: '1.25.11'
+          go-version: '1.26.4'
           cache: false # no cache in artifact-building jobs (cache-poisoning)
       - name: Install syft (for SBOM generation)
         uses: anchore/sbom-action/download-syft@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
@@ -148,7 +148,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
         with:
-          go-version: '1.25.11'
+          go-version: '1.26.4'
           cache: false # no cache in artifact-building jobs (cache-poisoning)
       - name: Set up QEMU
         uses: docker/setup-qemu-action@06116385d9baf250c9f4dcb4858b16962ea869c3 # v4.1.0
