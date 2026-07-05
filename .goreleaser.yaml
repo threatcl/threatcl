@@ -68,8 +68,8 @@ sboms:
 
 snapshot:
   # Non-tag builds (PRs, pushes to main) get a stable "dev" version so the
-  # rolling `dev` pre-release assets keep constant filenames and overwrite
-  # cleanly instead of accumulating.
+  # files inside the `threatcl-dev` workflow artifact keep constant names
+  # from build to build.
   version_template: "dev"
 
 changelog:

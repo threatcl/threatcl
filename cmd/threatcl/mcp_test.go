@@ -446,10 +446,7 @@ func TestMCPAdditionalTools(t *testing.T) {
 func TestMCPShowSpecResource(t *testing.T) {
 	cmd := testMCPCommand(t)
 	result, err := cmd.handleShowSpecResource(context.Background(), mcp.ReadResourceRequest{
-		Params: struct {
-			URI       string                 `json:"uri"`
-			Arguments map[string]interface{} `json:"arguments,omitempty"`
-		}{
+		Params: mcp.ReadResourceParams{
 			URI: "threatcl://static/spec",
 		},
 	})
