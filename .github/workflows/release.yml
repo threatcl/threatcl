@@ -2,7 +2,8 @@ name: release
 
 # One workflow, three trust contexts (see docs/SLSA.md):
 #   - pull_request  -> dry-run the whole flow, no publish (fork-safe, read-only)
-#   - push to main  -> publish rolling `dev` pre-release binaries (post-merge)
+#   - push to main  -> build `dev` snapshot binaries, uploaded as workflow
+#                      artifacts (post-merge; no release is touched)
 #   - push tag v*   -> full release: GitHub Release + multi-arch image + latest
 on:
   pull_request:
@@ -45,13 +46,13 @@ jobs:
           # would flow straight into released binaries (zizmor: cache-poisoning).
           cache: false
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@06116385d9baf250c9f4dcb4858b16962ea869c3 # v4.1.0
+        uses: docker/setup-qemu-action@96fe6ef7f33517b61c61be40b68a1882f3264fb8 # v4.2.0
       - name: Setup Docker Buildx
-        uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4.1.0
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
       - name: Install syft (for SBOM generation)
         uses: anchore/sbom-action/download-syft@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
       - name: GoReleaser dry-run (snapshot, no publish)
-        uses: goreleaser/goreleaser-action@5daf1e915a5f0af01ddbcd89a43b8061ff4f1a89 # v7.2.2
+        uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
         with:
           # Exact GoReleaser pin (not "~> v2"): the action downloads the
           # GoReleaser binary at run time, so a floating range would pull
@@ -60,14 +61,18 @@ jobs:
           args: release --snapshot --clean
 
   # Push to main (post-merge, trusted): build the binaries + checksums and
-  # publish them to a rolling `dev` GitHub pre-release. Stable `dev` filenames
-  # overwrite cleanly. Images are skipped here (validated on PR, only tags push
+  # upload them as workflow ARTIFACTS — not a release. This replaced the old
+  # rolling `dev` pre-release: with immutable releases enabled (Phase 6),
+  # re-publishing a release under a reused tag is impossible by design, and a
+  # deleted immutable release burns its tag name forever — a rolling tag can't
+  # exist in that world. Artifacts expire on their own and grant this job a
+  # read-only token. Images are skipped here (validated on PR, only tags push
   # images) to keep main fast.
   dev:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: read
     steps:
       - name: Harden runner (egress audit)
         uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
@@ -86,34 +91,25 @@ jobs:
       - name: Install syft (for SBOM generation)
         uses: anchore/sbom-action/download-syft@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
       - name: GoReleaser build (snapshot, no docker)
-        uses: goreleaser/goreleaser-action@5daf1e915a5f0af01ddbcd89a43b8061ff4f1a89 # v7.2.2
+        uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
         with:
           version: v2.16.0 # exact pin — see note in `validate`
           args: release --snapshot --clean --skip=docker
-      - name: Publish rolling dev pre-release
-        # zizmor suggests plain `gh release` here; keeping the (SHA-pinned)
-        # action — swapping the publish path isn't worth the behavior risk.
-        uses: softprops/action-gh-release@718ea10b132b3b2eba29c1007bb80653f286566b # v3.0.1 # zizmor: ignore[superfluous-actions]
+      - name: Upload dev build artifacts
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          tag_name: dev
-          name: "Development Build"
-          prerelease: true
-          # Always set a clean, fixed body. Without this, action-gh-release leaves
-          # whatever notes the release already had — which is how the old, giant
-          # full-history changelog got stuck on this rolling tag. A dev build has
-          # no meaningful "release range", so just describe what it is.
-          body: |
-            ⚠️ **Rolling development build** — rebuilt and overwritten on every
-            push to `main`. Unstable and not intended for production use; for a
-            stable version grab the latest tagged
-            [release](https://github.com/threatcl/threatcl/releases/latest).
-
-            Built from commit ${{ github.sha }}.
-          files: |
+          name: threatcl-dev
+          # Same file set the rolling pre-release used to carry. Grab the
+          # latest from the most recent main-branch run of this workflow
+          # (Actions tab, or: gh run download --repo threatcl/threatcl
+          # --name threatcl-dev). Unstable; for production use a tagged release.
+          path: |
             dist/*.tar.gz
             dist/*.zip
             dist/*.sbom.json
             dist/SHA256SUMS
+          retention-days: 30
+          if-no-files-found: error
 
   # Tag v*: the real release. GoReleaser builds + publishes the GitHub Release
   # (mac/linux/windows archives + SHA256SUMS) and builds + pushes the multi-arch
@@ -126,6 +122,17 @@ jobs:
   release:
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
+    # Deployment-protected environment (Phase 6): with a required reviewer
+    # configured on `release` (Settings -> Environments), this job PAUSES until
+    # a maintainer approves it in the GitHub UI — a web-session + 2FA second
+    # factor between a v* tag appearing and artifacts being signed/published.
+    # Needed because the v* tag ruleset's required_signatures rule does NOT
+    # verify tag signatures (only commits introduced by the push), so any
+    # write-access credential can create a passing v* tag via the API. The OIDC
+    # subject also becomes repo:threatcl/threatcl:environment:release, which
+    # verifiers can pin. Unconfigured, the environment is inert (no approval
+    # prompt), so this line is safe to merge before the settings step.
+    environment: release
     permissions:
       contents: write          # create the GitHub Release
       packages: write          # push image + its attestation to ghcr.io
@@ -151,11 +158,11 @@ jobs:
           go-version: '1.26.4'
           cache: false # no cache in artifact-building jobs (cache-poisoning)
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@06116385d9baf250c9f4dcb4858b16962ea869c3 # v4.1.0
+        uses: docker/setup-qemu-action@96fe6ef7f33517b61c61be40b68a1882f3264fb8 # v4.2.0
       - name: Setup Docker Buildx
-        uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4.1.0
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
       - name: Log in to ghcr.io
-        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
+        uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4.4.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -163,7 +170,7 @@ jobs:
       - name: Install syft (for SBOM generation)
         uses: anchore/sbom-action/download-syft@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
       - name: GoReleaser release
-        uses: goreleaser/goreleaser-action@5daf1e915a5f0af01ddbcd89a43b8061ff4f1a89 # v7.2.2
+        uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
         with:
           version: v2.16.0 # exact pin — see note in `validate`
           args: release --clean
