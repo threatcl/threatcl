@@ -27,6 +27,9 @@ func testServerCommand(tb testing.TB) *ServerCommand {
 	_ = os.Setenv("USERPROFILE", d)
 
 	cfg, _ := spec.LoadSpecConfig()
+	// examples/tm3.hcl imports a remote control library; spec v0.5.1 requires
+	// opting in to remote imports.
+	cfg.AllowRemoteImports = true
 
 	tb.Cleanup(func() {
 		os.RemoveAll(d)

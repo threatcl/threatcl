@@ -82,6 +82,9 @@ func TestLoadExamples(t *testing.T) {
 	if err != nil {
 		t.Fatalf("load spec config: %v", err)
 	}
+	// examples/tm3.hcl imports a remote control library; spec v0.5.1 requires
+	// opting in to remote imports.
+	cfg.AllowRemoteImports = true
 
 	models, err := Load(cfg, []string{examplesDir})
 	if err != nil {

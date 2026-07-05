@@ -380,6 +380,8 @@ func threatmodelVal(tm *spec.Threatmodel) cty.Value {
 
 	return cty.ObjectVal(map[string]cty.Value{
 		"name":                     cty.StringVal(tm.Name),
+		"id":                       cty.StringVal(tm.Id),
+		"extends":                  cty.StringVal(tm.Extends),
 		"description":              cty.StringVal(tm.Description),
 		"author":                   cty.StringVal(tm.Author),
 		"link":                     cty.StringVal(tm.Link),

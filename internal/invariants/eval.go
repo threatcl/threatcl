@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/hcl/v2"
+	"github.com/threatcl/spec"
 	"github.com/zclconf/go-cty/cty"
 	"github.com/zclconf/go-cty/cty/convert"
 	"github.com/zclconf/go-cty/cty/function"
@@ -135,30 +136,142 @@ func Evaluate(invs []*Invariant, models []*Model) (*Report, error) {
 	return report, nil
 }
 
-// resolveExemptions evaluates every exemption's model reference against the
-// `threatmodel` registry — the models in this run, keyed by name — and returns
-// the exempted model names (with justifications) per invariant. A reference to
-// a name not in the registry is a hard error naming the missing model; an
-// exemption whose reference evaluates to null (e.g. via
-// try(threatmodel["Other Fleet"], null) in an invariants file shared across
-// separately-validated fleets) is inactive rather than an error.
-func resolveExemptions(invs []*Invariant, models []*Model, tmVals []cty.Value, funcs map[string]function.Function) (map[*Invariant]map[string]string, error) {
-	registry := map[string]cty.Value{}
+// registryNode is one address in the threat model reference tree: possibly a
+// model, possibly a namespace with children, possibly both (a parent model).
+type registryNode struct {
+	model    int // index into the models slice, -1 when no model sits here
+	children map[string]*registryNode
+}
+
+func newRegistryNode() *registryNode {
+	return &registryNode{model: -1, children: map[string]*registryNode{}}
+}
+
+// buildRegistry maps the models in this run into the `threatmodel` reference
+// value. Every model is addressable by display name via index syntax
+// (threatmodel["Tower of London"]) and — when its effective Identifier() is
+// identifier-safe — by dotted address (threatmodel.tower_of_london). Dotted
+// ids nest (threatmodel.buildings.tower), and a model whose id is the
+// namespace is the parent: its children sit alongside its fields. Identifier
+// collisions across the run, child segments that shadow a parent model's
+// fields, and names that collide with another model's id are hard errors — a
+// registry needs one meaning per address.
+func buildRegistry(models []*Model, tmVals []cty.Value) (cty.Value, error) {
+	tms := make([]spec.Threatmodel, len(models))
 	for i, m := range models {
-		registry[m.TM.Name] = tmVals[i]
+		tms[i] = *m.TM
 	}
-	registryVal := cty.EmptyObjectVal
-	if len(registry) > 0 {
-		registryVal = cty.ObjectVal(registry)
+	if err := spec.ValidateUniqueIdentifiers(tms); err != nil {
+		return cty.NilVal, err
+	}
+
+	root := newRegistryNode()
+	for i, m := range models {
+		ident := m.TM.Identifier()
+		if !spec.ValidIdentifier(ident) {
+			// e.g. a digit-leading derivation: not dot-addressable, but the
+			// display-name entry below still covers it.
+			continue
+		}
+		cur := root
+		for _, seg := range strings.Split(ident, ".") {
+			child, ok := cur.children[seg]
+			if !ok {
+				child = newRegistryNode()
+				cur.children[seg] = child
+			}
+			cur = child
+		}
+		cur.model = i // unique per ValidateUniqueIdentifiers
+	}
+
+	var materialize func(n *registryNode, path string) (cty.Value, error)
+	materialize = func(n *registryNode, path string) (cty.Value, error) {
+		attrs := map[string]cty.Value{}
+		if n.model >= 0 {
+			for k, v := range tmVals[n.model].AsValueMap() {
+				attrs[k] = v
+			}
+		}
+		segs := make([]string, 0, len(n.children))
+		for seg := range n.children {
+			segs = append(segs, seg)
+		}
+		sort.Strings(segs)
+		for _, seg := range segs {
+			childPath := path + "." + seg
+			if _, shadows := attrs[seg]; shadows {
+				return cty.NilVal, fmt.Errorf(
+					"threat model id %q: segment %q shadows a field of the parent model at %q",
+					childPath, seg, path,
+				)
+			}
+			v, err := materialize(n.children[seg], childPath)
+			if err != nil {
+				return cty.NilVal, err
+			}
+			attrs[seg] = v
+		}
+		return cty.ObjectVal(attrs), nil
+	}
+
+	entries := map[string]cty.Value{}
+	rootSegs := make([]string, 0, len(root.children))
+	for seg := range root.children {
+		rootSegs = append(rootSegs, seg)
+	}
+	sort.Strings(rootSegs)
+	for _, seg := range rootSegs {
+		v, err := materialize(root.children[seg], seg)
+		if err != nil {
+			return cty.NilVal, err
+		}
+		entries[seg] = v
+	}
+
+	for i, m := range models {
+		name := m.TM.Name
+		if _, taken := entries[name]; taken {
+			if m.TM.Identifier() == name {
+				// The identifier entry is this same model (possibly merged
+				// with its children); the name needs no separate entry.
+				continue
+			}
+			return cty.NilVal, fmt.Errorf(
+				"threat model name %q collides with another model's id or namespace %q - rename one or give the model a distinct id",
+				name, name,
+			)
+		}
+		entries[name] = tmVals[i]
+	}
+
+	if len(entries) == 0 {
+		return cty.EmptyObjectVal, nil
+	}
+	return cty.ObjectVal(entries), nil
+}
+
+// resolveExemptions evaluates every exemption's model reference against the
+// `threatmodel` registry — the models in this run, keyed by display name and
+// by identifier — and returns the exempted model names (with justifications)
+// per invariant. A reference to a model not in the registry is a hard error
+// listing the models that are; an exemption whose reference evaluates to null
+// (e.g. via try(threatmodel["Other Fleet"], null) in an invariants file
+// shared across separately-validated fleets) is inactive rather than an
+// error.
+func resolveExemptions(invs []*Invariant, models []*Model, tmVals []cty.Value, funcs map[string]function.Function) (map[*Invariant]map[string]string, error) {
+	registryVal, err := buildRegistry(models, tmVals)
+	if err != nil {
+		return nil, fmt.Errorf("building the threatmodel reference registry: %w", err)
 	}
 	ctx := &hcl.EvalContext{
 		Variables: map[string]cty.Value{"threatmodel": registryVal},
 		Functions: funcs,
 	}
 
-	names := make([]string, 0, len(registry))
-	for name := range registry {
-		names = append(names, fmt.Sprintf("%q", name))
+	names := make([]string, 0, len(models))
+	for _, m := range models {
+		names = append(names, fmt.Sprintf("%q (threatmodel.%s)", m.TM.Name, m.TM.Identifier()))
 	}
 	sort.Strings(names)
 

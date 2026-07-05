@@ -322,6 +322,116 @@ invariant "impossible" {
 	}
 }
 
+func TestEvaluateExemptionDotAddressing(t *testing.T) {
+	// Derived identifier: "Test Model" is addressable as threatmodel.test_model.
+	report := mustEvalRaw(t, `
+invariant "impossible" {
+  target    = "threatmodel"
+  condition = false
+
+  exemption {
+    model         = threatmodel.test_model
+    justification = "Addressed by derived identifier"
+  }
+}
+`, testModels())
+
+	if len(report.Exemptions) != 1 || len(report.Violations) != 0 {
+		t.Errorf("expected derived-identifier dot address to exempt, got %d exemptions / %d violations",
+			len(report.Exemptions), len(report.Violations))
+	}
+}
+
+func nestedModels() []*Model {
+	return []*Model{
+		{TM: &spec.Threatmodel{Name: "Buildings", Id: "buildings", Author: "@x",
+			Attributes: &spec.Attribute{InternetFacing: true}}, File: "a.hcl"},
+		{TM: &spec.Threatmodel{Name: "Tower of London", Id: "buildings.tower", Author: "@x"}, File: "b.hcl"},
+		{TM: &spec.Threatmodel{Name: "London Bridge", Id: "buildings.bridge", Author: "@x"}, File: "c.hcl"},
+	}
+}
+
+func TestEvaluateExemptionNestedDotAddressing(t *testing.T) {
+	// A child at a nested address, and the parent model addressable at the
+	// namespace itself.
+	report := mustEvalRaw(t, `
+invariant "impossible" {
+  target    = "threatmodel"
+  condition = false
+
+  exemption {
+    model         = threatmodel.buildings.tower
+    justification = "Nested child address"
+  }
+
+  exemption {
+    model         = threatmodel.buildings
+    justification = "The parent is a model too"
+  }
+}
+`, nestedModels())
+
+	if len(report.Exemptions) != 2 {
+		t.Fatalf("expected 2 exemptions (parent and nested child), got %d", len(report.Exemptions))
+	}
+	if len(report.Violations) != 1 {
+		t.Errorf("expected only the non-exempted sibling to violate, got %d violations", len(report.Violations))
+	}
+	if len(report.Violations) == 1 && report.Violations[0].Model.TM.Name != "London Bridge" {
+		t.Errorf("expected 'London Bridge' to violate, got %q", report.Violations[0].Model.TM.Name)
+	}
+}
+
+func TestEvaluateRegistryErrors(t *testing.T) {
+	cases := []struct {
+		name   string
+		models []*Model
+		exp    string
+	}{
+		{
+			"identifier_collision",
+			[]*Model{
+				{TM: &spec.Threatmodel{Name: "My App", Author: "@x"}, File: "a.hcl"},
+				{TM: &spec.Threatmodel{Name: "my app", Author: "@x"}, File: "b.hcl"},
+			},
+			"collides",
+		},
+		{
+			"reserved_segment_across_files",
+			[]*Model{
+				{TM: &spec.Threatmodel{Name: "Buildings", Id: "buildings", Author: "@x"}, File: "a.hcl"},
+				{TM: &spec.Threatmodel{Name: "Threats Building", Id: "buildings.threats", Author: "@x"}, File: "b.hcl"},
+			},
+			`segment "threats" shadows a field of the parent model`,
+		},
+		{
+			"name_collides_with_namespace",
+			[]*Model{
+				{TM: &spec.Threatmodel{Name: "buildings", Id: "other", Author: "@x"}, File: "a.hcl"},
+				{TM: &spec.Threatmodel{Name: "Tower of London", Id: "buildings.tower", Author: "@x"}, File: "b.hcl"},
+			},
+			`name "buildings" collides with another model's id or namespace`,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := evalRaw(t, `
+invariant "anything" {
+  target    = "threatmodel"
+  condition = true
+}
+`, tc.models)
+			if err == nil {
+				t.Fatalf("expected a registry error containing %q, got none", tc.exp)
+			}
+			if !strings.Contains(err.Error(), tc.exp) {
+				t.Errorf("expected error to contain %q, got: %s", tc.exp, err)
+			}
+		})
+	}
+}
+
 func TestEvaluateExemptionNonModelReference(t *testing.T) {
 	_, err := evalRaw(t, `
 invariant "impossible" {

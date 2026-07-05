@@ -76,9 +76,22 @@ exemption {
 ```
 
 `model` is a real reference, not a string: `threatmodel` is a registry of the
-models in the current validate run, keyed by name. Referencing a model that
-isn't in the run is a hard error that lists the models that are — so a typo'd
-or renamed model can't leave a silently-dead waiver behind. Because the
+models in the current validate run, addressable two ways.
+
+- **By display name**, with index syntax: `threatmodel["Legacy Public API"]`.
+- **By identifier, with dot notation**: `threatmodel.legacy_public_api`. A
+  model's identifier is its declared `id` attribute when present, else one
+  derived from its name (`"Tower of London"` → `tower_of_london`). Dotted ids
+  nest — a model with `id = "buildings.tower"` is `threatmodel.buildings.tower`
+  — and a model whose id *is* the namespace (`id = "buildings"`) is the parent:
+  it resolves at that address itself, with its children alongside its fields.
+
+Referencing a model that isn't in the run is a hard error that lists the
+models that are — so a typo'd or renamed model can't leave a silently-dead
+waiver behind. Identifier collisions across the run (two models whose
+declared-or-derived identifiers coincide), a child id segment that shadows a
+parent model's field, or a model name that collides with another model's id
+are also hard errors: every address must mean exactly one thing. Because the
 reference resolves to the actual model object, field access works too
 (`threatmodel["Legacy Public API"].author`), though an exemption's `model`
 must be the model itself, not a field of it.
@@ -132,6 +145,7 @@ variables are in scope:
 | Field                      | Type           | Notes                                                              |
 | -------------------------- | -------------- | ------------------------------------------------------------------ |
 | `name`, `description`, `author`, `link`, `diagram_link` | string | |
+| `id`, `extends`            | string         | The declared `id`/`extends` attributes (empty when not declared). Models a rule sees have `extends` inheritance already applied. |
 | `repository`               | list(string)   |                                                                    |
 | `created_at`, `updated_at` | number         | Unix timestamps                                                    |
 | `attributes`               | object         | `new_initiative` (bool), `internet_facing` (bool), `initiative_size` (string); all-defaults when the block is absent |
