@@ -26,6 +26,9 @@ jobs:
       contents: read
       security-events: write # upload SARIF findings to code scanning
     steps:
+      # Still audit (deliberately): this weekly workflow has never run, so
+      # there is no egress baseline to derive an allowlist from. Flip to
+      # `block` + `allowed-endpoints` after a couple of clean scheduled runs.
       - name: Harden runner (egress audit)
         uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411 # v2.19.4
         with:

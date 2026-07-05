@@ -180,9 +180,21 @@ Do these **in order**, after the workflow change merges:
   branches and tags" with a tag rule for `v*` (defense-in-depth: the
   environment then refuses non-`v*` refs even if the workflow trigger were
   ever loosened).
-- [ ] After the next real release: pull the harden-runner audit baseline for
-  the `release` job and flip it to `egress-policy: block` +
-  `allowed-endpoints` (the standing Phase 5 follow-up).
+- [x] ~~After the next real release: pull the harden-runner audit baseline for
+  the `release` job and flip it~~ Done ahead of a release instead: every job
+  except `trivy` now runs `egress-policy: block` with an explicit
+  `allowed-endpoints` list derived from the StepSecurity audit baselines
+  (observed per-job egress across recent runs) plus the documented
+  publish-only endpoints for the `release` job (release upload, ghcr push,
+  Sigstore signing). `trivy` stays on audit until its weekly schedule has
+  produced a baseline. If a release ever fails on a blocked endpoint, fix the
+  list on `main` and cut the next patch tag — the workflow at an existing tag
+  is immutable. **Check what the failed run left behind first:** GoReleaser
+  pushes the ghcr images (incl. `:latest`) and then the GitHub Release
+  *before* the attest steps run, so a failure during or after the publish
+  phase can leave a live release/image without provenance attestations —
+  delete those leftovers (or re-attest) before re-tagging. Only a failure
+  before GoReleaser's publish phase leaves nothing published.
 
 The release flow becomes: push signed `v*` tag → `release` job pauses →
 approve in the UI → GoReleaser publishes (draft → immutable) → provenance
@@ -386,7 +398,7 @@ These underpin both tracks (a compromised Action can forge provenance or push to
 | Dependency review gate on PRs                        | ✅ (Phase 5) | `.github/workflows/dependency-review.yml` fails PRs that *introduce* deps with known vulns (`fail-on-severity: low`). |
 | zizmor (workflow static analysis)                    | ✅ (Phase 5) | `.github/workflows/zizmor.yml`, SARIF → code scanning. Baseline findings fixed: `persist-credentials: false` on every checkout; `cache: false` on `setup-go` in the artifact-building `release.yml` jobs (cache-poisoning). |
 | Trivy scan of the **published** image                | ✅ (Phase 5) | `.github/workflows/trivy.yml`, weekly + manual, scans `ghcr.io/threatcl/threatcl:latest` for newly disclosed base-layer (alpine) CVEs post-publication; SARIF → code scanning. Token-free replacement for the old Snyk container scan. |
-| harden-runner egress monitoring                      | 🔶 (Phase 5) | `step-security/harden-runner` on every job, `egress-policy: audit`. Follow-up: flip the `release` job (and then the rest) to `block` + `allowed-endpoints` once audit baselines exist. |
+| harden-runner egress enforcement                     | ✅ (Phase 5 audit → Phase 6 block) | `step-security/harden-runner` on every job. All jobs run `egress-policy: block` with explicit `allowed-endpoints` (from StepSecurity audit baselines + documented publish endpoints), except `trivy` which stays on audit until its weekly schedule produces a baseline. |
 | GoReleaser pinned to an exact version                | ✅ (Phase 5) | `goreleaser-action` previously floated `"~> v2"` — the binary is downloaded at run time, so the range was an unpinned build tool inside the most privileged job. Now `v2.16.0`, bumped deliberately. |
 | Base images digest-pinned                            | ✅ (Phase 5) | `Dockerfile` + `Dockerfile.goreleaser` pin `alpine`/`golang` bases by manifest-list digest; Dependabot's docker ecosystem updates digests alongside tags. |
 | SBOMs for released archives (SPDX, syft)             | ✅ (Phase 5) | `.goreleaser.yaml` `sboms:` emits one SBOM per archive; uploaded to releases and included in the `threatcl-dev` workflow artifact (Phase 6 retired the rolling `dev` pre-release), and covered by the release attestation step. The image already had an SBOM via `dockers_v2`. |
@@ -421,7 +433,8 @@ These underpin both tracks (a compromised Action can forge provenance or push to
 | 3     | README `gh attestation verify` docs (binaries + images-by-digest)      | Build L2 (consumer validation)   | ✅ |
 | 5     | Vuln scanning: `govulncheck` (push/PR + weekly) + PR dependency-review + weekly Trivy of the published image | Hygiene (vuln detection at source + post-publish) | ✅ |
 | 5     | zizmor workflow static analysis + baseline fixes (`persist-credentials: false` everywhere, no Go build cache in `release.yml`) | Hygiene (workflow control plane) | ✅ |
-| 5     | harden-runner on every job (`egress-policy: audit`)                     | Hygiene / Build isolation        | 🔶 audit; block pending baselines |
+| 5     | harden-runner on every job (`egress-policy: audit`)                     | Hygiene / Build isolation        | ✅ superseded by Phase 6 block |
+| 6     | harden-runner `egress-policy: block` + per-job `allowed-endpoints` on every job (trivy: audit until first baseline) | Hygiene / Build isolation (egress enforcement) | ✅ |
 | 5     | Exact GoReleaser version pin + digest-pinned base images                | Build (pinned toolchain + inputs)| ✅ |
 | 5     | SBOMs for released archives (syft, SPDX) — uploaded + attested          | Build (transparency)             | ✅ |
 | 5     | CodeQL `security-extended` suite (chosen over adding gosec)             | Hygiene (SAST depth)             | ✅ |
