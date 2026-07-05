@@ -24,8 +24,8 @@ require (
 	github.com/threatcl/spec v0.4.0
 	github.com/tliron/commonlog v0.2.21
 	github.com/tliron/glsp v0.2.2
-	github.com/vektah/gqlparser/v2 v2.5.35
-	github.com/yuin/goldmark v1.7.13
+	github.com/vektah/gqlparser/v2 v2.5.36
+	github.com/yuin/goldmark v1.8.2
 	github.com/zclconf/go-cty v1.18.1
 	github.com/zenizh/go-capturer v0.0.0-20211219060012-52ea6c8fed04
 )
