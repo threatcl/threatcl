@@ -3,7 +3,7 @@
 CHANGES:
 
 * Added invariants: org-wide, machine-checked rules evaluated against threat models via `threatcl validate -invariants=<file>`. Invariants live in their own HCL file, target a collection within each model (`threat`, `control`, DFD `process`/`flow`, ...), and express conditions as native HCL expressions with `item`/`tm`/`dfd` in scope. They support `error`/`warning` severities, `when` filters, interpolated `error_message`s, and per-model exemptions with justifications. Exemptions reference models as objects — by display name (`threatmodel["Tower of London"]`) or by dotted identifier (`threatmodel.tower_of_london`, `threatmodel.buildings.tower` for nested ids, with parent models addressable at the namespace itself) — and dangling references fail loudly. See [docs/invariants.md](docs/invariants.md).
-* Bumped to `spec` `0.5.1`, which introduces optional `id` and `extends` attributes on `threatmodel` blocks (namespaced identifiers and explicit inheritance), identifier-safe slug / dot-notation element references inside models, and disables remote `imports`/`including` fetches unless `allow_remote_imports = true` is set in the threatcl config. Go toolchain bumped to 1.26.4 to match.
+* Bumped to `spec` `0.5.2`, which introduces optional `id` and `extends` attributes on `threatmodel` blocks (namespaced identifiers and explicit inheritance), identifier-safe slug / dot-notation element references inside models, and disables remote `imports`/`including` fetches unless `allow_remote_imports = true` is set in the threatcl config. Go toolchain bumped to 1.26.5 to match.
 
 ## 0.5.2
 
