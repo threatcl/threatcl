@@ -41,7 +41,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
         with:
-          go-version: '1.26.4'
+          go-version-file: 'go.mod'
           # No cache in the artifact-building workflow: a poisoned cache entry
           # would flow straight into released binaries (zizmor: cache-poisoning).
           cache: false
