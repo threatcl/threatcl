@@ -1,0 +1,7 @@
+Validated 2 threatmodels in 1 files
+Invariant violation [error] 'threats_have_controls': threat 'multi line threat' in threatmodel 'tm1 one' (./testdata/tm1.hcl): Every threat must have at least one control
+Invariant violation [error] 'threats_have_controls': threat 'another multi line threat' in threatmodel 'tm1 one' (./testdata/tm1.hcl): Every threat must have at least one control
+Invariant violation [warning] 'models_have_dfds': threatmodel 'tm1 one' (./testdata/tm1.hcl): threatmodel 'tm1 one' by @xntrik has no data flow diagrams
+Invariant violation [error] 'exclusions_are_detailed': exclusion 'exclusion #1' in threatmodel 'tm1 one' (./testdata/tm1.hcl): condition failed
+Invariant violation [warning] 'models_have_dfds': threatmodel 'tm tm1 two' (./testdata/tm1.hcl): threatmodel 'tm tm1 two' by @cfrichot has no data flow diagrams
+Checked 4 invariants against 2 threatmodels: 3 errors, 2 warnings, 0 exemptions

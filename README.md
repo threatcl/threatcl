@@ -237,6 +237,25 @@ $ threatcl validate examples/*
 Validated 3 threatmodels in 3 files
 ```
 
+### Invariants
+
+`threatcl validate` can also enforce org-wide invariants — machine-checked
+rules such as "no public endpoints should be unauthenticated" or "all
+internet-facing features must document audit logging" — against every
+validated threat model:
+
+```bash
+$ threatcl validate -invariants=invariants.hcl ./models/
+Validated 4 threatmodels in 3 files
+Invariant violation [error] 'threats_have_implemented_controls': threat 'Credential theft' in threatmodel 'Payments' (models/payments.hcl): Every threat must have at least one implemented control
+Checked 3 invariants against 4 threatmodels: 1 errors, 0 warnings, 1 exemptions
+```
+
+Invariants live in their own HCL file, target a specific collection (threats,
+controls, DFD processes, flows, ...), and express their condition as a native
+HCL expression. They support `error`/`warning` severities and per-model
+exemptions with justifications. See [docs/invariants.md](docs/invariants.md).
+
 ## Export
 
 The `threatcl export` command is used to export a `threatcl` threat model (or models) into the native JSON representation (by default), or into the [OTM](https://github.com/iriusrisk/OpenThreatModel) json representation, or even back into `hcl` (Which is useful to output fresh HCL from dynamic threat models). You can also directly save them into a file with the `-output` flag.

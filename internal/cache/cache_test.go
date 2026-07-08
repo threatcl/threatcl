@@ -42,6 +42,9 @@ func TestLoadAll(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to load default spec config: %v", err)
 	}
+	// examples/tm3.hcl imports a remote control library; spec v0.5.1 requires
+	// opting in to remote imports.
+	cfg.AllowRemoteImports = true
 
 	cache := NewThreatModelCache(cfg, examplesDir)
 
@@ -69,6 +72,9 @@ func TestGetAndGetAll(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to load default spec config: %v", err)
 	}
+	// examples/tm3.hcl imports a remote control library; spec v0.5.1 requires
+	// opting in to remote imports.
+	cfg.AllowRemoteImports = true
 
 	cache := NewThreatModelCache(cfg, examplesDir)
 	err = cache.LoadAll()
@@ -111,6 +117,9 @@ func TestGetSourceFile(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to load default spec config: %v", err)
 	}
+	// examples/tm3.hcl imports a remote control library; spec v0.5.1 requires
+	// opting in to remote imports.
+	cfg.AllowRemoteImports = true
 
 	cache := NewThreatModelCache(cfg, examplesDir)
 	err = cache.LoadAll()
@@ -162,6 +171,9 @@ func TestGetFileToModelMapping(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to load default spec config: %v", err)
 	}
+	// examples/tm3.hcl imports a remote control library; spec v0.5.1 requires
+	// opting in to remote imports.
+	cfg.AllowRemoteImports = true
 
 	cache := NewThreatModelCache(cfg, examplesDir)
 	err = cache.LoadAll()
@@ -191,6 +203,9 @@ func TestConcurrentAccess(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to load default spec config: %v", err)
 	}
+	// examples/tm3.hcl imports a remote control library; spec v0.5.1 requires
+	// opting in to remote imports.
+	cfg.AllowRemoteImports = true
 
 	cache := NewThreatModelCache(cfg, examplesDir)
 	err = cache.LoadAll()
@@ -225,6 +240,9 @@ func TestReload(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to load default spec config: %v", err)
 	}
+	// examples/tm3.hcl imports a remote control library; spec v0.5.1 requires
+	// opting in to remote imports.
+	cfg.AllowRemoteImports = true
 
 	cache := NewThreatModelCache(cfg, examplesDir)
 	err = cache.LoadAll()
@@ -275,6 +293,9 @@ func TestRemoveFile(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to load default spec config: %v", err)
 	}
+	// examples/tm3.hcl imports a remote control library; spec v0.5.1 requires
+	// opting in to remote imports.
+	cfg.AllowRemoteImports = true
 
 	cache := NewThreatModelCache(cfg, examplesDir)
 	err = cache.LoadAll()
