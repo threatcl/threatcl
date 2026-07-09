@@ -694,7 +694,7 @@ func TestDashboardHTMLSanitizesXSS(t *testing.T) {
 	// execute script.
 	payload := "<script>alert(document.domain)</script><img src=x onerror=alert(1)>"
 	hcl := fmt.Sprintf(`
-spec_version = "0.4.0"
+spec_version = "0.5.2"
 
 threatmodel "xss model" {
   description = "%s"

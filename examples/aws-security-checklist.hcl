@@ -1,4 +1,4 @@
-spec_version = "0.4.0"
+spec_version = "0.5.2"
 
 // These are from https://d1.awsstatic.com/whitepapers/Security/AWS_Security_Checklist.pdf
 
