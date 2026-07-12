@@ -1,7 +1,7 @@
 # Local from-source image build (`make image`). The released image is built
 # from Dockerfile.goreleaser instead; both use the same `FROM scratch` runtime
 # shape (static binary + CA certs + nonroot passwd/group from an alpine donor).
-FROM golang:1.26.4-alpine3.23@sha256:18b460dd17542c2ba43299a633cf6ebfc1115101509531471d7cfce1019af083 AS builder
+FROM golang:1.26.5-alpine3.23@sha256:622e56dbc11a8cfe87cafa2331e9a201877271cbff918af53d3be315f3da88cc AS builder
 
 RUN apk update
 RUN apk upgrade
