@@ -13,7 +13,7 @@ import (
 // resolverFixtureHCL contains two threat models: one fully populated (with
 // attributes, assets, threats, risk, and controls) and one minimal (no
 // attributes block, no controls), so filters can distinguish between them.
-const resolverFixtureHCL = `spec_version = "0.5.2"
+const resolverFixtureHCL = `spec_version = "0.6.0"
 
 threatmodel "Tower of London" {
   description = "A historic castle"

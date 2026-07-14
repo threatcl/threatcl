@@ -1,4 +1,4 @@
-spec_version = "0.5.2"
+spec_version = "0.6.0"
 component "control" "authentication_control" {
   description = "Multi-factor authentication required"
   implemented = true
