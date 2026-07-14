@@ -1,3 +1,23 @@
+## 0.6.1
+
+### Jul 14, 2026
+
+CHANGES:
+
+* Bumped to `spec` `0.6.0`. The multi-file commands (`validate`, `list`, `view`,
+  `dfd`, `mermaid`, `export`, `dashboard`) now parse all discovered `.hcl` files
+  together as one *set* (via the new `ParseHCLRawSet`), so a `threatmodel` can
+  `extends` a parent declared in a different file - previously each file was
+  parsed on its own and a cross-file `extends` target failed to resolve.
+* BEHAVIOR CHANGE: because those files are now parsed as one set, `threatmodel`
+  names and ids must be unique across the whole set of `.hcl` files being
+  processed. Previously the same name could appear in separate files and each
+  was listed independently; a collision is now a parse error that names the
+  offending files. `.json` threat models are still parsed individually (the
+  spec set parser is HCL-only), so they keep their prior behavior.
+* The `backend` block's `segment` attribute was removed in `spec` `0.6.0`;
+  `segment = "..."` in a `backend` block is now a parse error.
+
 ## 0.6.0
 
 ### Jul 9, 2026

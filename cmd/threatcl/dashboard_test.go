@@ -153,11 +153,11 @@ func TestDashboardWithDfd(t *testing.T) {
 		t.Fatalf("Error opening dashboard file: %s", err)
 	}
 
-	if !strings.Contains(string(dbfile), "tm3-tm2one.md") {
-		t.Errorf("Expected %s to contain %s", dbfile, "tm3-tm2one.md")
+	if !strings.Contains(string(dbfile), "tm3-tm3one.md") {
+		t.Errorf("Expected %s to contain %s", dbfile, "tm3-tm3one.md")
 	}
 
-	f, err := os.Open(filepath.Join(d, "out", "tm3-tm2onelegacydfd.png"))
+	f, err := os.Open(filepath.Join(d, "out", "tm3-tm3onelegacydfd.png"))
 	if err != nil {
 		t.Fatalf("Error opening png: %s", err)
 	}

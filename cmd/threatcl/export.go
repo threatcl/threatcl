@@ -6,6 +6,7 @@ import (
 
 	"github.com/posener/complete"
 	"github.com/threatcl/spec"
+	"github.com/threatcl/threatcl/internal/tmloader"
 )
 
 // ExportCommand struct defines the "threatcl export" commands
@@ -66,26 +67,21 @@ func (e *ExportCommand) Run(args []string) int {
 		fmt.Printf("Please provide a filename\n")
 		return 1
 	} else {
-		// Find all the .hcl files we're going to parse
-		AllFiles := findAllFiles(flagSet.Args())
-		var AllTms []spec.Threatmodel
-
-		var tmParser *spec.ThreatmodelParser
-
-		// Parse all the identified .hcl files
-		for _, file := range AllFiles {
-			tmParser = spec.NewThreatmodelParser(e.specCfg)
-			err := tmParser.ParseFile(file, false)
-			if err != nil {
-				fmt.Printf("Error parsing %s: %s\n", file, err)
-				return 1
-			}
-
-			AllTms = append(AllTms, tmParser.GetWrapped().Threatmodels...)
-
+		// Parse all discovered files as one set (cross-file `extends` resolves).
+		res, err := tmloader.LoadSet(e.specCfg, flagSet.Args())
+		if err != nil {
+			fmt.Printf("%s\n", err)
+			return 1
 		}
 
-		outputString, err := renderThreatmodels(AllTms, tmParser, e.flagFormat, e.flagTemplate)
+		var AllTms []spec.Threatmodel
+		for _, lm := range res.Models {
+			AllTms = append(AllTms, *lm.TM)
+		}
+
+		// The "hcl" format re-encodes from parser state; res.HCLParser holds
+		// the merged HCL set (all .hcl inputs).
+		outputString, err := renderThreatmodels(AllTms, res.HCLParser, e.flagFormat, e.flagTemplate)
 		if err != nil {
 			fmt.Printf("%s\n", err)
 			return 1

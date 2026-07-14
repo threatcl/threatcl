@@ -7,6 +7,7 @@ import (
 	"github.com/posener/complete"
 	"github.com/ryanuber/columnize"
 	"github.com/threatcl/spec"
+	"github.com/threatcl/threatcl/internal/tmloader"
 )
 
 type ListCommand struct {
@@ -122,18 +123,16 @@ func (c *ListCommand) Execute(args []string) ([]string, error) {
 
 	tmCount := 1
 
-	// Find all the .hcl files we're going to parse
-	AllFiles := findAllFiles(args)
+	// Parse all discovered files as one set (cross-file `extends` resolves).
+	res, err := tmloader.LoadSet(c.specCfg, args)
+	if err != nil {
+		return nil, err
+	}
 
-	// Parse all the identified .hcl files
-	for _, file := range AllFiles {
-		tmParser := spec.NewThreatmodelParser(c.specCfg)
-		err := tmParser.ParseFile(file, false)
-		if err != nil {
-			return nil, fmt.Errorf("error parsing %s: %s", file, err)
-		}
-
-		for _, tm := range tmParser.GetWrapped().Threatmodels {
+	for _, lm := range res.Models {
+		file := lm.File
+		tm := lm.TM
+		{
 			bodyString := ""
 			for _, flagField := range flagFields {
 				if bodyString != "" {
@@ -186,9 +185,9 @@ func (c *ListCommand) Execute(args []string) ([]string, error) {
 						bodyString = bodyString + "-"
 					}
 				case "RiskCount":
-					bodyString = bodyString + fmt.Sprintf("%d", countThreatsWithRisk(tm))
+					bodyString = bodyString + fmt.Sprintf("%d", countThreatsWithRisk(*tm))
 				case "HighestSeverity":
-					bodyString = bodyString + highestInherentSeverity(tm)
+					bodyString = bodyString + highestInherentSeverity(*tm)
 				}
 			}
 

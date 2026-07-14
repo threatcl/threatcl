@@ -3,10 +3,119 @@ package tmloader
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/threatcl/spec"
 )
+
+// writeTMFile writes content to name inside dir and returns the full path.
+func writeTMFile(t *testing.T, dir, name, content string) string {
+	t.Helper()
+	p := filepath.Join(dir, name)
+	if err := os.WriteFile(p, []byte(content), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	return p
+}
+
+// TestLoadSetCrossFileExtends verifies that a model can `extends` a parent
+// declared in a different file - impossible under per-file parsing, where each
+// file's own parser errors on the missing target. It also checks that each
+// resolved model is attributed back to the file that declared it, even when the
+// child is discovered before the parent.
+func TestLoadSetCrossFileExtends(t *testing.T) {
+	cfg, err := spec.LoadSpecConfig()
+	if err != nil {
+		t.Fatalf("load spec config: %v", err)
+	}
+
+	dir := t.TempDir()
+	// "child.hcl" sorts before "parent.hcl", so discovery yields the child
+	// first - exercising order-independent extends resolution.
+	writeTMFile(t, dir, "child.hcl", `
+spec_version = "0.5.2"
+
+threatmodel "Child Model" {
+  id = "child"
+  extends = "parent"
+  author = "@test"
+}
+`)
+	writeTMFile(t, dir, "parent.hcl", `
+spec_version = "0.5.2"
+
+threatmodel "Parent Model" {
+  id = "parent"
+  author = "@test"
+
+  threat "threaty threat" {
+    description = "threaty threat"
+    control = "controlly control"
+    stride = ["Spoofing", "Elevation of privilege"]
+    information_asset_refs = []
+  }
+}
+`)
+
+	res, err := LoadSet(cfg, []string{dir})
+	if err != nil {
+		t.Fatalf("LoadSet: %v", err)
+	}
+
+	origin := map[string]string{}
+	byName := map[string]*spec.Threatmodel{}
+	for _, lm := range res.Models {
+		origin[lm.TM.Name] = filepath.Base(lm.File)
+		byName[lm.TM.Name] = lm.TM
+	}
+
+	child, ok := byName["Child Model"]
+	if !ok {
+		t.Fatalf("Child Model not in result: %v", res.Models)
+	}
+	if len(child.Threats) != 1 {
+		t.Errorf("child should inherit 1 threat from parent via extends, got %d", len(child.Threats))
+	}
+	if origin["Child Model"] != "child.hcl" {
+		t.Errorf("Child Model attributed to %q, want child.hcl", origin["Child Model"])
+	}
+	if origin["Parent Model"] != "parent.hcl" {
+		t.Errorf("Parent Model attributed to %q, want parent.hcl", origin["Parent Model"])
+	}
+}
+
+// TestLoadSetDuplicateNameError verifies that the same model name across two
+// files is a parse error (the set enforces uniqueness) and that the error names
+// both offending files.
+func TestLoadSetDuplicateNameError(t *testing.T) {
+	cfg, err := spec.LoadSpecConfig()
+	if err != nil {
+		t.Fatalf("load spec config: %v", err)
+	}
+
+	dir := t.TempDir()
+	model := `
+spec_version = "0.5.2"
+
+threatmodel "Same Name" {
+  author = "@test"
+}
+`
+	writeTMFile(t, dir, "a.hcl", model)
+	writeTMFile(t, dir, "b.hcl", model)
+
+	_, err = LoadSet(cfg, []string{dir})
+	if err == nil {
+		t.Fatal("expected duplicate-name error, got nil")
+	}
+	msg := err.Error()
+	for _, want := range []string{"Same Name", "a.hcl", "b.hcl"} {
+		if !strings.Contains(msg, want) {
+			t.Errorf("error message should mention %q; got:\n%s", want, msg)
+		}
+	}
+}
 
 func TestFindFiles(t *testing.T) {
 	dir := t.TempDir()

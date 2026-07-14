@@ -6,6 +6,7 @@ import (
 
 	"github.com/posener/complete"
 	"github.com/threatcl/spec"
+	"github.com/threatcl/threatcl/internal/tmloader"
 )
 
 type MermaidCommand struct {
@@ -67,29 +68,27 @@ type mermaidEntry struct {
 	file    string
 }
 
-// collectMermaids parses every file and returns all mermaid blocks in the
-// order they're discovered, along with the matching output file paths.
-func (c *MermaidCommand) collectMermaids(allFiles []string) ([]mermaidEntry, []string, error) {
+// collectMermaids parses every file as one set and returns all mermaid blocks
+// in the order they're discovered, along with the matching output file paths.
+func (c *MermaidCommand) collectMermaids(paths []string) ([]mermaidEntry, []string, error) {
 	entries := []mermaidEntry{}
 	outfiles := []string{}
 
-	for _, file := range allFiles {
-		tmParser := spec.NewThreatmodelParser(c.specCfg)
-		err := tmParser.ParseFile(file, false)
-		if err != nil {
-			return nil, nil, fmt.Errorf("error parsing %s: %s", file, err)
-		}
+	res, err := tmloader.LoadSet(c.specCfg, paths)
+	if err != nil {
+		return nil, nil, err
+	}
 
-		for _, tm := range tmParser.GetWrapped().Threatmodels {
-			for _, m := range tm.MermaidDiagrams {
-				entries = append(entries, mermaidEntry{
-					tmName:  tm.Name,
-					diagram: m,
-					file:    file,
-				})
-				outfile := outfilePath(c.flagOutDir, fmt.Sprintf("%s_%s", tm.Name, m.Name), file, ".mmd")
-				outfiles = append(outfiles, outfile)
-			}
+	for _, lm := range res.Models {
+		tm := lm.TM
+		for _, m := range tm.MermaidDiagrams {
+			entries = append(entries, mermaidEntry{
+				tmName:  tm.Name,
+				diagram: m,
+				file:    lm.File,
+			})
+			outfile := outfilePath(c.flagOutDir, fmt.Sprintf("%s_%s", tm.Name, m.Name), lm.File, ".mmd")
+			outfiles = append(outfiles, outfile)
 		}
 	}
 
@@ -156,10 +155,7 @@ func (c *MermaidCommand) Run(args []string) int {
 	// stdout is the default destination when neither -out nor -outdir is set.
 	toStdout := c.flagStdout || (c.flagOutDir == "" && c.flagOutFile == "")
 
-	// Find all the .hcl/.json files we're going to parse
-	AllFiles := findAllFiles(flagSet.Args())
-
-	entries, outfiles, err := c.collectMermaids(AllFiles)
+	entries, outfiles, err := c.collectMermaids(flagSet.Args())
 	if err != nil {
 		fmt.Printf("%s\n", err)
 		return 1

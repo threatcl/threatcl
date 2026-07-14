@@ -63,7 +63,7 @@ func TestDfd(t *testing.T) {
 		t.Errorf("%s did not contain %s", out, "Successfully created")
 	}
 
-	f, err := os.Open(filepath.Join(d, "out", "tm3-tm2onelegacydfd.png"))
+	f, err := os.Open(filepath.Join(d, "out", "tm3-tm3onelegacydfd.png"))
 	if err != nil {
 		t.Fatalf("Error opening png: %s", err)
 	}
@@ -108,7 +108,7 @@ func TestDfdSvg(t *testing.T) {
 		t.Errorf("%s did not contain %s", out, "Successfully created")
 	}
 
-	f, err := os.Open(filepath.Join(d, "out", "tm3-tm2onelegacydfd.svg"))
+	f, err := os.Open(filepath.Join(d, "out", "tm3-tm3onelegacydfd.svg"))
 	if err != nil {
 		t.Fatalf("Error opening svg: %s", err)
 	}
@@ -154,7 +154,7 @@ func TestDfdDot(t *testing.T) {
 	}
 	t.Logf("out: %s", out)
 
-	_, err = os.Open(filepath.Join(d, "out", "tm3-tm2onelegacydfd.dot"))
+	_, err = os.Open(filepath.Join(d, "out", "tm3-tm3onelegacydfd.dot"))
 	if err != nil {
 		t.Fatalf("Error opening dot: %s", err)
 	}
@@ -177,8 +177,8 @@ func TestDfdDotStdout(t *testing.T) {
 		t.Errorf("Code did not equal 0: %d", code)
 	}
 
-	if !strings.Contains(out, "label=\"tm2 one_Legacy DFD\"") {
-		t.Errorf("%s did not contain %s", out, "label=\"tm2 one_Legacy DFD\"")
+	if !strings.Contains(out, "label=\"tm3 one_Legacy DFD\"") {
+		t.Errorf("%s did not contain %s", out, "label=\"tm3 one_Legacy DFD\"")
 	}
 }
 
@@ -245,8 +245,8 @@ func TestDfdDotStdoutMutipleValidIndex(t *testing.T) {
 		t.Errorf("Code did not equal 0: %d", code)
 	}
 
-	if !strings.Contains(out, "label=\"tm2 one_Legacy DFD\"") {
-		t.Errorf("%s did not contain %s", out, "label=\"tm2 one_Legacy DFD\"")
+	if !strings.Contains(out, "label=\"tm5 one_Legacy DFD\"") {
+		t.Errorf("%s did not contain %s", out, "label=\"tm5 one_Legacy DFD\"")
 	}
 }
 
@@ -278,7 +278,7 @@ func TestDfdOverwrite(t *testing.T) {
 		t.Errorf("%s did not contain %s", out, "Successfully created")
 	}
 
-	f, err := os.Open(filepath.Join(d, "tm3-tm2onelegacydfd.png"))
+	f, err := os.Open(filepath.Join(d, "tm3-tm3onelegacydfd.png"))
 	if err != nil {
 		t.Fatalf("Error opening png: %s", err)
 	}
@@ -792,7 +792,7 @@ func TestDfdMermaid(t *testing.T) {
 		t.Errorf("%s did not contain %s", out, "Successfully created")
 	}
 
-	contents, err := os.ReadFile(filepath.Join(d, "out", "tm3-tm2onelegacydfd.mermaid"))
+	contents, err := os.ReadFile(filepath.Join(d, "out", "tm3-tm3onelegacydfd.mermaid"))
 	if err != nil {
 		t.Fatalf("Error opening mermaid: %s", err)
 	}
@@ -904,7 +904,7 @@ func TestDfdD2(t *testing.T) {
 		t.Errorf("%s did not contain %s", out, "Successfully created")
 	}
 
-	contents, err := os.ReadFile(filepath.Join(d, "out", "tm3-tm2onelegacydfd.d2"))
+	contents, err := os.ReadFile(filepath.Join(d, "out", "tm3-tm3onelegacydfd.d2"))
 	if err != nil {
 		t.Fatalf("Error opening d2: %s", err)
 	}
