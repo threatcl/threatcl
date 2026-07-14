@@ -14,6 +14,7 @@ type CloudValidateCommand struct {
 	CloudCommandBase
 	specCfg  *spec.ThreatmodelSpecConfig
 	flagDiff bool
+	flagWith string
 }
 
 func (c *CloudValidateCommand) Help() string {
@@ -30,6 +31,18 @@ Usage: threatcl cloud validate <file>
 
 	The file will also be parsed to ensure it is valid HCL.
 
+Multi-file models:
+
+	A cloud model may be split across several files, keyed by each file's
+	threatmodel 'id': the file declaring the un-dotted root id (e.g.
+	id = "app") is the model's default file, and each additional file
+	declares a dotted id beneath it (e.g. id = "app.frontend") and may
+	'extends' the root. When the validated file declares an id or extends,
+	the server also validates it against the model's other stored files and
+	this command reports the server-derived id and segment. (The backend
+	block's 'segment' attribute from earlier specs no longer exists - the
+	threatmodel id alone keys each file.)
+
 Options:
 
  -config=<file>
@@ -40,6 +53,13 @@ Options:
    threat model, download the cloud version and print a semantic summary
    of the differences followed by a unified (git-style) text diff.
 
+ -with=<glob>
+   Optional glob of the model's other .hcl files (e.g. -with='models/*.hcl').
+   Before contacting the server, parses the validated file together with the
+   matched files as one set and runs the same whole-set validation the
+   server applies (extends resolution, name/id uniqueness, namespace rules,
+   backend agreement), failing fast on errors.
+
 Examples:
 
  # Validate a threat model file
@@ -47,6 +67,9 @@ Examples:
 
  # Validate and show a diff against the latest cloud version
  threatcl cloud validate -diff my-threatmodel.hcl
+
+ # Validate one segment of a multi-file model with a local set preflight
+ threatcl cloud validate -with='models/*.hcl' models/frontend.hcl
 
 ` + cloudEnvVarHelpNoOrg()
 	return strings.TrimSpace(helpText)
@@ -61,12 +84,14 @@ func (c *CloudValidateCommand) AutocompleteFlags() complete.Flags {
 	return complete.Flags{
 		"-config": predictHCL,
 		"-diff":   complete.PredictNothing,
+		"-with":   predictHCL,
 	}
 }
 
 func (c *CloudValidateCommand) Run(args []string) int {
 	flagSet := c.GetFlagset("cloud validate")
 	flagSet.BoolVar(&c.flagDiff, "diff", false, "Show a semantic + unified diff when the local file doesn't match the latest cloud version")
+	flagSet.StringVar(&c.flagWith, "with", "", "Glob of the model's other .hcl files for a local whole-set preflight")
 	flagSet.Parse(args)
 
 	// Get remaining args (the file path)
@@ -84,6 +109,15 @@ func (c *CloudValidateCommand) Run(args []string) int {
 		err := c.specCfg.LoadSpecConfigFile(c.flagConfig)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error loading config file: %s\n", err)
+			return 1
+		}
+	}
+
+	// Optional local whole-set preflight before any network work: parse the
+	// validated file together with its sibling segment files the way the
+	// server will, and fail fast on set-level errors.
+	if c.flagWith != "" {
+		if !runSetPreflight(filePath, c.flagWith, c.specCfg) {
 			return 1
 		}
 	}
@@ -107,6 +141,14 @@ func (c *CloudValidateCommand) Run(args []string) int {
 	// Scope a client to the resolved org for the ref-library lookups below.
 	orgClient := client.WithOrg(orgValid)
 
+	// A dotted id or extends marks this file as one segment of a multi-file
+	// model; point at the local preflight when it wasn't requested.
+	if c.flagWith == "" {
+		if hint := multiFileHint(wrapped); hint != "" {
+			fmt.Fprintf(os.Stderr, "ℹ %s\n", hint)
+		}
+	}
+
 	if tmFileMatchesVersion != "" {
 		fmt.Printf("✓ Local Threat model file matches the latest version of the cloud threat model at org-id: %s, model-id: %s, version: %s\n", orgValid, tmNameValid, tmFileMatchesVersion)
 		if c.flagDiff {
@@ -128,6 +170,34 @@ func (c *CloudValidateCommand) Run(args []string) int {
 	} else {
 		fmt.Println("Invalid organization")
 		return 1
+	}
+
+	// Server-side set validation for multi-file models: when the file
+	// declares an id or extends, the server assembles it with the model's
+	// other stored files and validates the whole set — it is authoritative
+	// there — and reports the parsed id and derived segment. Files with
+	// neither (plain single-file models) skip this, keeping their output
+	// unchanged.
+	if tmNameValid != "" && wrapped != nil && len(wrapped.Threatmodels) == 1 &&
+		(wrapped.Threatmodels[0].Id != "" || wrapped.Threatmodels[0].Extends != "") {
+		content, readErr := os.ReadFile(filePath)
+		if readErr != nil {
+			fmt.Fprintf(os.Stderr, "⚠ Warning: could not read file for server-side validation: %s\n", readErr)
+		} else if validateResp, vErr := orgClient.ValidateHCLContent(tmNameValid, content); vErr != nil {
+			// Best effort: an older server without the endpoint (or a
+			// transient failure) doesn't invalidate the checks above.
+			fmt.Fprintf(os.Stderr, "⚠ Warning: could not run server-side validation: %s\n", vErr)
+		} else if validateResp.Valid {
+			if validateResp.Id != "" {
+				fmt.Printf("✓ Server-side validation passed (id: %s, segment: %s)\n", validateResp.Id, validateResp.Segment)
+			} else {
+				fmt.Printf("✓ Server-side validation passed (segment: %s)\n", validateResp.Segment)
+			}
+		} else {
+			fmt.Fprintf(os.Stderr, "❌ Server-side validation failed:\n")
+			renderValidateHCLErrors(os.Stderr, validateResp.Errors)
+			return 1
+		}
 	}
 
 	// Validate control refs if we have a valid org

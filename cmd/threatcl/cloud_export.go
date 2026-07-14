@@ -158,7 +158,11 @@ func (c *CloudExportCommand) Run(args []string) int {
 		return 1
 	}
 
+	// The fetched content may be a single segment of a multi-file model whose
+	// extends target lives in another segment; parse file-faithfully so an
+	// unresolved extends is not an error.
 	tmParser := spec.NewThreatmodelParser(c.specCfg)
+	tmParser.SetSkipExtendsResolution(true)
 	if err := tmParser.ParseFile(tmpFilePath, false); err != nil {
 		fmt.Fprintf(os.Stderr, "Error parsing threat model: %s\n", err)
 		return 1

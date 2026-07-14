@@ -504,3 +504,51 @@ func TestCloudExportRefMissingWarning(t *testing.T) {
 		t.Errorf("expected unresolved-control warning, got %q", out)
 	}
 }
+
+// A child segment fetched from the cloud declares a dotted id and an extends
+// target that lives in the model's root file — which is NOT part of the
+// download. The export must still parse it file-faithfully.
+func TestCloudExportChildSegment(t *testing.T) {
+	childSegmentHCL := `spec_version = "0.6.0"
+
+backend "threatcl-cloud" {
+  organization = "org-123"
+  threatmodel  = "tm1"
+}
+
+threatmodel "App Frontend" {
+  id = "app.frontend"
+  extends = "app"
+  author = "tester"
+  description = "Frontend segment"
+
+  threat "Frontend threat" {
+    description = "Local threat"
+  }
+}
+`
+
+	httpClient := newMockHTTPClient()
+	keyringSvc := newMockKeyringService()
+	fsSvc := newMockFileSystemService()
+
+	setupExportMocks(httpClient, keyringSvc, childSegmentHCL,
+		threatLibraryGQLResponse(), controlLibraryGQLResponse())
+
+	cmd := testCloudExportCommand(t, httpClient, keyringSvc, fsSvc)
+
+	var code int
+	out := capturer.CaptureOutput(func() {
+		code = cmd.Run([]string{"-org-id", "org-123", "-model-id", "tm1", "-format", "json"})
+	})
+
+	if code != 0 {
+		t.Fatalf("expected exit code 0, got %d\nOutput: %s", code, out)
+	}
+	if strings.Contains(out, "extends references unknown threat model") {
+		t.Errorf("child segment failed extends resolution during export: %q", out)
+	}
+	if !strings.Contains(out, "App Frontend") {
+		t.Errorf("expected exported model in output, got %q", out)
+	}
+}

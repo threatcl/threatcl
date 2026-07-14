@@ -410,3 +410,23 @@ func TestCloudValidateHelpMentionsDiff(t *testing.T) {
 		t.Error("Help text should document the -diff flag")
 	}
 }
+
+// A cloud version that is a child segment of a multi-file model (dotted id,
+// extends target in another segment) must still parse for the semantic diff.
+func TestParseCloudHCLChildSegment(t *testing.T) {
+	cfg, err := spec.LoadSpecConfig()
+	if err != nil {
+		t.Fatalf("failed to load spec config: %v", err)
+	}
+
+	wrapped, err := parseCloudHCL([]byte(preflightChildHCL), "my-tm", cfg)
+	if err != nil {
+		t.Fatalf("expected child segment to parse cleanly, got: %v", err)
+	}
+	if len(wrapped.Threatmodels) != 1 || wrapped.Threatmodels[0].Name != "App Frontend" {
+		t.Errorf("unexpected parse result: %+v", wrapped.Threatmodels)
+	}
+	if wrapped.Threatmodels[0].Extends != "app" {
+		t.Errorf("expected extends to stay populated, got %q", wrapped.Threatmodels[0].Extends)
+	}
+}

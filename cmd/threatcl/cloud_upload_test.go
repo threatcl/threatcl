@@ -416,3 +416,70 @@ func TestCloudUploadAPIErrors(t *testing.T) {
 		})
 	}
 }
+
+// A child segment file whose extends target lives in another (already
+// uploaded) file must not fail the client-side parse; the upload request
+// must reach the server, which owns whole-set validation.
+func TestCloudUploadChildSegment(t *testing.T) {
+	filePath := uploadTestWriteHCL(t, preflightChildHCL)
+
+	httpClient := newMockHTTPClient()
+	keyringSvc := newMockKeyringService()
+	fsSvc := newMockFileSystemService()
+
+	keyringSvc.setMockToken("valid-token", "org123", "Test Org")
+	fsSvc.SetFileContent(filePath, []byte(preflightChildHCL))
+
+	httpClient.transport.setResponse("POST", "/api/v1/org/org123/models/my-tm/upload", http.StatusOK, `{"success":true}`)
+
+	cmd := uploadTestCommand(t, httpClient, keyringSvc, fsSvc)
+
+	var code int
+	out := capturer.CaptureOutput(func() {
+		code = cmd.Run([]string{"-model-id", "my-tm", filePath})
+	})
+
+	if code != 0 {
+		t.Fatalf("expected exit code 0, got %d\nOutput: %s", code, out)
+	}
+	if strings.Contains(out, "extends references unknown threat model") {
+		t.Errorf("child segment failed client-side extends resolution: %q", out)
+	}
+	if uploads := httpClient.transport.getRequestBodies("POST", "/api/v1/org/org123/models/my-tm/upload"); len(uploads) != 1 {
+		t.Errorf("expected exactly one upload request to reach the server, got %d", len(uploads))
+	}
+}
+
+// A structured error envelope from the upload endpoint (e.g. the multi-file
+// set validation codes) must render its message and guidance, not the raw
+// JSON body.
+func TestCloudUploadStructuredErrorEnvelope(t *testing.T) {
+	filePath := uploadTestWriteHCL(t, preflightChildHCL)
+
+	httpClient := newMockHTTPClient()
+	keyringSvc := newMockKeyringService()
+	fsSvc := newMockFileSystemService()
+
+	keyringSvc.setMockToken("valid-token", "org123", "Test Org")
+	fsSvc.SetFileContent(filePath, []byte(preflightChildHCL))
+
+	httpClient.transport.setResponse("POST", "/api/v1/org/org123/models/my-tm/upload", http.StatusBadRequest,
+		`{"error":{"code":"child_segment_no_root","message":"child segment uploaded before the model's root","status":400}}`)
+
+	cmd := uploadTestCommand(t, httpClient, keyringSvc, fsSvc)
+
+	var code int
+	out := capturer.CaptureOutput(func() {
+		code = cmd.Run([]string{"-model-id", "my-tm", filePath})
+	})
+
+	if code != 1 {
+		t.Errorf("expected exit code 1, got %d", code)
+	}
+	if !strings.Contains(out, "child segment uploaded before the model's root") {
+		t.Errorf("expected envelope message, got %q", out)
+	}
+	if !strings.Contains(out, "declare the root id on the model's default file") {
+		t.Errorf("expected guidance for child_segment_no_root, got %q", out)
+	}
+}

@@ -130,3 +130,32 @@ type threatModelVersionsResponse struct {
 	Versions []threatModelVersion `json:"versions"`
 	Total    int                  `json:"total"`
 }
+
+// validateHCLRequest is the JSON body for the server-side validate endpoint
+// (POST /api/v1/org/{orgId}/models/{modelId}/validate).
+type validateHCLRequest struct {
+	Content string `json:"content"`
+}
+
+// validateHCLError is one structured error from the server-side validate
+// endpoint. Code carries machine-readable classifications, including the
+// multi-file set errors: "child_segment_no_root", "id_outside_namespace",
+// "set_validation_failed" and "parsing_error".
+type validateHCLError struct {
+	Message string `json:"message"`
+	Line    int    `json:"line,omitempty"`
+	Column  int    `json:"column,omitempty"`
+	Code    string `json:"code"`
+}
+
+// validateHCLResponse is the server-side validate endpoint's response. Id is
+// the threatmodel id parsed from the submitted content ("" when none is
+// declared) and Segment is the segment key the server derives from it
+// ("default" for no id or an un-dotted root id); both are only set when the
+// content is valid.
+type validateHCLResponse struct {
+	Valid   bool               `json:"valid"`
+	Errors  []validateHCLError `json:"errors,omitempty"`
+	Id      string             `json:"id,omitempty"`
+	Segment string             `json:"segment,omitempty"`
+}

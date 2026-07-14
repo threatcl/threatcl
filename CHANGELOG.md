@@ -1,3 +1,34 @@
+## 0.6.2
+
+### Jul 15, 2026
+
+CHANGES:
+
+* The `threatcl cloud` commands now handle multi-file cloud models (one model
+  split across several files, keyed by each file's `threatmodel` `id`). Every
+  cloud parse path (`cloud push`, `cloud upload`, `cloud create -upload`,
+  `cloud validate`, `cloud validate -diff`, `cloud export`) parses a file
+  *file-faithfully* — a single segment whose `extends` target lives in another
+  file no longer fails client-side with "extends references unknown threat
+  model id"; the server validates the assembled set and stays authoritative.
+* `cloud push` and `cloud validate` gained an optional `-with=<glob>` flag: the
+  target file is parsed together with the matched sibling `.hcl` files as one
+  set (real file paths as input names, so relative `including`/imports
+  resolve) and the same whole-set rules the server applies run locally first —
+  extends resolution, name/id uniqueness, reserved id segments, one un-dotted
+  root id with children beneath it, and backend-block agreement. Preflight
+  failures exit non-zero before any network call.
+* `cloud validate` now calls the server-side validate endpoint when the file
+  declares an `id` or `extends`, and reports the server-parsed `id` and
+  derived `segment`. The multi-file error codes (`child_segment_no_root`,
+  `id_outside_namespace`, `set_validation_failed`, `parsing_error`) render as
+  readable messages with guidance, on validate and on upload failures.
+* `cloud push` refuses to create a new cloud model from a file that looks like
+  a child segment (dotted `id` or `extends`) — push the root file first.
+* Cloud command help now documents multi-file usage: upload the root file
+  first, children after; the `threatmodel` `id` keys each file; the `backend`
+  block no longer has a `segment` attribute.
+
 ## 0.6.1
 
 ### Jul 14, 2026
