@@ -10,6 +10,7 @@ import (
 	"github.com/posener/complete"
 	"github.com/threatcl/spec"
 	"github.com/threatcl/threatcl/internal/invariants"
+	"github.com/threatcl/threatcl/internal/tmloader"
 )
 
 type ValidateCommand struct {
@@ -140,35 +141,34 @@ func (c *ValidateCommand) Run(args []string) int {
 		return 1
 	} else {
 
-		AllFiles := findAllFiles(flagSet.Args())
+		// Parse all discovered files as one set so cross-file `extends`
+		// resolves and model names/ids are unique across the whole set.
+		res, err := tmloader.LoadSet(c.specCfg, flagSet.Args())
+		if err != nil {
+			fmt.Printf("%s\n", err)
+			return 1
+		}
 
-		fileCount := 0
-		models := []*invariants.Model{}
-
-		for _, file := range AllFiles {
-			tmParser := spec.NewThreatmodelParser(c.specCfg)
-			err := tmParser.ParseFile(file, false)
-			if err != nil {
-				fmt.Printf("Error parsing %s: %s\n", file, err)
-				return 1
-			}
-
-			// Constraint check
-			constraintMsg, err := spec.VersionConstraints(tmParser.GetWrapped(), false)
+		// Constraint check over each parsed source (the HCL set, then each
+		// JSON file). The messages name the offending threat model.
+		for _, w := range res.Wrapped {
+			constraintMsg, err := spec.VersionConstraints(w, false)
 			if err != nil {
 				fmt.Printf("Error checking constraints: %s\n", err)
 				return 1
 			}
 
 			if constraintMsg != "" {
-				fmt.Printf("%s Found in %s\n", constraintMsg, file)
+				fmt.Printf("%s\n", constraintMsg)
 			}
-
-			fileCount = fileCount + 1
-			models = append(models, wrappedModels(tmParser.GetWrapped(), file)...)
 		}
 
-		fmt.Printf("Validated %d threatmodels in %d files\n", len(models), fileCount)
+		models := make([]*invariants.Model, 0, len(res.Models))
+		for _, lm := range res.Models {
+			models = append(models, &invariants.Model{TM: lm.TM, File: lm.File})
+		}
+
+		fmt.Printf("Validated %d threatmodels in %d files\n", len(res.Models), len(res.Files))
 
 		if invs != nil {
 			return c.runInvariants(invs, models)

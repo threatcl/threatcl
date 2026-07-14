@@ -6,6 +6,7 @@ import (
 
 	"github.com/posener/complete"
 	"github.com/threatcl/spec"
+	"github.com/threatcl/threatcl/internal/tmloader"
 )
 
 type DfdCommand struct {
@@ -62,21 +63,14 @@ Options:
 	return strings.TrimSpace(helpText)
 }
 
-func (c *DfdCommand) extractDfd(allFiles []string, index int) (*spec.DataFlowDiagram, string, error) {
-	for _, file := range allFiles {
-		tmParser := spec.NewThreatmodelParser(c.specCfg)
-		err := tmParser.ParseFile(file, false)
-		if err != nil {
-			return nil, "", fmt.Errorf("error parsing %s: %s", file, err)
-		}
+func (c *DfdCommand) extractDfd(models []tmloader.LoadedModel, index int) (*spec.DataFlowDiagram, string, error) {
+	for _, lm := range models {
+		tm := lm.TM
 
-		for _, tm := range tmParser.GetWrapped().Threatmodels {
-
-			if len(tm.DataFlowDiagrams) > 0 {
-				for idx, adfd := range tm.DataFlowDiagrams {
-					if idx+1 == index {
-						return adfd, tm.Name, nil
-					}
+		if len(tm.DataFlowDiagrams) > 0 {
+			for idx, adfd := range tm.DataFlowDiagrams {
+				if idx+1 == index {
+					return adfd, tm.Name, nil
 				}
 			}
 		}
@@ -84,9 +78,9 @@ func (c *DfdCommand) extractDfd(allFiles []string, index int) (*spec.DataFlowDia
 	return nil, "", fmt.Errorf("no DFD found with that index")
 }
 
-func (c *DfdCommand) genDfdPng(allFiles []string, index int, filepath string) error {
+func (c *DfdCommand) genDfdPng(models []tmloader.LoadedModel, index int, filepath string) error {
 
-	adfd, tmName, err := c.extractDfd(allFiles, index)
+	adfd, tmName, err := c.extractDfd(models, index)
 	if err != nil {
 		return err
 	}
@@ -99,9 +93,9 @@ func (c *DfdCommand) genDfdPng(allFiles []string, index int, filepath string) er
 
 }
 
-func (c *DfdCommand) genDfdSvg(allFiles []string, index int, filepath string) error {
+func (c *DfdCommand) genDfdSvg(models []tmloader.LoadedModel, index int, filepath string) error {
 
-	adfd, tmName, err := c.extractDfd(allFiles, index)
+	adfd, tmName, err := c.extractDfd(models, index)
 	if err != nil {
 		return err
 	}
@@ -116,10 +110,10 @@ func (c *DfdCommand) genDfdSvg(allFiles []string, index int, filepath string) er
 
 // writeSingle saves the DFD at the given index to c.flagOutFile using the
 // configured output format.
-func (c *DfdCommand) writeSingle(allFiles []string, index int) int {
+func (c *DfdCommand) writeSingle(models []tmloader.LoadedModel, index int) int {
 	switch {
 	case isTextFormat(c.flagFormat):
-		text, err := c.fetchDfd(allFiles, index, c.flagFormat)
+		text, err := c.fetchDfd(models, index, c.flagFormat)
 		if err != nil {
 			fmt.Printf("Error fetching DFD for output: %s\n", err)
 			return 1
@@ -129,12 +123,12 @@ func (c *DfdCommand) writeSingle(allFiles []string, index int) int {
 			return 1
 		}
 	case c.flagFormat == "png":
-		if err := c.genDfdPng(allFiles, index, c.flagOutFile); err != nil {
+		if err := c.genDfdPng(models, index, c.flagOutFile); err != nil {
 			fmt.Printf("Error creating file: %s: %s\n", c.flagOutFile, err)
 			return 1
 		}
 	case c.flagFormat == "svg":
-		if err := c.genDfdSvg(allFiles, index, c.flagOutFile); err != nil {
+		if err := c.genDfdSvg(models, index, c.flagOutFile); err != nil {
 			fmt.Printf("Error creating file: %s: %s\n", c.flagOutFile, err)
 			return 1
 		}
@@ -171,8 +165,8 @@ func parseProtocolStyle(s string) (spec.ProtocolStyle, error) {
 	return 0, fmt.Errorf("-protocol-style must be label, color, both, or none")
 }
 
-func (c *DfdCommand) fetchDfd(allFiles []string, index int, format string) (string, error) {
-	adfd, tmName, err := c.extractDfd(allFiles, index)
+func (c *DfdCommand) fetchDfd(models []tmloader.LoadedModel, index int, format string) (string, error) {
+	adfd, tmName, err := c.extractDfd(models, index)
 	if err != nil {
 		return "", err
 	}
@@ -254,32 +248,29 @@ func (c *DfdCommand) Run(args []string) int {
 	// we're overwriting them or not.
 	outfiles := []string{}
 
-	// Find all the .hcl files we're going to parse
-	AllFiles := findAllFiles(flagSet.Args())
+	// Parse all discovered files as one set (cross-file `extends` resolves).
+	res, err := tmloader.LoadSet(c.specCfg, flagSet.Args())
+	if err != nil {
+		fmt.Printf("%s\n", err)
+		return 1
+	}
+	models := res.Models
 
-	// Parse all the identified .hcl files - just to determine output files
-	for _, file := range AllFiles {
-		tmParser := spec.NewThreatmodelParser(c.specCfg)
-		err := tmParser.ParseFile(file, false)
-		if err != nil {
-			fmt.Printf("Error parsing %s: %s\n", file, err)
-			return 1
-		}
+	// Walk the parsed models - just to determine output files
+	for _, lm := range models {
+		tm := lm.TM
 
-		for _, tm := range tmParser.GetWrapped().Threatmodels {
+		if len(tm.DataFlowDiagrams) > 0 {
+			// we don't need to do this format check anymore
 
-			if len(tm.DataFlowDiagrams) > 0 {
-				// we don't need to do this format check anymore
+			// we do need to check if we're outputing to a directory or not.
+			// If a directory, we can output multiple DFDs, otherwise, we need to prompt them for another parameter - i.e.
+			// which dfd to draw
+			fileExt := fmt.Sprintf(".%s", c.flagFormat)
+			for _, adfd := range tm.DataFlowDiagrams {
+				outfile := outfilePath(c.flagOutDir, fmt.Sprintf("%s_%s", tm.Name, adfd.Name), lm.File, fileExt)
 
-				// we do need to check if we're outputing to a directory or not.
-				// If a directory, we can output multiple DFDs, otherwise, we need to prompt them for another parameter - i.e.
-				// which dfd to draw
-				fileExt := fmt.Sprintf(".%s", c.flagFormat)
-				for _, adfd := range tm.DataFlowDiagrams {
-					outfile := outfilePath(c.flagOutDir, fmt.Sprintf("%s_%s", tm.Name, adfd.Name), file, fileExt)
-
-					outfiles = append(outfiles, outfile)
-				}
+				outfiles = append(outfiles, outfile)
 			}
 		}
 	}
@@ -319,7 +310,7 @@ func (c *DfdCommand) Run(args []string) int {
 			fmt.Printf("Index provided is inaccurate\n")
 			return 1
 		case len(outfiles) == 1:
-			text, err := c.fetchDfd(AllFiles, 1, c.flagFormat)
+			text, err := c.fetchDfd(models, 1, c.flagFormat)
 			if err != nil {
 				fmt.Printf("Error fetching DFD for output: %s\n", err)
 				return 1
@@ -327,7 +318,7 @@ func (c *DfdCommand) Run(args []string) int {
 			fmt.Printf("%s\n", text)
 			return 0
 		default:
-			text, err := c.fetchDfd(AllFiles, c.flagIndex, c.flagFormat)
+			text, err := c.fetchDfd(models, c.flagIndex, c.flagFormat)
 			if err != nil {
 				fmt.Printf("Error fetching DFD for output: %s\n", err)
 				return 1
@@ -356,12 +347,12 @@ func (c *DfdCommand) Run(args []string) int {
 			fmt.Printf("Index provided is inaccurate\n")
 			return 1
 		case len(outfiles) == 1:
-			return c.writeSingle(AllFiles, 1)
+			return c.writeSingle(models, 1)
 
 		default:
 			// there's multiple DFDs, but they've selected a valid index, let's save
 			// that one
-			return c.writeSingle(AllFiles, c.flagIndex)
+			return c.writeSingle(models, c.flagIndex)
 		}
 
 	// We're going to output a full directory
@@ -383,18 +374,12 @@ func (c *DfdCommand) Run(args []string) int {
 		}
 
 		// Now we do the full iteration for file saving
-		for _, file := range AllFiles {
-			tmParser := spec.NewThreatmodelParser(c.specCfg)
-			err := tmParser.ParseFile(file, false)
-			if err != nil {
-				fmt.Printf("Error parsing %s: %s\n", file, err)
-				return 1
-			}
-
-			for _, tm := range tmParser.GetWrapped().Threatmodels {
+		for _, lm := range models {
+			tm := lm.TM
+			{
 				for _, adfd := range tm.DataFlowDiagrams {
 
-					currentOutpath := outfilePath(c.flagOutDir, fmt.Sprintf("%s_%s", tm.Name, adfd.Name), file, fmt.Sprintf(".%s", c.flagFormat))
+					currentOutpath := outfilePath(c.flagOutDir, fmt.Sprintf("%s_%s", tm.Name, adfd.Name), lm.File, fmt.Sprintf(".%s", c.flagFormat))
 
 					// Now we switch on the output format
 					switch {

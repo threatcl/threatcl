@@ -8,6 +8,7 @@ import (
 	"github.com/charmbracelet/glamour"
 	"github.com/posener/complete"
 	"github.com/threatcl/spec"
+	"github.com/threatcl/threatcl/internal/tmloader"
 )
 
 type ViewCommand struct {
@@ -42,27 +43,21 @@ Options:
 func (c *ViewCommand) Execute(args []string) (string, error) {
 	mdBuffer := new(strings.Builder)
 
-	// Find all the .hcl files we're going to parse
-	AllFiles := findAllFiles(args)
+	// Parse all discovered files as one set (cross-file `extends` resolves).
+	res, err := tmloader.LoadSet(c.specCfg, args)
+	if err != nil {
+		return "", err
+	}
 
-	// Parse all the identified .hcl files
-	for _, file := range AllFiles {
-		tmParser := spec.NewThreatmodelParser(c.specCfg)
-		err := tmParser.ParseFile(file, false)
+	for _, lm := range res.Models {
+		tmBuffer, err := lm.TM.RenderMarkdown(spec.TmMDTemplate)
 		if err != nil {
-			return "", fmt.Errorf("error parsing %s: %s", file, err)
+			return "", err
 		}
 
-		for _, tm := range tmParser.GetWrapped().Threatmodels {
-			tmBuffer, err := tm.RenderMarkdown(spec.TmMDTemplate)
-			if err != nil {
-				return "", err
-			}
-
-			_, err = io.Copy(mdBuffer, tmBuffer)
-			if err != nil {
-				return "", fmt.Errorf("failed to copy threatmodel buffer to markdown buffer: %s", err)
-			}
+		_, err = io.Copy(mdBuffer, tmBuffer)
+		if err != nil {
+			return "", fmt.Errorf("failed to copy threatmodel buffer to markdown buffer: %s", err)
 		}
 	}
 

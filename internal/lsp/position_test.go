@@ -115,7 +115,7 @@ func TestPosition_MultiLine(t *testing.T) {
 // TestRoundTrip walks every rune boundary of a multibyte, multi-line document
 // and asserts byte -> position -> byte returns the original offset.
 func TestRoundTrip(t *testing.T) {
-	src := []byte("spec_version = \"0.5.2\"\n# café 世界 😀\nthreatmodel \"x\" {}\n")
+	src := []byte("spec_version = \"0.6.0\"\n# café 世界 😀\nthreatmodel \"x\" {}\n")
 
 	// Collect rune-boundary byte offsets (plus EOF).
 	var boundaries []int

@@ -14,6 +14,7 @@ import (
 	"github.com/microcosm-cc/bluemonday"
 	"github.com/posener/complete"
 	"github.com/threatcl/spec"
+	"github.com/threatcl/threatcl/internal/tmloader"
 	"github.com/yuin/goldmark"
 )
 
@@ -178,30 +179,25 @@ func (c *DashboardCommand) Run(args []string) int {
 		filepath.Join(c.flagOutDir, fmt.Sprintf("%s.%s", c.flagDashboardFilename, outExt)),
 	}
 
-	// Find all the .hcl files we're going to parse
-	AllFiles := findAllFiles(flagSet.Args())
+	// Parse all discovered files as one set (cross-file `extends` resolves).
+	res, err := tmloader.LoadSet(c.specCfg, flagSet.Args())
+	if err != nil {
+		fmt.Printf("%s\n", err)
+		return 1
+	}
 
-	// Parse all the identified .hcl files - just to determine output files
-	for _, file := range AllFiles {
-		tmParser := spec.NewThreatmodelParser(c.specCfg)
-		err := tmParser.ParseFile(file, false)
-		if err != nil {
-			fmt.Printf("Error parsing %s: %s\n", file, err)
-			return 1
-		}
+	// Walk the parsed models - just to determine output files
+	for _, lm := range res.Models {
+		tm := lm.TM
+		outfile := outfilePath(c.flagOutDir, tm.Name, lm.File, fmt.Sprintf(".%s", outExt))
 
-		for _, tm := range tmParser.GetWrapped().Threatmodels {
-			outfile := outfilePath(c.flagOutDir, tm.Name, file, fmt.Sprintf(".%s", outExt))
+		outfiles = append(outfiles, outfile)
 
-			outfiles = append(outfiles, outfile)
-
-			if !c.flagNoDfd && len(tm.DataFlowDiagrams) > 0 {
-				for _, adfd := range tm.DataFlowDiagrams {
-					dfdFile := outfilePath(c.flagOutDir, fmt.Sprintf("%s_%s", tm.Name, adfd.Name), file, ".png")
-					outfiles = append(outfiles, dfdFile)
-				}
+		if !c.flagNoDfd && len(tm.DataFlowDiagrams) > 0 {
+			for _, adfd := range tm.DataFlowDiagrams {
+				dfdFile := outfilePath(c.flagOutDir, fmt.Sprintf("%s_%s", tm.Name, adfd.Name), lm.File, ".png")
+				outfiles = append(outfiles, dfdFile)
 			}
-
 		}
 	}
 
@@ -223,15 +219,10 @@ func (c *DashboardCommand) Run(args []string) int {
 
 	tmList := []tmListEntryType{}
 
-	for _, file := range AllFiles {
-		tmParser := spec.NewThreatmodelParser(c.specCfg)
-		err := tmParser.ParseFile(file, false)
-		if err != nil {
-			fmt.Printf("Error parsing %s: %s\n", file, err)
-			return 1
-		}
-
-		for _, tm := range tmParser.GetWrapped().Threatmodels {
+	for _, lm := range res.Models {
+		file := lm.File
+		tm := *lm.TM
+		{
 
 			// First we check if there are any DFDs
 			if !c.flagNoDfd && len(tm.DataFlowDiagrams) > 0 {

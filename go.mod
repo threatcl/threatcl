@@ -21,7 +21,7 @@ require (
 	github.com/rs/cors v1.11.1
 	github.com/ryanuber/columnize v2.1.2+incompatible
 	github.com/threatcl/go-otm v0.0.2
-	github.com/threatcl/spec v0.5.3
+	github.com/threatcl/spec v0.6.0
 	github.com/tliron/commonlog v0.2.21
 	github.com/tliron/glsp v0.2.2
 	github.com/vektah/gqlparser/v2 v2.5.36

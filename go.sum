@@ -359,6 +359,8 @@ github.com/threatcl/go-otm v0.0.2 h1:zN/Wwiy6QVw0SRm+YiZA7lDf2yI0jVyxPmNW1k9kgpw
 github.com/threatcl/go-otm v0.0.2/go.mod h1:U1CNSpdQQ8S0lqr5LNn3tFZxsLgBKOz27+5k+IzFho0=
 github.com/threatcl/spec v0.5.3 h1:7N7itW9MLXrHAVAmFt6qdTM/Svrb4GKN3X+6urKcMUo=
 github.com/threatcl/spec v0.5.3/go.mod h1:UcxXKhYEznq+Umcwfe9UPVbsXkv/C2U9naAN8DZ0ELU=
+github.com/threatcl/spec v0.6.0 h1:/qZ8tGm9/LE8Hv+8cZAIz/GIuStfwaVM2iuZ+8tNHTI=
+github.com/threatcl/spec v0.6.0/go.mod h1:UcxXKhYEznq+Umcwfe9UPVbsXkv/C2U9naAN8DZ0ELU=
 github.com/tliron/commonlog v0.2.21 h1:V1v+6opmzuOqDxxnxxM5RWtlHZmqZlDxkKeZGs6DpPg=
 github.com/tliron/commonlog v0.2.21/go.mod h1:W6XVoS/zo7mHXv2Kz8HKnBq+U34dFysJ2KUh2Aboibw=
 github.com/tliron/glsp v0.2.2 h1:IKPfwpE8Lu8yB6Dayta+IyRMAbTVunudeauEgjXBt+c=

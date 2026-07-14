@@ -35,7 +35,7 @@ func testCloudExportCommand(t testing.TB, httpClient HTTPClient, keyringSvc Keyr
 // cloudExportSampleHCL is a minimal threat model with one threat ref and one
 // control ref. It also includes a backend block so we can assert strip/keep
 // behavior. The threat with no ref ensures hydration is selective.
-const cloudExportSampleHCL = `spec_version = "0.5.2"
+const cloudExportSampleHCL = `spec_version = "0.6.0"
 
 backend "threatcl-cloud" {
   organization = "org-123"
