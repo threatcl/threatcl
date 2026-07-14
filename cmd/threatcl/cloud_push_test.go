@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -719,5 +720,191 @@ threatmodel "Test Model" {
 
 	if !strings.Contains(out, "Error uploading file") {
 		t.Errorf("expected upload error message, got %q", out)
+	}
+}
+
+// setupChildSegmentPushMocks wires the whoami/model/versions/upload responses
+// for pushing one child segment file of a multi-file model to the existing
+// cloud model "my-tm" in org "org-id".
+func setupChildSegmentPushMocks(httpClient *mockHTTPClient, keyringSvc *mockKeyringService) {
+	keyringSvc.setMockToken("valid-token", "org-id", "Test Org")
+
+	httpClient.transport.setResponse("GET", "/api/v1/users/me", http.StatusOK, jsonResponse(whoamiResponse{
+		User: userInfo{Email: "test@example.com"},
+		Organizations: []orgMembership{
+			{Organization: orgInfo{ID: "org-id", Slug: "test-org"}, Role: "admin"},
+		},
+	}))
+
+	httpClient.transport.setResponse("GET", "/api/v1/org/org-id/models/my-tm", http.StatusOK, jsonResponse(threatModel{
+		ID:   "tm-123",
+		Name: "App",
+		Slug: "my-tm",
+	}))
+
+	httpClient.transport.setResponse("GET", "/api/v1/org/org-id/models/tm-123/versions", http.StatusOK, jsonResponse(threatModelVersionsResponse{
+		Versions: []threatModelVersion{
+			{ID: "v1", Version: "1.0.0", SpecFileHash: "different-hash", IsCurrent: true},
+		},
+		Total: 1,
+	}))
+
+	httpClient.transport.setResponse("POST", "/api/v1/org/org-id/models/my-tm/upload", http.StatusOK, `{"success":true}`)
+}
+
+// A child segment file whose extends target lives in another (already
+// uploaded) file must not fail the client-side parse; the push request must
+// reach the server, which owns whole-set validation.
+func TestCloudPushChildSegmentReachesServer(t *testing.T) {
+	dir := t.TempDir()
+	filePath := filepath.Join(dir, "frontend.hcl")
+	if err := os.WriteFile(filePath, []byte(preflightChildHCL), 0600); err != nil {
+		t.Fatalf("failed to write temp file: %v", err)
+	}
+
+	httpClient := newMockHTTPClient()
+	keyringSvc := newMockKeyringService()
+	fsSvc := newMockFileSystemService()
+
+	setupChildSegmentPushMocks(httpClient, keyringSvc)
+	fsSvc.SetFileContent(filePath, []byte(preflightChildHCL))
+
+	cmd := testCloudPushCommand(t, httpClient, keyringSvc, fsSvc)
+
+	var code int
+	out := capturer.CaptureOutput(func() {
+		code = cmd.Run([]string{filePath})
+	})
+
+	if code != 0 {
+		t.Fatalf("expected exit code 0, got %d\nOutput: %s", code, out)
+	}
+	if strings.Contains(out, "extends references unknown threat model") {
+		t.Errorf("child segment failed client-side extends resolution: %q", out)
+	}
+	if !strings.Contains(out, "Successfully pushed threat model") {
+		t.Errorf("expected success message, got %q", out)
+	}
+	// The upload request must actually have reached the (mock) server.
+	if uploads := httpClient.transport.getRequestBodies("POST", "/api/v1/org/org-id/models/my-tm/upload"); len(uploads) != 1 {
+		t.Errorf("expected exactly one upload request to reach the server, got %d", len(uploads))
+	}
+	// Without -with, the multi-file hint should point at the local preflight.
+	if !strings.Contains(out, "multi-file model") {
+		t.Errorf("expected multi-file hint, got %q", out)
+	}
+}
+
+// A child segment file with no 'threatmodel' in its backend block would fall
+// into the create path; creating a fresh cloud model from a child can never
+// succeed, so push must refuse before creating an orphan model.
+func TestCloudPushChildSegmentCreateGuard(t *testing.T) {
+	childNoTM := strings.Replace(preflightChildHCL, "  threatmodel = \"my-tm\"\n", "", 1)
+
+	dir := t.TempDir()
+	filePath := filepath.Join(dir, "frontend.hcl")
+	if err := os.WriteFile(filePath, []byte(childNoTM), 0600); err != nil {
+		t.Fatalf("failed to write temp file: %v", err)
+	}
+
+	httpClient := newMockHTTPClient()
+	keyringSvc := newMockKeyringService()
+	fsSvc := newMockFileSystemService()
+
+	keyringSvc.setMockToken("valid-token", "org-id", "Test Org")
+	httpClient.transport.setResponse("GET", "/api/v1/users/me", http.StatusOK, jsonResponse(whoamiResponse{
+		User: userInfo{Email: "test@example.com"},
+		Organizations: []orgMembership{
+			{Organization: orgInfo{ID: "org-id", Slug: "test-org"}, Role: "admin"},
+		},
+	}))
+
+	cmd := testCloudPushCommand(t, httpClient, keyringSvc, fsSvc)
+
+	var code int
+	out := capturer.CaptureOutput(func() {
+		code = cmd.Run([]string{filePath})
+	})
+
+	if code != 1 {
+		t.Errorf("expected exit code 1, got %d\nOutput: %s", code, out)
+	}
+	if !strings.Contains(out, "Push the model's root file first") {
+		t.Errorf("expected child segment guard message, got %q", out)
+	}
+	// No model must have been created.
+	if creates := httpClient.transport.getRequestBodies("POST", "/api/v1/org/org-id/models"); len(creates) != 0 {
+		t.Errorf("expected no create request, got %d", len(creates))
+	}
+}
+
+func TestCloudPushWithPreflightPasses(t *testing.T) {
+	dir := t.TempDir()
+	rootPath := filepath.Join(dir, "root.hcl")
+	childPath := filepath.Join(dir, "frontend.hcl")
+	if err := os.WriteFile(rootPath, []byte(preflightRootHCL), 0600); err != nil {
+		t.Fatalf("failed to write root file: %v", err)
+	}
+	if err := os.WriteFile(childPath, []byte(preflightChildHCL), 0600); err != nil {
+		t.Fatalf("failed to write child file: %v", err)
+	}
+
+	httpClient := newMockHTTPClient()
+	keyringSvc := newMockKeyringService()
+	fsSvc := newMockFileSystemService()
+
+	setupChildSegmentPushMocks(httpClient, keyringSvc)
+	fsSvc.SetFileContent(childPath, []byte(preflightChildHCL))
+
+	cmd := testCloudPushCommand(t, httpClient, keyringSvc, fsSvc)
+
+	var code int
+	out := capturer.CaptureOutput(func() {
+		code = cmd.Run([]string{"-with", filepath.Join(dir, "*.hcl"), childPath})
+	})
+
+	if code != 0 {
+		t.Fatalf("expected exit code 0, got %d\nOutput: %s", code, out)
+	}
+	if !strings.Contains(out, "Local set preflight passed (2 files)") {
+		t.Errorf("expected preflight success message, got %q", out)
+	}
+	if !strings.Contains(out, "Successfully pushed threat model") {
+		t.Errorf("expected success message, got %q", out)
+	}
+}
+
+func TestCloudPushWithPreflightFails(t *testing.T) {
+	badChild := strings.Replace(preflightChildHCL, `extends = "app"`, `extends = "missing"`, 1)
+
+	dir := t.TempDir()
+	rootPath := filepath.Join(dir, "root.hcl")
+	childPath := filepath.Join(dir, "frontend.hcl")
+	if err := os.WriteFile(rootPath, []byte(preflightRootHCL), 0600); err != nil {
+		t.Fatalf("failed to write root file: %v", err)
+	}
+	if err := os.WriteFile(childPath, []byte(badChild), 0600); err != nil {
+		t.Fatalf("failed to write child file: %v", err)
+	}
+
+	httpClient := newMockHTTPClient()
+	keyringSvc := newMockKeyringService()
+	fsSvc := newMockFileSystemService()
+
+	cmd := testCloudPushCommand(t, httpClient, keyringSvc, fsSvc)
+
+	var code int
+	out := capturer.CaptureOutput(func() {
+		code = cmd.Run([]string{"-with", filepath.Join(dir, "*.hcl"), childPath})
+	})
+
+	if code != 1 {
+		t.Errorf("expected exit code 1, got %d\nOutput: %s", code, out)
+	}
+	if !strings.Contains(out, "Local set preflight failed") {
+		t.Errorf("expected preflight failure message, got %q", out)
+	}
+	if !strings.Contains(out, "extends references unknown threat model id 'missing'") {
+		t.Errorf("expected the set-level extends error, got %q", out)
 	}
 }

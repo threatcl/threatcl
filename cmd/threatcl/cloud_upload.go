@@ -33,6 +33,18 @@ Usage: threatcl cloud upload <file> -model-id=<modelId_or_slug> [-org-id=<orgId>
 	environment variable. If that is also not set, it will use the first
 	organization from your user profile.
 
+Multi-file models:
+
+	A cloud model may be split across several files, keyed by each file's
+	threatmodel 'id': the file declaring the un-dotted root id (e.g.
+	id = "app") is the model's default file, and each additional file
+	declares a dotted id beneath it (e.g. id = "app.frontend") and may
+	'extends' the root. Upload the root file first, then the children. The
+	server validates each uploaded file against the model's other stored
+	files, so a child's extends target doesn't need to be in the same file.
+	(The backend block's 'segment' attribute from earlier specs no longer
+	exists - the threatmodel id alone keys each file.)
+
 Options:
 
  -model-id=<modelId_or_slug>
@@ -97,8 +109,12 @@ func (c *CloudUploadCommand) Run(args []string) int {
 	// Initialize dependencies - use longer timeout for file uploads
 	httpClient, keyringSvc, fsSvc := c.initDependencies(30 * time.Second)
 
-	// Step 1: Validate and parse the HCL file
+	// Step 1: Validate and parse the HCL file. The file may be a single
+	// segment of a multi-file cloud model whose extends target lives in
+	// another file; the server validates the whole set, so parse
+	// file-faithfully and leave extends unresolved.
 	tmParser := spec.NewThreatmodelParser(c.specCfg)
+	tmParser.SetSkipExtendsResolution(true)
 	err := tmParser.ParseFile(filePath, false)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error parsing HCL file: %s\n", err)

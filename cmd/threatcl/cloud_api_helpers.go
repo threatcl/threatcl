@@ -103,6 +103,11 @@ func (c *CloudClient) Upload(modelIdOrSlug, filename string, content []byte, ign
 		if resp.StatusCode == http.StatusNotFound {
 			return fmt.Errorf(ErrThreatModelNotFound, modelIdOrSlug)
 		}
+		// Prefer the API's structured error envelope (with guidance for the
+		// multi-file error codes) over dumping the raw body.
+		if msg := formatCloudAPIErrorBody(body); msg != "" {
+			return fmt.Errorf(ErrAPIReturnedStatus, resp.StatusCode, msg)
+		}
 		return fmt.Errorf(ErrAPIReturnedStatus, resp.StatusCode, string(body))
 	}
 
@@ -151,6 +156,90 @@ func downloadToFile(client *CloudClient, apiURL, downloadPath string, overwrite 
 	}
 
 	return nil
+}
+
+// ValidateHCLContent submits raw HCL content to the server-side validate
+// endpoint for a dry-run parse against the named model. The server assembles
+// the content with the model's other current segment files and validates the
+// whole set, then reports the parsed threatmodel id and the segment key it
+// derives — this is the authoritative validation for multi-file models.
+func (c *CloudClient) ValidateHCLContent(modelIdOrSlug string, content []byte) (*validateHCLResponse, error) {
+	apiURL := fmt.Sprintf("%s/api/v1/org/%s/models/%s/validate", c.baseURL, url.PathEscape(c.orgId), url.PathEscape(modelIdOrSlug))
+
+	payload, err := json.Marshal(validateHCLRequest{Content: string(content)})
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal payload: %w", err)
+	}
+
+	resp, err := makeAuthenticatedRequest("POST", apiURL, c.token, bytes.NewReader(payload), c.http)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, handleAPIErrorResponse(resp)
+	}
+
+	var validateResp validateHCLResponse
+	if err := decodeJSONResponse(resp, &validateResp); err != nil {
+		return nil, err
+	}
+
+	return &validateResp, nil
+}
+
+// validateHCLErrorHint maps the validate endpoint's machine-readable error
+// codes for multi-file models to actionable guidance; "" when the message
+// stands on its own.
+func validateHCLErrorHint(code string) string {
+	switch code {
+	case "child_segment_no_root":
+		return "This file declares a child id, but the cloud model has no root yet: declare the root id on the model's default file and push that file first."
+	case "id_outside_namespace":
+		return "A child file's id must sit beneath the model's root id (root \"app\" → child \"app.frontend\")."
+	case "set_validation_failed":
+		return "The file failed validation against the model's other stored files (extends resolution, name/id uniqueness, reserved id segments, backend agreement)."
+	}
+	return ""
+}
+
+// renderValidateHCLErrors writes the validate endpoint's structured errors in
+// a readable form, one per line with location when known, followed by
+// guidance for the multi-file error codes.
+func renderValidateHCLErrors(w io.Writer, errs []validateHCLError) {
+	for _, e := range errs {
+		loc := ""
+		if e.Line > 0 {
+			loc = fmt.Sprintf(" (line %d)", e.Line)
+		}
+		fmt.Fprintf(w, "   - %s%s\n", e.Message, loc)
+		if hint := validateHCLErrorHint(e.Code); hint != "" {
+			fmt.Fprintf(w, "     %s\n", hint)
+		}
+	}
+}
+
+// formatCloudAPIErrorBody decodes the API's JSON error envelope
+// ({"error":{"code","message",...}}) into a readable message, appending
+// guidance for the multi-file error codes. Returns "" when the body isn't
+// the envelope, so callers can fall back to the raw body.
+func formatCloudAPIErrorBody(body []byte) string {
+	var envelope errorResponse
+	if err := json.Unmarshal(body, &envelope); err != nil {
+		return ""
+	}
+	if envelope.Error.Code == "" && envelope.Error.Message == "" {
+		return ""
+	}
+	msg := envelope.Error.Message
+	if msg == "" {
+		msg = envelope.Error.Code
+	}
+	if hint := validateHCLErrorHint(envelope.Error.Code); hint != "" {
+		msg += "\n" + hint
+	}
+	return msg
 }
 
 // fetchThreatModel retrieves a single threat model
@@ -438,9 +527,13 @@ func validateThreatModel(client *CloudClient, filePath string, specCfg *spec.Thr
 		return nil, orgValid, tmNameValid, tmFileMatchesVersion, fmt.Errorf("error writing temporary file: %s", err)
 	}
 
-	// Step 3: Parse the HCL file from the temporary location
+	// Step 3: Parse the HCL file from the temporary location. The file may be
+	// a single segment of a multi-file cloud model whose extends target lives
+	// in another file; the server validates the whole set, so parse
+	// file-faithfully and leave extends unresolved.
 	// fmt.Printf("Parsing threat model file: %s\n", filePath)
 	tmParser := spec.NewThreatmodelParser(specCfg)
+	tmParser.SetSkipExtendsResolution(true)
 	err = tmParser.ParseFile(tmpFilePath, false)
 	if err != nil {
 		return nil, orgValid, tmNameValid, tmFileMatchesVersion, fmt.Errorf("error parsing HCL file: %s", err)

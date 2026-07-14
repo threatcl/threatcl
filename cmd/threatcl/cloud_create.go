@@ -47,7 +47,10 @@ Options:
 
  -upload=<file>
    Optional. Path to an HCL file to upload immediately after creating the threat model.
-   The file must contain exactly one threat model.
+   The file must contain exactly one threat model. For a multi-file model
+   (files keyed by threatmodel 'id'), upload the root file here - the file
+   declaring the un-dotted root id - and push the dotted-id child files
+   afterwards with 'threatcl cloud push' or 'threatcl cloud upload'.
 
  -org-id=<orgId>
    Optional organization ID. If not provided, uses THREATCL_CLOUD_ORG env var
@@ -95,8 +98,12 @@ func (c *CloudCreateCommand) Run(args []string) int {
 			}
 		}
 
-		// Validate and parse the HCL file
+		// Validate and parse the HCL file. The file may be a single segment
+		// of a multi-file cloud model whose extends target lives in another
+		// file; the server validates the whole set, so parse file-faithfully
+		// and leave extends unresolved.
 		tmParser := spec.NewThreatmodelParser(c.specCfg)
+		tmParser.SetSkipExtendsResolution(true)
 		err := tmParser.ParseFile(c.flagUpload, false)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error parsing HCL file: %s\n", err)

@@ -1302,3 +1302,53 @@ func TestExtractThreatRefs(t *testing.T) {
 		})
 	}
 }
+
+func TestFormatCloudAPIErrorBody(t *testing.T) {
+	tests := []struct {
+		name     string
+		body     string
+		expected string
+	}{
+		{
+			name:     "envelope with known multi-file code appends guidance",
+			body:     `{"error":{"code":"child_segment_no_root","message":"child before root","status":400}}`,
+			expected: "child before root\nThis file declares a child id",
+		},
+		{
+			name:     "envelope with unknown code returns message only",
+			body:     `{"error":{"code":"conflict","message":"already exists","status":409}}`,
+			expected: "already exists",
+		},
+		{
+			name:     "envelope with code only falls back to code",
+			body:     `{"error":{"code":"internal_error","status":500}}`,
+			expected: "internal_error",
+		},
+		{
+			name: "legacy string error is not the envelope",
+			body: `{"error":"unauthorized"}`,
+		},
+		{
+			name: "non-JSON body is not the envelope",
+			body: `<html>boom</html>`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := formatCloudAPIErrorBody([]byte(tt.body))
+			if tt.expected == "" {
+				if got != "" {
+					t.Errorf("expected empty result, got %q", got)
+				}
+				return
+			}
+			if !strings.HasPrefix(got, strings.Split(tt.expected, "\n")[0]) {
+				t.Errorf("expected result starting with %q, got %q", tt.expected, got)
+			}
+			if strings.Contains(tt.expected, "\n") && !strings.Contains(got, strings.Split(tt.expected, "\n")[1]) {
+				t.Errorf("expected result containing %q, got %q", strings.Split(tt.expected, "\n")[1], got)
+			}
+		})
+	}
+}

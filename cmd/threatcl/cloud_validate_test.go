@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -894,6 +895,237 @@ invalid syntax {{{
 			}
 
 			if tt.expectedOut != "" && !strings.Contains(out, tt.expectedOut) {
+				t.Errorf("expected output to contain %q, got %q", tt.expectedOut, out)
+			}
+		})
+	}
+}
+
+// setupChildSegmentValidateMocks wires the whoami/model/versions responses
+// for validating one child segment file of the multi-file model "my-tm" in
+// org "org-id". The server-side validate endpoint response is left to each
+// test.
+func setupChildSegmentValidateMocks(httpClient *mockHTTPClient, keyringSvc *mockKeyringService) {
+	keyringSvc.setMockToken("valid-token", "org-id", "Test Org")
+
+	httpClient.transport.setResponse("GET", "/api/v1/users/me", http.StatusOK, jsonResponse(whoamiResponse{
+		User: userInfo{Email: "test@example.com"},
+		Organizations: []orgMembership{
+			{Organization: orgInfo{ID: "org-id", Slug: "test-org"}, Role: "admin"},
+		},
+	}))
+
+	httpClient.transport.setResponse("GET", "/api/v1/org/org-id/models/my-tm", http.StatusOK, jsonResponse(threatModel{
+		ID:   "tm-123",
+		Name: "App",
+		Slug: "my-tm",
+	}))
+
+	httpClient.transport.setResponse("GET", "/api/v1/org/org-id/models/tm-123/versions", http.StatusOK, jsonResponse(threatModelVersionsResponse{
+		Versions: []threatModelVersion{
+			{ID: "v1", Version: "1.0.0", SpecFileHash: "different-hash", IsCurrent: true},
+		},
+		Total: 1,
+	}))
+}
+
+func testCloudValidateCommand(t testing.TB, httpClient HTTPClient, keyringSvc KeyringService, fsSvc FileSystemService) *CloudValidateCommand {
+	t.Helper()
+
+	cfg, err := spec.LoadSpecConfig()
+	if err != nil {
+		t.Fatalf("failed to load spec config: %v", err)
+	}
+
+	return &CloudValidateCommand{
+		CloudCommandBase: CloudCommandBase{
+			GlobalCmdOptions: &GlobalCmdOptions{},
+			httpClient:       httpClient,
+			keyringSvc:       keyringSvc,
+			fsSvc:            fsSvc,
+		},
+		specCfg: cfg,
+	}
+}
+
+// A child segment file (dotted id + cross-file extends) must not fail the
+// client-side parse, and the output must surface the server-derived id and
+// segment from the validate endpoint.
+func TestCloudValidateChildSegmentServerValidation(t *testing.T) {
+	tests := []struct {
+		name             string
+		validateResponse string
+		expectedCode     int
+		expectedOut      []string
+	}{
+		{
+			name:             "valid child segment shows id and segment",
+			validateResponse: `{"valid":true,"id":"app.frontend","segment":"frontend"}`,
+			expectedCode:     0,
+			expectedOut: []string{
+				"Server-side validation passed (id: app.frontend, segment: frontend)",
+			},
+		},
+		{
+			name:             "child with no root renders readable guidance",
+			validateResponse: `{"valid":false,"errors":[{"message":"child segment uploaded before the model's root","code":"child_segment_no_root"}]}`,
+			expectedCode:     1,
+			expectedOut: []string{
+				"Server-side validation failed",
+				"child segment uploaded before the model's root",
+				"declare the root id on the model's default file and push that file first",
+			},
+		},
+		{
+			name:             "id outside namespace renders readable guidance",
+			validateResponse: `{"valid":false,"errors":[{"message":"segment id not beneath root","code":"id_outside_namespace"}]}`,
+			expectedCode:     1,
+			expectedOut: []string{
+				"Server-side validation failed",
+				"must sit beneath the model's root id",
+			},
+		},
+		{
+			name:             "set validation failure renders message",
+			validateResponse: `{"valid":false,"errors":[{"message":"TM 'App Frontend': extends references unknown threat model id 'app'","code":"set_validation_failed"}]}`,
+			expectedCode:     1,
+			expectedOut: []string{
+				"Server-side validation failed",
+				"extends references unknown threat model id 'app'",
+				"failed validation against the model's other stored files",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			dir := t.TempDir()
+			filePath := filepath.Join(dir, "frontend.hcl")
+			if err := os.WriteFile(filePath, []byte(preflightChildHCL), 0600); err != nil {
+				t.Fatalf("failed to write temp file: %v", err)
+			}
+
+			httpClient := newMockHTTPClient()
+			keyringSvc := newMockKeyringService()
+			fsSvc := newMockFileSystemService()
+
+			setupChildSegmentValidateMocks(httpClient, keyringSvc)
+			httpClient.transport.setResponse("POST", "/api/v1/org/org-id/models/my-tm/validate", http.StatusOK, tt.validateResponse)
+
+			cmd := testCloudValidateCommand(t, httpClient, keyringSvc, fsSvc)
+
+			var code int
+			out := capturer.CaptureOutput(func() {
+				code = cmd.Run([]string{filePath})
+			})
+
+			if code != tt.expectedCode {
+				t.Errorf("expected exit code %d, got %d\nOutput: %s", tt.expectedCode, code, out)
+			}
+			if strings.Contains(out, "error parsing HCL file") {
+				t.Errorf("child segment failed client-side parse: %q", out)
+			}
+			for _, want := range tt.expectedOut {
+				if !strings.Contains(out, want) {
+					t.Errorf("expected output to contain %q, got %q", want, out)
+				}
+			}
+
+			// The validate request must have carried the file's content.
+			bodies := httpClient.transport.getRequestBodies("POST", "/api/v1/org/org-id/models/my-tm/validate")
+			if len(bodies) != 1 {
+				t.Fatalf("expected exactly one validate request, got %d", len(bodies))
+			}
+			if !strings.Contains(bodies[0], "app.frontend") {
+				t.Errorf("expected validate request to contain the file content, got %q", bodies[0])
+			}
+		})
+	}
+}
+
+// An unreachable validate endpoint (e.g. an older server) must degrade to a
+// warning, not invalidate the other checks.
+func TestCloudValidateChildSegmentServerValidationUnavailable(t *testing.T) {
+	dir := t.TempDir()
+	filePath := filepath.Join(dir, "frontend.hcl")
+	if err := os.WriteFile(filePath, []byte(preflightChildHCL), 0600); err != nil {
+		t.Fatalf("failed to write temp file: %v", err)
+	}
+
+	httpClient := newMockHTTPClient()
+	keyringSvc := newMockKeyringService()
+	fsSvc := newMockFileSystemService()
+
+	setupChildSegmentValidateMocks(httpClient, keyringSvc)
+	// No mock for the validate endpoint: the transport 404s by default.
+
+	cmd := testCloudValidateCommand(t, httpClient, keyringSvc, fsSvc)
+
+	var code int
+	out := capturer.CaptureOutput(func() {
+		code = cmd.Run([]string{filePath})
+	})
+
+	if code != 0 {
+		t.Errorf("expected exit code 0, got %d\nOutput: %s", code, out)
+	}
+	if !strings.Contains(out, "could not run server-side validation") {
+		t.Errorf("expected server-side validation warning, got %q", out)
+	}
+}
+
+func TestCloudValidateWithPreflight(t *testing.T) {
+	tests := []struct {
+		name         string
+		childHCL     string
+		expectedCode int
+		expectedOut  string
+	}{
+		{
+			name:         "valid set passes preflight",
+			childHCL:     preflightChildHCL,
+			expectedCode: 0,
+			expectedOut:  "Local set preflight passed (2 files)",
+		},
+		{
+			name:         "unknown extends fails preflight before any network call",
+			childHCL:     strings.Replace(preflightChildHCL, `extends = "app"`, `extends = "missing"`, 1),
+			expectedCode: 1,
+			expectedOut:  "Local set preflight failed",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			dir := t.TempDir()
+			rootPath := filepath.Join(dir, "root.hcl")
+			childPath := filepath.Join(dir, "frontend.hcl")
+			if err := os.WriteFile(rootPath, []byte(preflightRootHCL), 0600); err != nil {
+				t.Fatalf("failed to write root file: %v", err)
+			}
+			if err := os.WriteFile(childPath, []byte(tt.childHCL), 0600); err != nil {
+				t.Fatalf("failed to write child file: %v", err)
+			}
+
+			httpClient := newMockHTTPClient()
+			keyringSvc := newMockKeyringService()
+			fsSvc := newMockFileSystemService()
+
+			setupChildSegmentValidateMocks(httpClient, keyringSvc)
+			httpClient.transport.setResponse("POST", "/api/v1/org/org-id/models/my-tm/validate", http.StatusOK,
+				`{"valid":true,"id":"app.frontend","segment":"frontend"}`)
+
+			cmd := testCloudValidateCommand(t, httpClient, keyringSvc, fsSvc)
+
+			var code int
+			out := capturer.CaptureOutput(func() {
+				code = cmd.Run([]string{"-with", filepath.Join(dir, "*.hcl"), childPath})
+			})
+
+			if code != tt.expectedCode {
+				t.Errorf("expected exit code %d, got %d\nOutput: %s", tt.expectedCode, code, out)
+			}
+			if !strings.Contains(out, tt.expectedOut) {
 				t.Errorf("expected output to contain %q, got %q", tt.expectedOut, out)
 			}
 		})

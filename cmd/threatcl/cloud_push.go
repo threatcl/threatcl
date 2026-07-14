@@ -16,12 +16,13 @@ type CloudPushCommand struct {
 	flagNoCreate             bool
 	flagNoUpdateLocal        bool
 	flagIgnoreLinkedControls bool
+	flagWith                 string
 	specCfg                  *spec.ThreatmodelSpecConfig
 }
 
 func (c *CloudPushCommand) Help() string {
 	helpText := `
-Usage: threatcl cloud push <file> [-no-create] [-no-update-local] [-ignore-linked-controls]
+Usage: threatcl cloud push <file> [-no-create] [-no-update-local] [-ignore-linked-controls] [-with=<glob>]
 
 	Push a threat model HCL file to ThreatCL Cloud.
 
@@ -33,6 +34,19 @@ Usage: threatcl cloud push <file> [-no-create] [-no-update-local] [-ignore-linke
 
 	If the threat model doesn't exist in the cloud yet, it will be created
 	automatically (unless -no-create is specified).
+
+Multi-file models:
+
+	A cloud model may be split across several files, keyed by each file's
+	threatmodel 'id': the file declaring the un-dotted root id (e.g.
+	id = "app") is the model's default file, and each additional file
+	declares a dotted id beneath it (e.g. id = "app.frontend") and may
+	'extends' the root. Push the root file first, then the children; every
+	file's backend block must address the same organization and threatmodel.
+	The server validates each pushed file against the model's other stored
+	files, so a child's extends target doesn't need to be in the same file.
+	(The backend block's 'segment' attribute from earlier specs no longer
+	exists - the threatmodel id alone keys each file.)
 
 Options:
 
@@ -48,6 +62,13 @@ Options:
    If set, the cloud will not attempt to link controls to reference threats
    from the control library during upload. Default: false
 
+ -with=<glob>
+   Optional glob of the model's other .hcl files (e.g. -with='models/*.hcl').
+   Before contacting the server, parses the pushed file together with the
+   matched files as one set and runs the same whole-set validation the
+   server applies (extends resolution, name/id uniqueness, namespace rules,
+   backend agreement), failing fast on errors.
+
  -config=<file>
    Optional config file
 ` + cloudEnvVarHelpNoOrg()
@@ -62,6 +83,7 @@ func (c *CloudPushCommand) AutocompleteArgs() complete.Predictor { return predic
 func (c *CloudPushCommand) AutocompleteFlags() complete.Flags {
 	return complete.Flags{
 		"-config": predictHCL,
+		"-with":   predictHCL,
 	}
 }
 
@@ -70,6 +92,7 @@ func (c *CloudPushCommand) Run(args []string) int {
 	flagSet.BoolVar(&c.flagNoCreate, "no-create", false, "Don't create threat model if it doesn't exist")
 	flagSet.BoolVar(&c.flagNoUpdateLocal, "no-update-local", false, "Don't update local HCL file with threatmodel slug")
 	flagSet.BoolVar(&c.flagIgnoreLinkedControls, "ignore-linked-controls", false, "Don't link controls from the control library during upload")
+	flagSet.StringVar(&c.flagWith, "with", "", "Glob of the model's other .hcl files for a local whole-set preflight")
 	flagSet.Parse(args)
 
 	// Get file path from remaining args
@@ -91,6 +114,15 @@ func (c *CloudPushCommand) Run(args []string) int {
 		err := c.specCfg.LoadSpecConfigFile(c.flagConfig)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error loading config file: %s\n", err)
+			return 1
+		}
+	}
+
+	// Optional local whole-set preflight before any network work: parse the
+	// pushed file together with its sibling segment files the way the server
+	// will, and fail fast on set-level errors.
+	if c.flagWith != "" {
+		if !runSetPreflight(filePath, c.flagWith, c.specCfg) {
 			return 1
 		}
 	}
@@ -127,6 +159,14 @@ func (c *CloudPushCommand) Run(args []string) int {
 	if orgValid == "" {
 		fmt.Fprintf(os.Stderr, "❌ Invalid organization\n")
 		return 1
+	}
+
+	// A dotted id or extends marks this file as one segment of a multi-file
+	// model; point at the local preflight when it wasn't requested.
+	if c.flagWith == "" {
+		if hint := multiFileHint(wrapped); hint != "" {
+			fmt.Fprintf(os.Stderr, "ℹ %s\n", hint)
+		}
 	}
 
 	// Scope the client to the file-resolved org, plus an upload helper that
@@ -168,6 +208,16 @@ func (c *CloudPushCommand) Run(args []string) int {
 		// Use the already-parsed wrapped threatmodel from validateThreatModel
 		if wrapped == nil || len(wrapped.Threatmodels) != 1 {
 			fmt.Fprintf(os.Stderr, "Error: file must contain exactly one threat model, found %d\n", len(wrapped.Threatmodels))
+			return 1
+		}
+
+		// A file that declares a dotted id or extends is one segment of an
+		// existing multi-file model — creating a fresh cloud model from it
+		// can never succeed (the server rejects a child with no root), so
+		// don't create an orphan model.
+		if seg := wrapped.Threatmodels[0]; strings.Contains(seg.Id, ".") || seg.Extends != "" {
+			fmt.Fprintf(os.Stderr, "❌ '%s' looks like a child segment of a multi-file model (id %q), but the backend block has no 'threatmodel' set.\n", filePath, seg.Id)
+			fmt.Fprintf(os.Stderr, "   Push the model's root file first, then set the same 'threatmodel' slug in this file's backend block.\n")
 			return 1
 		}
 
