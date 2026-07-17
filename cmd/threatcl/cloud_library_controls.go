@@ -114,7 +114,7 @@ func (c *CloudLibraryControlsCommand) Run(args []string) int {
 	httpClient, keyringSvc, fsSvc := c.initDependencies(30 * time.Second)
 
 	// Get token and org ID
-	token, orgId, err := c.getTokenAndOrgId(c.flagOrgId, keyringSvc, fsSvc)
+	token, orgId, apiURL, err := c.getTokenAndOrgId(c.flagOrgId, keyringSvc, fsSvc)
 	if err != nil {
 		return c.handleTokenError(err)
 	}
@@ -123,7 +123,7 @@ func (c *CloudLibraryControlsCommand) Run(args []string) int {
 	filter := c.buildFilter()
 
 	// Fetch controls
-	controls, err := c.fetchControlLibraryItems(token, orgId, filter, httpClient, fsSvc)
+	controls, err := c.fetchControlLibraryItems(token, orgId, filter, httpClient, apiURL)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error fetching control library items: %s\n", err)
 		return 1
@@ -167,7 +167,7 @@ func (c *CloudLibraryControlsCommand) buildFilter() map[string]interface{} {
 	return filter
 }
 
-func (c *CloudLibraryControlsCommand) fetchControlLibraryItems(token, orgId string, filter map[string]interface{}, httpClient HTTPClient, fsSvc FileSystemService) ([]controlLibraryItem, error) {
+func (c *CloudLibraryControlsCommand) fetchControlLibraryItems(token, orgId string, filter map[string]interface{}, httpClient HTTPClient, apiURL string) ([]controlLibraryItem, error) {
 	query := `query controlLibraryItems($orgId: ID!, $filter: ControlLibraryFilter) {
   controlLibraryItems(orgId: $orgId, filter: $filter) {
     id
@@ -202,7 +202,7 @@ func (c *CloudLibraryControlsCommand) fetchControlLibraryItems(token, orgId stri
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	url := fmt.Sprintf("%s/api/v1/graphql", getAPIBaseURL(fsSvc))
+	url := fmt.Sprintf("%s/api/v1/graphql", apiURL)
 	resp, err := makeAuthenticatedRequest("POST", url, token, bytes.NewReader(jsonData), httpClient)
 	if err != nil {
 		return nil, err

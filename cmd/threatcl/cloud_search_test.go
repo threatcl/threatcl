@@ -403,7 +403,7 @@ func TestCloudSearchFetchOrganizationsGraphQL(t *testing.T) {
 
 			cmd := testCloudSearchCommand(t, httpClient, nil, fsSvc)
 
-			orgs, err := cmd.fetchOrganizationsGraphQL("test-token", httpClient, fsSvc)
+			orgs, err := cmd.fetchOrganizationsGraphQL("test-token", httpClient, defaultAPIBaseURL)
 
 			if tt.expectError {
 				if err == nil {
@@ -496,7 +496,7 @@ func TestCloudSearchSearchThreatsGraphQL(t *testing.T) {
 			cmd := testCloudSearchCommand(t, httpClient, nil, fsSvc)
 
 			filter := threatSearchFilter{Impacts: "Integrity"}
-			threats, err := cmd.searchThreatsGraphQL("test-token", "org-123", filter, httpClient, fsSvc)
+			threats, err := cmd.searchThreatsGraphQL("test-token", "org-123", filter, httpClient, defaultAPIBaseURL)
 
 			if tt.expectError {
 				if err == nil {
@@ -587,7 +587,7 @@ func TestCloudSearchSearchControlsGraphQL(t *testing.T) {
 			cmd := testCloudSearchCommand(t, httpClient, nil, fsSvc)
 
 			filter := controlSearchFilter{}
-			controls, err := cmd.searchControlsGraphQL("test-token", "org-123", filter, httpClient, fsSvc)
+			controls, err := cmd.searchControlsGraphQL("test-token", "org-123", filter, httpClient, defaultAPIBaseURL)
 
 			if tt.expectError {
 				if err == nil {
@@ -616,7 +616,7 @@ func TestCloudSearchFilterConstruction(t *testing.T) {
 
 		cmd := testCloudSearchCommand(t, httpClient, nil, fsSvc)
 		filter := threatSearchFilter{Search: "sql injection"}
-		if _, err := cmd.searchThreatsGraphQL("test-token", "org-123", filter, httpClient, fsSvc); err != nil {
+		if _, err := cmd.searchThreatsGraphQL("test-token", "org-123", filter, httpClient, defaultAPIBaseURL); err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
 
@@ -636,7 +636,7 @@ func TestCloudSearchFilterConstruction(t *testing.T) {
 
 		cmd := testCloudSearchCommand(t, httpClient, nil, fsSvc)
 		filter := threatSearchFilter{Impacts: "Integrity"}
-		if _, err := cmd.searchThreatsGraphQL("test-token", "org-123", filter, httpClient, fsSvc); err != nil {
+		if _, err := cmd.searchThreatsGraphQL("test-token", "org-123", filter, httpClient, defaultAPIBaseURL); err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
 
@@ -656,7 +656,7 @@ func TestCloudSearchFilterConstruction(t *testing.T) {
 
 		cmd := testCloudSearchCommand(t, httpClient, nil, fsSvc)
 		filter := controlSearchFilter{Search: "encryption"}
-		if _, err := cmd.searchControlsGraphQL("test-token", "org-123", filter, httpClient, fsSvc); err != nil {
+		if _, err := cmd.searchControlsGraphQL("test-token", "org-123", filter, httpClient, defaultAPIBaseURL); err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
 
@@ -676,7 +676,7 @@ func TestCloudSearchFilterConstruction(t *testing.T) {
 
 		cmd := testCloudSearchCommand(t, httpClient, nil, fsSvc)
 		filter := controlSearchFilter{}
-		if _, err := cmd.searchControlsGraphQL("test-token", "org-123", filter, httpClient, fsSvc); err != nil {
+		if _, err := cmd.searchControlsGraphQL("test-token", "org-123", filter, httpClient, defaultAPIBaseURL); err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
 

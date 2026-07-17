@@ -148,7 +148,7 @@ func (c *CloudLibraryImportCommand) Run(args []string) int {
 	httpClient, keyringSvc, fsSvc := c.initDependencies(30 * time.Second)
 
 	// Get token and org ID
-	token, orgId, err := c.getTokenAndOrgId(c.flagOrgId, keyringSvc, fsSvc)
+	token, orgId, apiURL, err := c.getTokenAndOrgId(c.flagOrgId, keyringSvc, fsSvc)
 	if err != nil {
 		return c.handleTokenError(err)
 	}
@@ -198,10 +198,10 @@ func (c *CloudLibraryImportCommand) Run(args []string) int {
 	}
 
 	// Build the API URL
-	apiURL := fmt.Sprintf("%s/api/v1/org/%s/library/import", getAPIBaseURL(fsSvc), url.PathEscape(orgId))
+	importURL := fmt.Sprintf("%s/api/v1/org/%s/library/import", apiURL, url.PathEscape(orgId))
 
 	// Create request manually (can't use makeAuthenticatedRequest because it sets Content-Type to application/json)
-	req, err := http.NewRequest("POST", apiURL, &requestBody)
+	req, err := http.NewRequest("POST", importURL, &requestBody)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %s: %s\n", ErrFailedToCreateReq, err)
 		return 1

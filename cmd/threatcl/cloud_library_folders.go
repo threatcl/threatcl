@@ -86,13 +86,13 @@ func (c *CloudLibraryFoldersCommand) Run(args []string) int {
 	httpClient, keyringSvc, fsSvc := c.initDependencies(30 * time.Second)
 
 	// Get token and org ID
-	token, orgId, err := c.getTokenAndOrgId(c.flagOrgId, keyringSvc, fsSvc)
+	token, orgId, apiURL, err := c.getTokenAndOrgId(c.flagOrgId, keyringSvc, fsSvc)
 	if err != nil {
 		return c.handleTokenError(err)
 	}
 
 	// Fetch folders
-	folders, err := c.fetchLibraryFolders(token, orgId, c.flagType, httpClient, fsSvc)
+	folders, err := c.fetchLibraryFolders(token, orgId, c.flagType, httpClient, apiURL)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error fetching library folders: %s\n", err)
 		return 1
@@ -111,7 +111,7 @@ func (c *CloudLibraryFoldersCommand) Run(args []string) int {
 	return 0
 }
 
-func (c *CloudLibraryFoldersCommand) fetchLibraryFolders(token, orgId, folderType string, httpClient HTTPClient, fsSvc FileSystemService) ([]libraryFolder, error) {
+func (c *CloudLibraryFoldersCommand) fetchLibraryFolders(token, orgId, folderType string, httpClient HTTPClient, apiURL string) ([]libraryFolder, error) {
 	query := `query libraryFolders($orgId: ID!, $type: LibraryFolderType) {
   libraryFolders(orgId: $orgId, type: $type) {
     id
@@ -139,7 +139,7 @@ func (c *CloudLibraryFoldersCommand) fetchLibraryFolders(token, orgId, folderTyp
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	url := fmt.Sprintf("%s/api/v1/graphql", getAPIBaseURL(fsSvc))
+	url := fmt.Sprintf("%s/api/v1/graphql", apiURL)
 	resp, err := makeAuthenticatedRequest("POST", url, token, bytes.NewReader(jsonData), httpClient)
 	if err != nil {
 		return nil, err

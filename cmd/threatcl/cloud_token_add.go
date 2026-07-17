@@ -24,10 +24,24 @@ Usage: threatcl cloud token add [options]
 	and want to use it with the CLI. The command will auto-detect which
 	organization the token belongs to by querying the API.
 
+	The API endpoint used to validate the token is saved with it, and
+	subsequent cloud commands use that endpoint for the token's
+	organization.
+
 Options:
 
  -token=<token>
    The API token to add. If not provided, you will be prompted to enter it.
+
+ -target=<host>
+   ThreatCL Cloud deployment the token belongs to, given as its web host
+   (e.g. beta.threatcl.com). The API endpoint is derived automatically
+   (e.g. beta-api.threatcl.com).
+
+ -api-url=<url>
+   Exact API endpoint the token belongs to (e.g.
+   https://beta-api.threatcl.com). Use this when the -target mapping
+   doesn't fit. Cannot be combined with -target.
 
  -config=<file>
    Optional config file
@@ -41,19 +55,31 @@ func (c *CloudTokenAddCommand) Synopsis() string {
 
 func (c *CloudTokenAddCommand) AutocompleteFlags() complete.Flags {
 	return complete.Flags{
-		"-config": predictHCL,
+		"-config":  predictHCL,
+		"-target":  complete.PredictAnything,
+		"-api-url": complete.PredictAnything,
 	}
 }
 
 func (c *CloudTokenAddCommand) Run(args []string) int {
-	var tokenFlag string
+	var tokenFlag, flagTarget, flagAPIURL string
 
 	flagSet := c.GetFlagset("cloud token add")
 	flagSet.StringVar(&tokenFlag, "token", "", "The API token to add")
+	flagSet.StringVar(&flagTarget, "target", "", "ThreatCL Cloud web host the token belongs to")
+	flagSet.StringVar(&flagAPIURL, "api-url", "", "Exact API endpoint the token belongs to")
 	flagSet.Parse(args)
 
 	// Initialize dependencies
 	httpClient, keyringSvc, fsSvc := c.initDependencies(10 * time.Second)
+
+	// Resolve the API endpoint the token belongs to; it is saved with the
+	// token so subsequent commands talk to the same deployment
+	apiURL, err := resolveLoginAPIBaseURL(flagAPIURL, flagTarget, fsSvc)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error resolving API endpoint: %s\n", err)
+		return 1
+	}
 
 	// Get token from flag or prompt
 	token := tokenFlag
@@ -74,8 +100,8 @@ func (c *CloudTokenAddCommand) Run(args []string) int {
 	}
 
 	// Validate token and get user info (org-agnostic call)
-	fmt.Println("Validating token...")
-	whoamiResp, err := NewCloudClient(token, "", getAPIBaseURL(fsSvc), httpClient).FetchUserInfo()
+	fmt.Printf("Validating token against %s...\n", apiURL)
+	whoamiResp, err := NewCloudClient(token, "", apiURL, httpClient).FetchUserInfo()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: invalid token or unable to connect to API: %s\n", err)
 		return 1
@@ -99,7 +125,7 @@ func (c *CloudTokenAddCommand) Run(args []string) int {
 	}
 
 	// Save the token
-	err = setTokenForOrg(orgID, token, "Bearer", orgName, nil, keyringSvc, fsSvc)
+	err = setTokenForOrg(orgID, token, "Bearer", orgName, nil, apiURL, keyringSvc, fsSvc)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error saving token: %s\n", err)
 		return 1

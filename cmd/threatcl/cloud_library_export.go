@@ -132,13 +132,13 @@ func (c *CloudLibraryExportCommand) Run(args []string) int {
 	httpClient, keyringSvc, fsSvc := c.initDependencies(30 * time.Second)
 
 	// Get token and org ID
-	token, orgId, err := c.getTokenAndOrgId(c.flagOrgId, keyringSvc, fsSvc)
+	token, orgId, apiURL, err := c.getTokenAndOrgId(c.flagOrgId, keyringSvc, fsSvc)
 	if err != nil {
 		return c.handleTokenError(err)
 	}
 
 	// Build the API URL
-	apiURL := fmt.Sprintf("%s/api/v1/org/%s/library/export", getAPIBaseURL(fsSvc), url.PathEscape(orgId))
+	exportURL := fmt.Sprintf("%s/api/v1/org/%s/library/export", apiURL, url.PathEscape(orgId))
 
 	// Build query parameters
 	params := url.Values{}
@@ -162,11 +162,11 @@ func (c *CloudLibraryExportCommand) Run(args []string) int {
 	}
 
 	if len(params) > 0 {
-		apiURL += "?" + params.Encode()
+		exportURL += "?" + params.Encode()
 	}
 
 	// Make the API request
-	resp, err := makeAuthenticatedRequest("GET", apiURL, token, nil, httpClient)
+	resp, err := makeAuthenticatedRequest("GET", exportURL, token, nil, httpClient)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %s\n", err)
 		return 1

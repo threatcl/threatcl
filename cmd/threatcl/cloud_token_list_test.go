@@ -17,6 +17,7 @@ type tokenCmdTestOrg struct {
 	name      string
 	token     string
 	expiresAt *int64
+	apiURL    string
 }
 
 // tokenCmdTestSeedStore writes a v2 token store with the given orgs and
@@ -39,6 +40,7 @@ func tokenCmdTestSeedStore(t testing.TB, k *mockKeyringService, defaultOrg strin
 			TokenType:   "Bearer",
 			ExpiresAt:   o.expiresAt,
 			OrgName:     o.name,
+			ApiURL:      o.apiURL,
 		}
 	}
 
@@ -185,6 +187,21 @@ func TestCloudTokenListRun(t *testing.T) {
 			},
 			expectedCode: 0,
 			expectedOuts: []string{"An Extremely Long..."},
+		},
+		{
+			name: "stored endpoint is displayed",
+			setup: func(t *testing.T, k *mockKeyringService) {
+				tokenCmdTestSeedStore(t, k, "org-one", []tokenCmdTestOrg{
+					{id: "org-one", name: "Org One", apiURL: "https://b-api.threatcl.com"},
+					{id: "org-two", name: "Org Two"},
+				})
+			},
+			expectedCode: 0,
+			expectedOuts: []string{
+				"ENDPOINT",
+				"https://b-api.threatcl.com",
+				"(default)",
+			},
 		},
 		{
 			name:         "old token format returns error",

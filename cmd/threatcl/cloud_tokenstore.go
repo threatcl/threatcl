@@ -19,13 +19,23 @@ const tokenStoreKeyringKey = "token_store"
 // getAPIBaseURL returns the API base URL from environment variable or default
 // If fsSvc is nil, uses default implementation for backward compatibility
 func getAPIBaseURL(fsSvc FileSystemService) string {
+	return resolveAPIBaseURL("", fsSvc)
+}
+
+// resolveAPIBaseURL returns the API base URL to use for a token stored with
+// storedURL. Precedence: THREATCL_API_URL env var, then the URL stored with
+// the token, then the default. If fsSvc is nil, uses default implementation
+// for backward compatibility.
+func resolveAPIBaseURL(storedURL string, fsSvc FileSystemService) string {
 	if fsSvc == nil {
 		fsSvc = &defaultFileSystemService{}
 	}
-	apiURL := fsSvc.Getenv("THREATCL_API_URL")
-	if apiURL != "" {
+	if apiURL := fsSvc.Getenv("THREATCL_API_URL"); apiURL != "" {
 		// Remove trailing slash if present
 		return strings.TrimSuffix(apiURL, "/")
+	}
+	if storedURL != "" {
+		return strings.TrimSuffix(storedURL, "/")
 	}
 	return defaultAPIBaseURL
 }
@@ -338,21 +348,32 @@ func saveTokenStoreToFile(store *tokenStore, fsSvc FileSystemService) error {
 
 // getTokenForOrg retrieves the token for a specific organization
 func getTokenForOrg(orgId string, keyringSvc KeyringService, fsSvc FileSystemService) (string, error) {
-	store, err := loadTokenStore(keyringSvc, fsSvc)
+	tokenData, err := getTokenDataForOrg(orgId, keyringSvc, fsSvc)
 	if err != nil {
 		return "", err
+	}
+	return tokenData.AccessToken, nil
+}
+
+// getTokenDataForOrg retrieves the full token entry for a specific
+// organization, including the API endpoint it was stored with
+func getTokenDataForOrg(orgId string, keyringSvc KeyringService, fsSvc FileSystemService) (orgTokenData, error) {
+	store, err := loadTokenStore(keyringSvc, fsSvc)
+	if err != nil {
+		return orgTokenData{}, err
 	}
 
 	tokenData, ok := store.Tokens[orgId]
 	if !ok {
-		return "", fmt.Errorf("no token found for organization %s", orgId)
+		return orgTokenData{}, fmt.Errorf("no token found for organization %s", orgId)
 	}
 
-	return tokenData.AccessToken, nil
+	return tokenData, nil
 }
 
-// setTokenForOrg stores a token for a specific organization
-func setTokenForOrg(orgId, token, tokenType, orgName string, expiresAt *int64, keyringSvc KeyringService, fsSvc FileSystemService) error {
+// setTokenForOrg stores a token for a specific organization. apiURL records
+// the API endpoint the token was issued against ("" means the default).
+func setTokenForOrg(orgId, token, tokenType, orgName string, expiresAt *int64, apiURL string, keyringSvc KeyringService, fsSvc FileSystemService) error {
 	store, err := loadTokenStore(keyringSvc, fsSvc)
 	if err != nil {
 		// If we can't load (e.g., old format), create new store
@@ -367,6 +388,7 @@ func setTokenForOrg(orgId, token, tokenType, orgName string, expiresAt *int64, k
 		TokenType:   tokenType,
 		ExpiresAt:   expiresAt,
 		OrgName:     orgName,
+		ApiURL:      strings.TrimSuffix(apiURL, "/"),
 	}
 
 	// Set as default if no default exists

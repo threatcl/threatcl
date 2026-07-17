@@ -19,8 +19,9 @@ Usage: threatcl cloud token list
 
 	List all stored authentication tokens.
 
-	Displays organization ID, organization name, token expiry status,
-	and indicates which organization is set as the default.
+	Displays organization ID, organization name, the API endpoint each
+	token authenticates against, token expiry status, and indicates which
+	organization is set as the default.
 
 Options:
 
@@ -61,8 +62,8 @@ func (c *CloudTokenListCommand) Run(args []string) int {
 
 	// Print header
 	fmt.Println()
-	fmt.Printf("%-36s  %-20s  %-10s  %s\n", "ORG ID", "ORG NAME", "STATUS", "DEFAULT")
-	fmt.Println(strings.Repeat("-", 80))
+	fmt.Printf("%-36s  %-20s  %-32s  %-10s  %s\n", "ORG ID", "ORG NAME", "ENDPOINT", "STATUS", "DEFAULT")
+	fmt.Println(strings.Repeat("-", 110))
 
 	// Print each token
 	for orgId, tokenData := range tokens {
@@ -72,6 +73,14 @@ func (c *CloudTokenListCommand) Run(args []string) int {
 		}
 		if len(orgName) > 20 {
 			orgName = orgName[:17] + "..."
+		}
+
+		endpoint := tokenData.ApiURL
+		if endpoint == "" {
+			endpoint = "(default)"
+		}
+		if len(endpoint) > 32 {
+			endpoint = endpoint[:29] + "..."
 		}
 
 		status := "Valid"
@@ -87,7 +96,7 @@ func (c *CloudTokenListCommand) Run(args []string) int {
 			defaultMarker = "*"
 		}
 
-		fmt.Printf("%-36s  %-20s  %-10s  %s\n", orgId, orgName, status, defaultMarker)
+		fmt.Printf("%-36s  %-20s  %-32s  %-10s  %s\n", orgId, orgName, endpoint, status, defaultMarker)
 	}
 
 	fmt.Println()

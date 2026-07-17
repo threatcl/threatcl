@@ -71,13 +71,13 @@ func (c *CloudLibraryStatsCommand) Run(args []string) int {
 	httpClient, keyringSvc, fsSvc := c.initDependencies(30 * time.Second)
 
 	// Get token and org ID
-	token, orgId, err := c.getTokenAndOrgId(c.flagOrgId, keyringSvc, fsSvc)
+	token, orgId, apiURL, err := c.getTokenAndOrgId(c.flagOrgId, keyringSvc, fsSvc)
 	if err != nil {
 		return c.handleTokenError(err)
 	}
 
 	// Fetch stats
-	stats, err := c.fetchLibraryUsageStats(token, orgId, httpClient, fsSvc)
+	stats, err := c.fetchLibraryUsageStats(token, orgId, httpClient, apiURL)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error fetching library usage statistics: %s\n", err)
 		return 1
@@ -96,7 +96,7 @@ func (c *CloudLibraryStatsCommand) Run(args []string) int {
 	return 0
 }
 
-func (c *CloudLibraryStatsCommand) fetchLibraryUsageStats(token, orgId string, httpClient HTTPClient, fsSvc FileSystemService) (*libraryUsageStats, error) {
+func (c *CloudLibraryStatsCommand) fetchLibraryUsageStats(token, orgId string, httpClient HTTPClient, apiURL string) (*libraryUsageStats, error) {
 	query := `query libraryUsageStats($orgId: ID!) {
   libraryUsageStats(orgId: $orgId) {
     totalThreatItems
@@ -135,7 +135,7 @@ func (c *CloudLibraryStatsCommand) fetchLibraryUsageStats(token, orgId string, h
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	url := fmt.Sprintf("%s/api/v1/graphql", getAPIBaseURL(fsSvc))
+	url := fmt.Sprintf("%s/api/v1/graphql", apiURL)
 	resp, err := makeAuthenticatedRequest("POST", url, token, bytes.NewReader(jsonData), httpClient)
 	if err != nil {
 		return nil, err

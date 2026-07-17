@@ -84,13 +84,13 @@ func (c *CloudPolicyValidateCommand) Run(args []string) int {
 	regoSource := string(regoBytes)
 
 	// Retrieve token and org ID
-	token, orgId, err := c.getTokenAndOrgId(c.flagOrgId, keyringSvc, fsSvc)
+	token, orgId, apiURL, err := c.getTokenAndOrgId(c.flagOrgId, keyringSvc, fsSvc)
 	if err != nil {
 		return c.handleTokenError(err)
 	}
 
 	// Validate rego
-	client := NewCloudClient(token, orgId, getAPIBaseURL(fsSvc), httpClient)
+	client := NewCloudClient(token, orgId, apiURL, httpClient)
 	result, err := client.ValidateRego(regoSource)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error validating policy: %s\n", err)

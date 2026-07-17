@@ -8,7 +8,9 @@ func cloudEnvVarHelp() string {
 Environment Variables:
 
  THREATCL_API_URL
-   Override the API base URL (default: ` + defaultAPIBaseURL + `)
+   Override the API base URL. When unset, the endpoint saved with the
+   selected organization's token is used, falling back to the default
+   (` + defaultAPIBaseURL + `).
 
  THREATCL_CLOUD_ORG
    Default organization ID to use when -org-id is not specified.
@@ -28,7 +30,9 @@ func cloudEnvVarHelpNoOrg() string {
 Environment Variables:
 
  THREATCL_API_URL
-   Override the API base URL (default: ` + defaultAPIBaseURL + `)
+   Override the API base URL. When unset, the endpoint saved with the
+   selected organization's token is used, falling back to the default
+   (` + defaultAPIBaseURL + `).
 
  THREATCL_API_TOKEN
    Provide an API token directly, bypassing the local token store.
