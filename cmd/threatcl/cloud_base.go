@@ -50,12 +50,12 @@ func (b *CloudCommandBase) initDependencies(timeout time.Duration) (HTTPClient, 
 func (b *CloudCommandBase) newCloudClient(flagOrgId string, timeout time.Duration) (*CloudClient, FileSystemService, error) {
 	httpClient, keyringSvc, fsSvc := b.initDependencies(timeout)
 
-	token, orgId, err := b.getTokenAndOrgId(flagOrgId, keyringSvc, fsSvc)
+	token, orgId, apiURL, err := b.getTokenAndOrgId(flagOrgId, keyringSvc, fsSvc)
 	if err != nil {
 		return nil, fsSvc, err
 	}
 
-	return NewCloudClient(token, orgId, getAPIBaseURL(fsSvc), httpClient), fsSvc, nil
+	return NewCloudClient(token, orgId, apiURL, httpClient), fsSvc, nil
 }
 
 // getTokenWithDeps retrieves the authentication token using provided dependencies
@@ -68,9 +68,12 @@ func (b *CloudCommandBase) getTokenWithDeps(keyringSvc KeyringService, fsSvc Fil
 	return token, nil
 }
 
-// getTokenAndOrgId resolves the org ID and retrieves the token for that org
-// This is the preferred method for getting tokens in org-scoped token mode
-func (b *CloudCommandBase) getTokenAndOrgId(flagOrgId string, keyringSvc KeyringService, fsSvc FileSystemService) (string, string, error) {
+// getTokenAndOrgId resolves the org ID and retrieves the token for that org,
+// along with the API base URL to use for it. The URL is resolved with
+// priority: THREATCL_API_URL env -> endpoint stored with the org's token ->
+// default. This is the preferred method for getting tokens in org-scoped
+// token mode.
+func (b *CloudCommandBase) getTokenAndOrgId(flagOrgId string, keyringSvc KeyringService, fsSvc FileSystemService) (string, string, string, error) {
 	// Check for explicit API token from environment (bypasses token store entirely)
 	if envToken := fsSvc.Getenv("THREATCL_API_TOKEN"); envToken != "" {
 		// Resolve org ID from flag or THREATCL_CLOUD_ORG only (no token store)
@@ -78,22 +81,22 @@ func (b *CloudCommandBase) getTokenAndOrgId(flagOrgId string, keyringSvc Keyring
 		if orgId == "" {
 			orgId = fsSvc.Getenv("THREATCL_CLOUD_ORG")
 		}
-		return envToken, orgId, nil
+		return envToken, orgId, getAPIBaseURL(fsSvc), nil
 	}
 
 	// Resolve org ID using priority: flag -> env -> default_org -> single token
 	orgId, err := b.resolveOrgIdFromStore(flagOrgId, keyringSvc, fsSvc)
 	if err != nil {
-		return "", "", err
+		return "", "", "", err
 	}
 
 	// Get token for the resolved org
-	token, err := getTokenForOrg(orgId, keyringSvc, fsSvc)
+	tokenData, err := getTokenDataForOrg(orgId, keyringSvc, fsSvc)
 	if err != nil {
-		return "", "", fmt.Errorf("%s: %w", ErrRetrievingToken, err)
+		return "", "", "", fmt.Errorf("%s: %w", ErrRetrievingToken, err)
 	}
 
-	return token, orgId, nil
+	return tokenData.AccessToken, orgId, resolveAPIBaseURL(tokenData.ApiURL, fsSvc), nil
 }
 
 // resolveOrgIdFromStore resolves organization ID from flag, environment variable, or token store

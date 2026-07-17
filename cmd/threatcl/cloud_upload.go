@@ -139,11 +139,11 @@ func (c *CloudUploadCommand) Run(args []string) int {
 	}
 
 	// Retrieve token and org ID, then build the cloud client
-	token, orgId, err := c.getTokenAndOrgId(c.flagOrgId, keyringSvc, fsSvc)
+	token, orgId, apiURL, err := c.getTokenAndOrgId(c.flagOrgId, keyringSvc, fsSvc)
 	if err != nil {
 		return c.handleTokenError(err)
 	}
-	client := NewCloudClient(token, orgId, getAPIBaseURL(fsSvc), httpClient)
+	client := NewCloudClient(token, orgId, apiURL, httpClient)
 
 	// Upload the file. The caller reads it so the client stays filesystem-free.
 	content, uploadErr := fsSvc.ReadFile(filePath)

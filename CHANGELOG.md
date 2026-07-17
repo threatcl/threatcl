@@ -1,3 +1,12 @@
+## 0.6.3
+
+### Jul 17, 2026
+
+CHANGES:
+
+* The `threatcl cloud` commands now allow you to set tokens against different
+  API endpoints. See `threatcl cloud login -h` for more information.
+
 ## 0.6.2
 
 ### Jul 15, 2026

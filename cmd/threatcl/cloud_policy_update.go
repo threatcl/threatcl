@@ -183,13 +183,13 @@ func (c *CloudPolicyUpdateCommand) Run(args []string) int {
 	}
 
 	// Retrieve token and org ID
-	token, orgId, err := c.getTokenAndOrgId(c.flagOrgId, keyringSvc, fsSvc)
+	token, orgId, apiURL, err := c.getTokenAndOrgId(c.flagOrgId, keyringSvc, fsSvc)
 	if err != nil {
 		return c.handleTokenError(err)
 	}
 
 	// Update policy
-	client := NewCloudClient(token, orgId, getAPIBaseURL(fsSvc), httpClient)
+	client := NewCloudClient(token, orgId, apiURL, httpClient)
 	p, err := client.UpdatePolicy(c.flagPolicyId, &payload)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error updating policy: %s\n", err)

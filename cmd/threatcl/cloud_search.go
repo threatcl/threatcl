@@ -227,7 +227,7 @@ func (c *CloudSearchCommand) Run(args []string) int {
 	httpClient, keyringSvc, fsSvc := c.initDependencies(30 * time.Second)
 
 	// Step 1: Retrieve token (use default org token for searches)
-	token, _, err := c.getTokenAndOrgId(c.flagOrgId, keyringSvc, fsSvc)
+	token, _, apiURL, err := c.getTokenAndOrgId(c.flagOrgId, keyringSvc, fsSvc)
 	if err != nil {
 		return c.handleTokenError(err)
 	}
@@ -239,7 +239,7 @@ func (c *CloudSearchCommand) Run(args []string) int {
 	if c.flagOrgId != "" {
 		orgIds = []string{c.flagOrgId}
 		// When a specific org-id is provided, we still need to fetch org info to get the name
-		orgs, err := c.fetchOrganizationsGraphQL(token, httpClient, fsSvc)
+		orgs, err := c.fetchOrganizationsGraphQL(token, httpClient, apiURL)
 		if err == nil {
 			for _, org := range orgs {
 				if org.Organization.ID == c.flagOrgId {
@@ -254,7 +254,7 @@ func (c *CloudSearchCommand) Run(args []string) int {
 		}
 	} else {
 		// Fetch organizations via GraphQL
-		orgs, err := c.fetchOrganizationsGraphQL(token, httpClient, fsSvc)
+		orgs, err := c.fetchOrganizationsGraphQL(token, httpClient, apiURL)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error fetching organizations: %s\n", err)
 			return 1
@@ -271,10 +271,10 @@ func (c *CloudSearchCommand) Run(args []string) int {
 
 	// Step 3: Search based on type
 	if c.flagType == "controls" {
-		return c.searchAndDisplayControls(token, orgIds, orgInfo, implemented, httpClient, fsSvc)
+		return c.searchAndDisplayControls(token, orgIds, orgInfo, implemented, httpClient, apiURL)
 	}
 
-	return c.searchAndDisplayThreats(token, orgIds, orgInfo, strideCategories, hasControls, httpClient, fsSvc)
+	return c.searchAndDisplayThreats(token, orgIds, orgInfo, strideCategories, hasControls, httpClient, apiURL)
 }
 
 // graphQLRequest represents a GraphQL request payload
@@ -350,7 +350,7 @@ type graphQLControl struct {
 }
 
 // fetchOrganizationsGraphQL fetches organizations using GraphQL
-func (c *CloudSearchCommand) fetchOrganizationsGraphQL(token string, httpClient HTTPClient, fsSvc FileSystemService) ([]graphQLOrganization, error) {
+func (c *CloudSearchCommand) fetchOrganizationsGraphQL(token string, httpClient HTTPClient, apiURL string) ([]graphQLOrganization, error) {
 	query := `query orgs {
   myOrganizations {
     organization {
@@ -371,7 +371,7 @@ func (c *CloudSearchCommand) fetchOrganizationsGraphQL(token string, httpClient 
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	url := fmt.Sprintf("%s/api/v1/graphql", getAPIBaseURL(fsSvc))
+	url := fmt.Sprintf("%s/api/v1/graphql", apiURL)
 	resp, err := makeAuthenticatedRequest("POST", url, token, bytes.NewReader(jsonData), httpClient)
 	if err != nil {
 		return nil, err
@@ -411,7 +411,7 @@ type threatSearchFilter struct {
 }
 
 // searchThreatsGraphQL searches for threats using GraphQL
-func (c *CloudSearchCommand) searchThreatsGraphQL(token, orgId string, filter threatSearchFilter, httpClient HTTPClient, fsSvc FileSystemService) ([]graphQLThreat, error) {
+func (c *CloudSearchCommand) searchThreatsGraphQL(token, orgId string, filter threatSearchFilter, httpClient HTTPClient, apiURL string) ([]graphQLThreat, error) {
 	query := `query threats($orgId: ID!, $filter: ThreatFilter) {
   threats(orgId: $orgId, filter: $filter) {
     id
@@ -466,7 +466,7 @@ func (c *CloudSearchCommand) searchThreatsGraphQL(token, orgId string, filter th
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	url := fmt.Sprintf("%s/api/v1/graphql", getAPIBaseURL(fsSvc))
+	url := fmt.Sprintf("%s/api/v1/graphql", apiURL)
 	resp, err := makeAuthenticatedRequest("POST", url, token, bytes.NewReader(jsonData), httpClient)
 	if err != nil {
 		return nil, err
@@ -504,7 +504,7 @@ type controlSearchFilter struct {
 }
 
 // searchControlsGraphQL searches for controls using GraphQL
-func (c *CloudSearchCommand) searchControlsGraphQL(token, orgId string, filter controlSearchFilter, httpClient HTTPClient, fsSvc FileSystemService) ([]graphQLControl, error) {
+func (c *CloudSearchCommand) searchControlsGraphQL(token, orgId string, filter controlSearchFilter, httpClient HTTPClient, apiURL string) ([]graphQLControl, error) {
 	query := `query controls($orgId: ID!, $filter: ControlFilter) {
   controls(orgId: $orgId, filter: $filter) {
     id
@@ -546,7 +546,7 @@ func (c *CloudSearchCommand) searchControlsGraphQL(token, orgId string, filter c
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	url := fmt.Sprintf("%s/api/v1/graphql", getAPIBaseURL(fsSvc))
+	url := fmt.Sprintf("%s/api/v1/graphql", apiURL)
 	resp, err := makeAuthenticatedRequest("POST", url, token, bytes.NewReader(jsonData), httpClient)
 	if err != nil {
 		return nil, err
@@ -577,7 +577,7 @@ func (c *CloudSearchCommand) searchControlsGraphQL(token, orgId string, filter c
 }
 
 // searchAndDisplayThreats searches for threats and displays results
-func (c *CloudSearchCommand) searchAndDisplayThreats(token string, orgIds []string, orgInfo map[string]string, strideCategories []string, hasControls *bool, httpClient HTTPClient, fsSvc FileSystemService) int {
+func (c *CloudSearchCommand) searchAndDisplayThreats(token string, orgIds []string, orgInfo map[string]string, strideCategories []string, hasControls *bool, httpClient HTTPClient, apiURL string) int {
 	filter := threatSearchFilter{
 		Impacts:       c.flagImpacts,
 		Stride:        strideCategories,
@@ -588,7 +588,7 @@ func (c *CloudSearchCommand) searchAndDisplayThreats(token string, orgIds []stri
 
 	var allThreats []graphQLThreat
 	for _, orgId := range orgIds {
-		threats, err := c.searchThreatsGraphQL(token, orgId, filter, httpClient, fsSvc)
+		threats, err := c.searchThreatsGraphQL(token, orgId, filter, httpClient, apiURL)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error searching threats in org %s: %s\n", orgId, err)
 			continue
@@ -606,7 +606,7 @@ func (c *CloudSearchCommand) searchAndDisplayThreats(token string, orgIds []stri
 }
 
 // searchAndDisplayControls searches for controls and displays results
-func (c *CloudSearchCommand) searchAndDisplayControls(token string, orgIds []string, orgInfo map[string]string, implemented *bool, httpClient HTTPClient, fsSvc FileSystemService) int {
+func (c *CloudSearchCommand) searchAndDisplayControls(token string, orgIds []string, orgInfo map[string]string, implemented *bool, httpClient HTTPClient, apiURL string) int {
 	filter := controlSearchFilter{
 		Implemented:   implemented,
 		ThreatModelId: c.flagThreatModelId,
@@ -615,7 +615,7 @@ func (c *CloudSearchCommand) searchAndDisplayControls(token string, orgIds []str
 
 	var allControls []graphQLControl
 	for _, orgId := range orgIds {
-		controls, err := c.searchControlsGraphQL(token, orgId, filter, httpClient, fsSvc)
+		controls, err := c.searchControlsGraphQL(token, orgId, filter, httpClient, apiURL)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error searching controls in org %s: %s\n", orgId, err)
 			continue

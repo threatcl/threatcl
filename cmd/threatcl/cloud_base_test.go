@@ -118,16 +118,16 @@ func TestResolveOrgId(t *testing.T) {
 
 func TestGetTokenAndOrgId(t *testing.T) {
 	tests := []struct {
-		name           string
-		envToken       string
-		envOrgId       string
-		flagOrgId      string
-		storeToken     bool // whether to set up a token in the store
-		storeOrgId     string
-		storeOrgToken  string
-		expectedToken  string
-		expectedOrgId  string
-		expectError    bool
+		name          string
+		envToken      string
+		envOrgId      string
+		flagOrgId     string
+		storeToken    bool // whether to set up a token in the store
+		storeOrgId    string
+		storeOrgToken string
+		expectedToken string
+		expectedOrgId string
+		expectError   bool
 	}{
 		{
 			name:          "env token bypasses token store",
@@ -195,7 +195,7 @@ func TestGetTokenAndOrgId(t *testing.T) {
 
 			// Set up token store if requested
 			if tt.storeToken {
-				err := setTokenForOrg(tt.storeOrgId, tt.storeOrgToken, "bearer", "Test Org", nil, keyringSvc, fsSvc)
+				err := setTokenForOrg(tt.storeOrgId, tt.storeOrgToken, "bearer", "Test Org", nil, "", keyringSvc, fsSvc)
 				if err != nil {
 					t.Fatalf("failed to set up token store: %v", err)
 				}
@@ -205,7 +205,7 @@ func TestGetTokenAndOrgId(t *testing.T) {
 				GlobalCmdOptions: &GlobalCmdOptions{},
 			}
 
-			token, orgId, err := base.getTokenAndOrgId(tt.flagOrgId, keyringSvc, fsSvc)
+			token, orgId, _, err := base.getTokenAndOrgId(tt.flagOrgId, keyringSvc, fsSvc)
 
 			if tt.expectError {
 				if err == nil {
@@ -221,6 +221,80 @@ func TestGetTokenAndOrgId(t *testing.T) {
 				if orgId != tt.expectedOrgId {
 					t.Errorf("expected org ID %q, got %q", tt.expectedOrgId, orgId)
 				}
+			}
+		})
+	}
+}
+
+func TestGetTokenAndOrgIdAPIURL(t *testing.T) {
+	tests := []struct {
+		name           string
+		envToken       string
+		envAPIURL      string
+		storeOrgId     string
+		storeApiURL    string
+		expectedAPIURL string
+	}{
+		{
+			name:           "stored endpoint used for the org's token",
+			storeOrgId:     "store-org",
+			storeApiURL:    "https://beta-api.threatcl.com",
+			expectedAPIURL: "https://beta-api.threatcl.com",
+		},
+		{
+			name:           "default endpoint when token has none stored",
+			storeOrgId:     "store-org",
+			expectedAPIURL: defaultAPIBaseURL,
+		},
+		{
+			name:           "env overrides stored endpoint",
+			envAPIURL:      "https://env-api.example.com",
+			storeOrgId:     "store-org",
+			storeApiURL:    "https://beta-api.threatcl.com",
+			expectedAPIURL: "https://env-api.example.com",
+		},
+		{
+			name:           "env token uses env endpoint",
+			envToken:       "env-api-token",
+			envAPIURL:      "https://env-api.example.com",
+			expectedAPIURL: "https://env-api.example.com",
+		},
+		{
+			name:           "env token uses default endpoint when env URL unset",
+			envToken:       "env-api-token",
+			expectedAPIURL: defaultAPIBaseURL,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			keyringSvc := newMockKeyringService()
+			fsSvc := newMockFileSystemService()
+
+			if tt.envToken != "" {
+				fsSvc.setEnv("THREATCL_API_TOKEN", tt.envToken)
+			}
+			if tt.envAPIURL != "" {
+				fsSvc.setEnv("THREATCL_API_URL", tt.envAPIURL)
+			}
+
+			if tt.storeOrgId != "" {
+				err := setTokenForOrg(tt.storeOrgId, "store-token", "bearer", "Test Org", nil, tt.storeApiURL, keyringSvc, fsSvc)
+				if err != nil {
+					t.Fatalf("failed to set up token store: %v", err)
+				}
+			}
+
+			base := &CloudCommandBase{
+				GlobalCmdOptions: &GlobalCmdOptions{},
+			}
+
+			_, _, apiURL, err := base.getTokenAndOrgId("", keyringSvc, fsSvc)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if apiURL != tt.expectedAPIURL {
+				t.Errorf("expected API URL %q, got %q", tt.expectedAPIURL, apiURL)
 			}
 		})
 	}

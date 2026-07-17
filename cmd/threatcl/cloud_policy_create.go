@@ -133,7 +133,7 @@ func (c *CloudPolicyCreateCommand) Run(args []string) int {
 	regoSource := string(regoBytes)
 
 	// Retrieve token and org ID
-	token, orgId, err := c.getTokenAndOrgId(c.flagOrgId, keyringSvc, fsSvc)
+	token, orgId, apiURL, err := c.getTokenAndOrgId(c.flagOrgId, keyringSvc, fsSvc)
 	if err != nil {
 		return c.handleTokenError(err)
 	}
@@ -161,7 +161,7 @@ func (c *CloudPolicyCreateCommand) Run(args []string) int {
 	}
 
 	// Create policy
-	client := NewCloudClient(token, orgId, getAPIBaseURL(fsSvc), httpClient)
+	client := NewCloudClient(token, orgId, apiURL, httpClient)
 	p, err := client.CreatePolicy(&payload)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error creating policy: %s\n", err)

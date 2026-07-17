@@ -33,10 +33,25 @@ Usage: threatcl cloud login
 	organizations by running login multiple times and selecting different
 	organizations in the web interface.
 
+	The API endpoint used to authenticate is saved with the token, and
+	subsequent cloud commands use it for that organization. This means
+	tokens for different deployments (e.g. beta and production) can live
+	side by side in the token store.
+
 	Use 'threatcl cloud token list' to see all authenticated organizations.
 	Use 'threatcl cloud token default <org-id>' to set the default organization.
 
 Options:
+
+ -target=<host>
+   ThreatCL Cloud deployment to authenticate against, given as its web
+   host (e.g. beta.threatcl.com). The API endpoint is derived
+   automatically (e.g. beta-api.threatcl.com).
+
+ -api-url=<url>
+   Exact API endpoint to authenticate against (e.g.
+   https://beta-api.threatcl.com). Use this when the -target mapping
+   doesn't fit. Cannot be combined with -target.
 
  -config=<file>
    Optional config file
@@ -50,19 +65,35 @@ func (c *CloudLoginCommand) Synopsis() string {
 
 func (c *CloudLoginCommand) AutocompleteFlags() complete.Flags {
 	return complete.Flags{
-		"-config": predictHCL,
+		"-config":  predictHCL,
+		"-target":  complete.PredictAnything,
+		"-api-url": complete.PredictAnything,
 	}
 }
 
 func (c *CloudLoginCommand) Run(args []string) int {
+	var flagTarget, flagAPIURL string
+
 	flagSet := c.GetFlagset("cloud login")
+	flagSet.StringVar(&flagTarget, "target", "", "ThreatCL Cloud web host to authenticate against")
+	flagSet.StringVar(&flagAPIURL, "api-url", "", "Exact API endpoint to authenticate against")
 	flagSet.Parse(args)
 
 	// Initialize dependencies
 	httpClient, keyringSvc, fsSvc := c.initDependencies(5 * time.Second)
 
+	// Resolve the API endpoint to authenticate against; it is saved with the
+	// token so subsequent commands talk to the same deployment
+	apiURL, err := resolveLoginAPIBaseURL(flagAPIURL, flagTarget, fsSvc)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error resolving API endpoint: %s\n", err)
+		return 1
+	}
+
+	fmt.Printf("Authenticating against: %s\n", apiURL)
+
 	// Step 1: Request device code
-	deviceResp, err := c.requestDeviceCode(httpClient, fsSvc)
+	deviceResp, err := c.requestDeviceCode(apiURL, httpClient)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error requesting device code: %s\n", err)
 		return 1
@@ -72,17 +103,17 @@ func (c *CloudLoginCommand) Run(args []string) int {
 	c.displayVerificationInstructions(deviceResp)
 
 	// Step 3: Poll for token
-	tokenResp, err := c.pollForToken(deviceResp, httpClient, fsSvc)
+	tokenResp, err := c.pollForToken(deviceResp, apiURL, httpClient)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error during authentication: %s\n", err)
 		return 1
 	}
 
 	// Step 4: Fetch org name for display
-	orgName := c.fetchOrgName(tokenResp.AccessToken, tokenResp.OrganizationID, httpClient, fsSvc)
+	orgName := c.fetchOrgName(tokenResp.AccessToken, tokenResp.OrganizationID, apiURL, httpClient)
 
 	// Step 5: Save token
-	err = c.saveToken(tokenResp, orgName, keyringSvc, fsSvc)
+	err = c.saveToken(tokenResp, orgName, apiURL, keyringSvc, fsSvc)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error saving token: %s\n", err)
 		return 1
@@ -97,8 +128,8 @@ func (c *CloudLoginCommand) Run(args []string) int {
 	return 0
 }
 
-func (c *CloudLoginCommand) requestDeviceCode(httpClient HTTPClient, fsSvc FileSystemService) (*deviceCodeResponse, error) {
-	url := fmt.Sprintf("%s/api/v1/auth/device", getAPIBaseURL(fsSvc))
+func (c *CloudLoginCommand) requestDeviceCode(apiURL string, httpClient HTTPClient) (*deviceCodeResponse, error) {
+	url := fmt.Sprintf("%s/api/v1/auth/device", apiURL)
 
 	resp, err := httpClient.Post(url, "application/json", nil)
 	if err != nil {
@@ -134,8 +165,8 @@ func (c *CloudLoginCommand) displayVerificationInstructions(deviceResp *deviceCo
 	fmt.Println()
 }
 
-func (c *CloudLoginCommand) pollForToken(deviceResp *deviceCodeResponse, httpClient HTTPClient, fsSvc FileSystemService) (*tokenResponse, error) {
-	url := fmt.Sprintf("%s/api/v1/auth/device/poll", getAPIBaseURL(fsSvc))
+func (c *CloudLoginCommand) pollForToken(deviceResp *deviceCodeResponse, apiURL string, httpClient HTTPClient) (*tokenResponse, error) {
+	url := fmt.Sprintf("%s/api/v1/auth/device/poll", apiURL)
 
 	expiresAt := time.Now().Add(time.Duration(deviceResp.ExpiresIn) * time.Second)
 	interval := time.Duration(deviceResp.Interval) * time.Second
@@ -210,9 +241,9 @@ func (c *CloudLoginCommand) pollForToken(deviceResp *deviceCodeResponse, httpCli
 	}
 }
 
-func (c *CloudLoginCommand) fetchOrgName(token, orgId string, httpClient HTTPClient, fsSvc FileSystemService) string {
+func (c *CloudLoginCommand) fetchOrgName(token, orgId, apiURL string, httpClient HTTPClient) string {
 	// Try to fetch user info to get org name (org-agnostic call)
-	whoamiResp, err := NewCloudClient(token, "", getAPIBaseURL(fsSvc), httpClient).FetchUserInfo()
+	whoamiResp, err := NewCloudClient(token, "", apiURL, httpClient).FetchUserInfo()
 	if err != nil {
 		return ""
 	}
@@ -227,13 +258,14 @@ func (c *CloudLoginCommand) fetchOrgName(token, orgId string, httpClient HTTPCli
 	return ""
 }
 
-func (c *CloudLoginCommand) saveToken(tokenResp *tokenResponse, orgName string, keyringSvc KeyringService, fsSvc FileSystemService) error {
+func (c *CloudLoginCommand) saveToken(tokenResp *tokenResponse, orgName, apiURL string, keyringSvc KeyringService, fsSvc FileSystemService) error {
 	return setTokenForOrg(
 		tokenResp.OrganizationID,
 		tokenResp.AccessToken,
 		tokenResp.TokenType,
 		orgName,
 		tokenResp.ExpiresAt,
+		apiURL,
 		keyringSvc,
 		fsSvc,
 	)

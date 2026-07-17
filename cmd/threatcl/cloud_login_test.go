@@ -186,6 +186,80 @@ func TestCloudLoginRunSuccessfulFlow(t *testing.T) {
 	if tokenData.AccessToken != "access-token-123" {
 		t.Errorf("expected token %q, got %q", "access-token-123", tokenData.AccessToken)
 	}
+	if tokenData.ApiURL != defaultAPIBaseURL {
+		t.Errorf("expected api url %q, got %q", defaultAPIBaseURL, tokenData.ApiURL)
+	}
+}
+
+func TestCloudLoginRunWithTarget(t *testing.T) {
+	httpClient := newMockHTTPClient()
+	keyringSvc := newMockKeyringService()
+	fsSvc := newMockFileSystemService()
+
+	deviceResp := deviceCodeResponse{
+		DeviceCode:      "device-code-123",
+		ExpiresIn:       600,
+		Interval:        1,
+		UserCode:        "ABC-123",
+		VerificationURL: "https://beta2.threatcl.com/verify",
+	}
+	httpClient.transport.setResponse("POST", "/api/v1/auth/device", http.StatusOK, jsonResponse(deviceResp))
+
+	tokenResp := tokenResponse{
+		AccessToken:    "access-token-123",
+		TokenType:      "Bearer",
+		OrganizationID: "org-123",
+		ExpiresAt:      int64Ptr(time.Now().Add(time.Hour).Unix()),
+	}
+	httpClient.transport.setResponse("POST", "/api/v1/auth/device/poll", http.StatusOK, jsonResponse(tokenResp))
+
+	cmd := testCloudLoginCommand(t, httpClient, keyringSvc, fsSvc)
+
+	var code int
+	out := capturer.CaptureOutput(func() {
+		code = cmd.Run([]string{"-target", "beta2.threatcl.com"})
+	})
+
+	if code != 0 {
+		t.Fatalf("expected exit code 0, got %d, output: %s", code, out)
+	}
+
+	if !strings.Contains(out, "Authenticating against: https://beta2-api.threatcl.com") {
+		t.Errorf("expected output to show derived endpoint, got %q", out)
+	}
+
+	// Verify the derived endpoint was saved with the token
+	rawData, err := keyringSvc.GetRaw("token_store")
+	if err != nil {
+		t.Fatalf("token store should be saved to keyring: %v", err)
+	}
+	var store tokenStore
+	if err := json.Unmarshal(rawData, &store); err != nil {
+		t.Fatalf("failed to unmarshal token store: %v", err)
+	}
+	tokenData, ok := store.Tokens["org-123"]
+	if !ok {
+		t.Fatalf("expected token for org-123")
+	}
+	if tokenData.ApiURL != "https://beta2-api.threatcl.com" {
+		t.Errorf("expected api url %q, got %q", "https://beta2-api.threatcl.com", tokenData.ApiURL)
+	}
+}
+
+func TestCloudLoginRunBothEndpointFlags(t *testing.T) {
+	cmd := testCloudLoginCommand(t, newMockHTTPClient(), newMockKeyringService(), newMockFileSystemService())
+
+	var code int
+	out := capturer.CaptureOutput(func() {
+		code = cmd.Run([]string{"-target", "beta.threatcl.com", "-api-url", "https://beta-api.threatcl.com"})
+	})
+
+	if code != 1 {
+		t.Errorf("expected exit code 1, got %d", code)
+	}
+	if !strings.Contains(out, "cannot set both") {
+		t.Errorf("expected error about setting both flags, got %q", out)
+	}
 }
 
 func TestCloudLoginRunDeviceCodeFailure(t *testing.T) {
@@ -373,7 +447,7 @@ func TestCloudLoginRequestDeviceCode(t *testing.T) {
 
 			cmd := testCloudLoginCommand(t, httpClient, nil, fsSvc)
 
-			resp, err := cmd.requestDeviceCode(httpClient, fsSvc)
+			resp, err := cmd.requestDeviceCode(defaultAPIBaseURL, httpClient)
 
 			if tt.expectError {
 				if err == nil {
@@ -416,7 +490,7 @@ func TestCloudLoginPollForToken(t *testing.T) {
 	cmd := testCloudLoginCommand(t, httpClient, nil, fsSvc)
 
 	// Poll should succeed on second attempt
-	resp, err := cmd.pollForToken(deviceResp, httpClient, fsSvc)
+	resp, err := cmd.pollForToken(deviceResp, defaultAPIBaseURL, httpClient)
 
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
@@ -445,7 +519,7 @@ func TestCloudLoginSaveToken(t *testing.T) {
 
 		cmd := testCloudLoginCommand(t, nil, keyringSvc, fsSvc)
 
-		err := cmd.saveToken(tokenResp, "Test Org", keyringSvc, fsSvc)
+		err := cmd.saveToken(tokenResp, "Test Org", "https://beta-api.threatcl.com", keyringSvc, fsSvc)
 		if err != nil {
 			t.Errorf("unexpected error: %v", err)
 		}
@@ -469,6 +543,9 @@ func TestCloudLoginSaveToken(t *testing.T) {
 		if tokenData.OrgName != "Test Org" {
 			t.Errorf("expected org name %q, got %q", "Test Org", tokenData.OrgName)
 		}
+		if tokenData.ApiURL != "https://beta-api.threatcl.com" {
+			t.Errorf("expected api url %q, got %q", "https://beta-api.threatcl.com", tokenData.ApiURL)
+		}
 	})
 
 	t.Run("fallback to file when keyring fails", func(t *testing.T) {
@@ -480,7 +557,7 @@ func TestCloudLoginSaveToken(t *testing.T) {
 
 		cmd := testCloudLoginCommand(t, nil, keyringSvc, fsSvc)
 
-		err := cmd.saveToken(tokenResp, "Test Org", keyringSvc, fsSvc)
+		err := cmd.saveToken(tokenResp, "Test Org", defaultAPIBaseURL, keyringSvc, fsSvc)
 		if err != nil {
 			t.Errorf("unexpected error: %v", err)
 		}

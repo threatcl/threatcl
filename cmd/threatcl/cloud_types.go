@@ -32,6 +32,10 @@ type orgTokenData struct {
 	TokenType   string `json:"token_type"`
 	ExpiresAt   *int64 `json:"expires_at,omitempty"`
 	OrgName     string `json:"org_name,omitempty"`
+	// ApiURL is the API base URL the token was issued against. Empty for
+	// tokens stored before endpoints were tracked, which resolve to the
+	// default API base URL.
+	ApiURL string `json:"api_url,omitempty"`
 }
 
 type errorResponse struct {

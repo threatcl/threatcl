@@ -170,6 +170,81 @@ func TestCloudTokenAddNoOrganizations(t *testing.T) {
 	}
 }
 
+func TestCloudTokenAddWithEndpointFlags(t *testing.T) {
+	whoamiResp := whoamiResponse{
+		ID:                       "user123",
+		User:                     userInfo{Email: "test@example.com"},
+		ApiTokenOrganizationID:   "org-123",
+		ApiTokenOrganizationName: "Test Org",
+	}
+
+	tests := []struct {
+		name           string
+		args           []string
+		expectedApiURL string
+	}{
+		{
+			name:           "api-url flag saved with token",
+			args:           []string{"-token", "test-token", "-api-url", "https://custom-api.example.com"},
+			expectedApiURL: "https://custom-api.example.com",
+		},
+		{
+			name:           "target flag mapped and saved with token",
+			args:           []string{"-token", "test-token", "-target", "beta.threatcl.com"},
+			expectedApiURL: "https://beta-api.threatcl.com",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			httpClient := newMockHTTPClient()
+			keyringSvc := newMockKeyringService()
+			fsSvc := newMockFileSystemService()
+
+			httpClient.transport.setResponse("GET", "/api/v1/users/me", http.StatusOK, jsonResponse(whoamiResp))
+
+			cmd := testCloudTokenAddCommand(t, httpClient, keyringSvc, fsSvc)
+
+			var code int
+			out := capturer.CaptureOutput(func() {
+				code = cmd.Run(tt.args)
+			})
+
+			if code != 0 {
+				t.Fatalf("expected exit code 0, got %d, output: %s", code, out)
+			}
+
+			tokenData, err := getTokenDataForOrg("org-123", keyringSvc, fsSvc)
+			if err != nil {
+				t.Fatalf("expected token to be stored for org-123, got error: %v", err)
+			}
+			if tokenData.ApiURL != tt.expectedApiURL {
+				t.Errorf("expected stored api url %q, got %q", tt.expectedApiURL, tokenData.ApiURL)
+			}
+		})
+	}
+}
+
+func TestCloudTokenAddBothEndpointFlags(t *testing.T) {
+	httpClient := newMockHTTPClient()
+	keyringSvc := newMockKeyringService()
+	fsSvc := newMockFileSystemService()
+
+	cmd := testCloudTokenAddCommand(t, httpClient, keyringSvc, fsSvc)
+
+	var code int
+	out := capturer.CaptureOutput(func() {
+		code = cmd.Run([]string{"-token", "test-token", "-target", "beta.threatcl.com", "-api-url", "https://beta-api.threatcl.com"})
+	})
+
+	if code != 1 {
+		t.Errorf("expected exit code 1, got %d", code)
+	}
+	if !strings.Contains(out, "cannot set both") {
+		t.Errorf("expected error about setting both flags, got %q", out)
+	}
+}
+
 func TestCloudTokenAddNoTokenFlag(t *testing.T) {
 	httpClient := newMockHTTPClient()
 	keyringSvc := newMockKeyringService()
