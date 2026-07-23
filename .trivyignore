@@ -1,0 +1,16 @@
+# Trivy vulnerability ignore list.
+# Format: one advisory ID per line. See https://trivy.dev/latest/docs/configuration/filtering/
+
+# CVE-2023-36308 — panic (index out of range) in github.com/disintegration/imaging
+# when decoding a crafted TIFF file (scanner.go, Grayscale path).
+#
+# Accepted, not fixed:
+#   - Transitive only: threatcl/spec -> goccy/go-graphviz -> imaging. go-graphviz
+#     calls imaging.Resize on images it renders itself; threatcl never decodes
+#     untrusted TIFF input, so the vulnerable path is unreachable (confirmed by
+#     govulncheck: 0 reachable vulnerabilities).
+#   - Severity LOW; the advisory itself doubts any real security consequence.
+#   - No patched imaging release exists (project abandoned since v1.6.2, 2019),
+#     and go-graphviz v0.2.10 (latest) still requires it — nothing to bump to.
+# Tracked/dismissed as Dependabot alert #58 and code-scanning alert #83.
+CVE-2023-36308
