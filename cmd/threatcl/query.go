@@ -140,7 +140,7 @@ func (c *QueryCommand) Run(args []string) int {
 	flagSet.StringVar(&c.flagVars, "vars", "", "JSON-encoded variables")
 	flagSet.StringVar(&c.flagOutput, "output", "pretty", "Output format: json, pretty, compact")
 	flagSet.BoolVar(&c.flagExamples, "examples", false, "If set, will print out examples")
-	flagSet.Parse(args)
+	parseFlags(flagSet, args)
 
 	// Load spec config if provided
 	if c.flagConfig != "" {

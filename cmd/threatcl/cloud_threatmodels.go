@@ -49,7 +49,7 @@ func (c *CloudThreatmodelsCommand) AutocompleteFlags() complete.Flags {
 func (c *CloudThreatmodelsCommand) Run(args []string) int {
 	flagSet := c.GetFlagset("cloud threatmodels")
 	flagSet.StringVar(&c.flagOrgId, "org-id", "", "Organization ID (optional)")
-	flagSet.Parse(args)
+	parseFlags(flagSet, args)
 
 	// Build the cloud client (resolves token + org)
 	client, _, err := c.newCloudClient(c.flagOrgId, 10*time.Second)

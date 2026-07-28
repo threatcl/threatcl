@@ -52,7 +52,7 @@ func (e *ExportCommand) Run(args []string) int {
 	flagSet.StringVar(&e.flagOutput, "output", "", "Name of output file. If not set, will output to STDOUT")
 	flagSet.StringVar(&e.flagTemplate, "template", "", "Optional overridden template file to use for md output")
 	flagSet.BoolVar(&e.flagOverwrite, "overwrite", false, "Overwrite existing file. Defaults to false")
-	flagSet.Parse(args)
+	parseFlags(flagSet, args)
 
 	if e.flagConfig != "" {
 		err := e.specCfg.LoadSpecConfigFile(e.flagConfig)

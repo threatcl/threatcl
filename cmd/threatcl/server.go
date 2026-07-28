@@ -94,7 +94,7 @@ func (c *ServerCommand) Run(args []string) int {
 	flagSet.StringVar(&c.flagListen, "listen", "127.0.0.1", "Address to bind to (default: 127.0.0.1; set to 0.0.0.0 to expose on all interfaces)")
 	flagSet.IntVar(&c.flagPort, "port", 8080, "Port to listen on")
 	flagSet.BoolVar(&c.flagWatch, "watch", false, "Watch for file changes and reload (not yet implemented)")
-	flagSet.Parse(args)
+	parseFlags(flagSet, args)
 
 	// Load spec config if provided
 	if c.flagConfig != "" {

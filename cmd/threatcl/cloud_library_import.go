@@ -115,7 +115,7 @@ func (c *CloudLibraryImportCommand) Run(args []string) int {
 	flagSet.StringVar(&c.flagMode, "m", "", "Import mode: create-only (default), update, or replace")
 	flagSet.BoolVar(&c.flagJSON, "json", false, "Output results as JSON")
 
-	if err := flagSet.Parse(args); err != nil {
+	if err := parseFlags(flagSet, args); err != nil {
 		return 1
 	}
 

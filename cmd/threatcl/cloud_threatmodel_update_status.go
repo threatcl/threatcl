@@ -61,7 +61,7 @@ func (c *CloudThreatmodelUpdateStatusCommand) Run(args []string) int {
 	flagSet.StringVar(&c.flagOrgId, "org-id", "", "Organization ID (optional)")
 	flagSet.StringVar(&c.flagModelId, "model-id", "", "Threat model ID or slug (required)")
 	flagSet.StringVar(&c.flagStatus, "status", "", "Status to update the threat model to (required)")
-	flagSet.Parse(args)
+	parseFlags(flagSet, args)
 
 	if c.flagModelId == "" {
 		fmt.Fprintf(os.Stderr, "Error: -model-id is required\n")

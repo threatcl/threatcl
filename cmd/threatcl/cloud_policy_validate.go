@@ -60,7 +60,7 @@ func (c *CloudPolicyValidateCommand) Run(args []string) int {
 	flagSet := c.GetFlagset("cloud policy validate")
 	flagSet.StringVar(&c.flagOrgId, "org-id", "", "Organization ID (optional)")
 	flagSet.BoolVar(&c.flagJSON, "json", false, "Output as JSON")
-	flagSet.Parse(args)
+	parseFlags(flagSet, args)
 
 	// Get remaining args (the file path)
 	remainingArgs := flagSet.Args()

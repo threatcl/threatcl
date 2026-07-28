@@ -105,7 +105,7 @@ func (c *CloudViewCommand) Run(args []string) int {
 	flagSet.BoolVar(&c.flagIgnoreLinkedControls, "ignore-linked-controls", false, "Don't fetch recommended controls linked to threats")
 	flagSet.StringVar(&c.flagModelId, "model-id", "", "Threat model ID or slug (fetch from cloud)")
 	flagSet.StringVar(&c.flagOrgId, "org-id", "", "Organization ID (optional, used with -model-id)")
-	flagSet.Parse(args)
+	parseFlags(flagSet, args)
 
 	// Get remaining args (the file path)
 	remainingArgs := flagSet.Args()

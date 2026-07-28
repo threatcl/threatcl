@@ -70,7 +70,7 @@ func (c *CloudLibraryThreatCommand) Run(args []string) int {
 	flagSet.StringVar(&c.flagOrgId, "org-id", "", "Organization ID (optional)")
 	flagSet.BoolVar(&c.flagJSON, "json", false, "Output as JSON")
 
-	if err := flagSet.Parse(args); err != nil {
+	if err := parseFlags(flagSet, args); err != nil {
 		return 1
 	}
 
@@ -78,7 +78,7 @@ func (c *CloudLibraryThreatCommand) Run(args []string) int {
 	remainingArgs := flagSet.Args()
 	if len(remainingArgs) < 1 {
 		fmt.Fprintf(os.Stderr, "Error: threat library item ID is required\n")
-		fmt.Fprintf(os.Stderr, "Usage: threatcl cloud library threat <id> [options]\n")
+		fmt.Fprintf(os.Stderr, "Usage: threatcl cloud library threat [options] <id>\n")
 		return 1
 	}
 	threatId := remainingArgs[0]

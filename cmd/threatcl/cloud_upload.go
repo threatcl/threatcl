@@ -75,7 +75,7 @@ func (c *CloudUploadCommand) Run(args []string) int {
 	flagSet := c.GetFlagset("cloud upload")
 	flagSet.StringVar(&c.flagOrgId, "org-id", "", "Organization ID (optional)")
 	flagSet.StringVar(&c.flagModelId, "model-id", "", "Threat model ID or slug (required)")
-	flagSet.Parse(args)
+	parseFlags(flagSet, args)
 
 	if c.flagModelId == "" {
 		fmt.Fprintf(os.Stderr, "Error: -model-id is required\n")

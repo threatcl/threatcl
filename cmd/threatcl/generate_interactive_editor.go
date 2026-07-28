@@ -74,7 +74,7 @@ func (c *GenerateInteractiveEditorCommand) Run(args []string) int {
 	flagSet.StringVar(&c.flagOut, "out", "", "Where to output HCL file (if empty, write to STDOUT)")
 	flagSet.BoolVar(&c.flagFullBoilerplate, "fullboilerplate", false, "Use the full boilerplate")
 	flagSet.BoolVar(&c.flagValidate, "validate", false, "Validate the output HCL")
-	flagSet.Parse(args)
+	parseFlags(flagSet, args)
 
 	if c.flagConfig != "" {
 		err := c.specCfg.LoadSpecConfigFile(c.flagConfig)

@@ -60,7 +60,7 @@ func (c *CloudPoliciesCommand) Run(args []string) int {
 	flagSet.StringVar(&c.flagOrgId, "org-id", "", "Organization ID (optional)")
 	flagSet.BoolVar(&c.flagEnabledOnly, "enabled-only", false, "Filter to enabled policies only")
 	flagSet.BoolVar(&c.flagJSON, "json", false, "Output as JSON")
-	flagSet.Parse(args)
+	parseFlags(flagSet, args)
 
 	// Build the cloud client (resolves token + org)
 	client, _, err := c.newCloudClient(c.flagOrgId, 10*time.Second)

@@ -69,7 +69,7 @@ func (c *ViewCommand) Run(args []string) int {
 
 	flagSet := c.GetFlagset("view")
 	flagSet.BoolVar(&c.flagRawOut, "raw", false, "Output raw markdown")
-	flagSet.Parse(args)
+	parseFlags(flagSet, args)
 
 	if c.flagConfig != "" {
 		err := c.specCfg.LoadSpecConfigFile(c.flagConfig)

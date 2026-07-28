@@ -93,7 +93,7 @@ func (c *CloudPushCommand) Run(args []string) int {
 	flagSet.BoolVar(&c.flagNoUpdateLocal, "no-update-local", false, "Don't update local HCL file with threatmodel slug")
 	flagSet.BoolVar(&c.flagIgnoreLinkedControls, "ignore-linked-controls", false, "Don't link controls from the control library during upload")
 	flagSet.StringVar(&c.flagWith, "with", "", "Glob of the model's other .hcl files for a local whole-set preflight")
-	flagSet.Parse(args)
+	parseFlags(flagSet, args)
 
 	// Get file path from remaining args
 	remainingArgs := flagSet.Args()

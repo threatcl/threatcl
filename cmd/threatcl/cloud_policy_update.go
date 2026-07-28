@@ -106,7 +106,7 @@ func (c *CloudPolicyUpdateCommand) Run(args []string) int {
 	flagSet.StringVar(&c.flagEnabled, "enabled", "", "Toggle enabled (true/false)")
 	flagSet.StringVar(&c.flagEnforced, "enforced", "", "Toggle enforced (true/false)")
 	flagSet.BoolVar(&c.flagJSON, "json", false, "Output as JSON")
-	flagSet.Parse(args)
+	parseFlags(flagSet, args)
 
 	if c.flagPolicyId == "" {
 		fmt.Fprintf(os.Stderr, "Error: -policy-id is required\n")

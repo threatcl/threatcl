@@ -198,7 +198,7 @@ func (c *DfdCommand) Run(args []string) int {
 	flagSet.StringVar(&c.flagFormat, "format", "png", "Format of output files. png, dot, svg, mermaid, or d2")
 	flagSet.IntVar(&c.flagIndex, "index", 0, "index")
 	flagSet.StringVar(&c.flagProtocolStyle, "protocol-style", "label", "Protocol rendering style for DFD flows: label, color, both, or none. Defaults to label.")
-	flagSet.Parse(args)
+	parseFlags(flagSet, args)
 
 	if c.flagConfig != "" {
 		err := c.specCfg.LoadSpecConfigFile(c.flagConfig)

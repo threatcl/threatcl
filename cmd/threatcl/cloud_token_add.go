@@ -68,7 +68,7 @@ func (c *CloudTokenAddCommand) Run(args []string) int {
 	flagSet.StringVar(&tokenFlag, "token", "", "The API token to add")
 	flagSet.StringVar(&flagTarget, "target", "", "ThreatCL Cloud web host the token belongs to")
 	flagSet.StringVar(&flagAPIURL, "api-url", "", "Exact API endpoint the token belongs to")
-	flagSet.Parse(args)
+	parseFlags(flagSet, args)
 
 	// Initialize dependencies
 	httpClient, keyringSvc, fsSvc := c.initDependencies(10 * time.Second)

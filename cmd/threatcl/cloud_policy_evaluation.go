@@ -67,7 +67,7 @@ func (c *CloudPolicyEvaluationCommand) Run(args []string) int {
 	flagSet.StringVar(&c.flagModelId, "model-id", "", "Threat model ID (required)")
 	flagSet.StringVar(&c.flagEvalId, "eval-id", "", "Evaluation ID (required)")
 	flagSet.BoolVar(&c.flagJSON, "json", false, "Output as JSON")
-	flagSet.Parse(args)
+	parseFlags(flagSet, args)
 
 	if c.flagModelId == "" {
 		fmt.Fprintf(os.Stderr, "Error: -model-id is required\n")

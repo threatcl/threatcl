@@ -72,7 +72,7 @@ func (c *TerraformCommand) Run(args []string) int {
 	flagSet.StringVar(&c.flagAddToExisting, "add-to-existing", "", "If set, will add assets to this threat model")
 	flagSet.StringVar(&c.flagTmName, "tm-name", "", "If set, and using add-to-existing, targets a specific threat model")
 	flagSet.StringVar(&c.flagTfCollectionJson, "tf-collection", "", "If set, use this to define the terraform json resources to parse")
-	flagSet.Parse(args)
+	parseFlags(flagSet, args)
 
 	if c.flagConfig != "" {
 		err := c.specCfg.LoadSpecConfigFile(c.flagConfig)

@@ -1,3 +1,12 @@
+## 0.6.4
+
+### Jul 29, 2026
+
+CHANGES:
+
+* Flags now parse anywhere in the command line for all commands
+* Minor dependency bumps
+
 ## 0.6.3
 
 ### Jul 17, 2026

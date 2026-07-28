@@ -85,7 +85,7 @@ func (c *CloudPolicyCommand) Run(args []string) int {
 	flagSet.StringVar(&c.flagPolicyId, "policy-id", "", "Policy ID (required)")
 	flagSet.BoolVar(&c.flagShowRego, "show-rego", false, "Include full Rego source in output")
 	flagSet.BoolVar(&c.flagJSON, "json", false, "Output as JSON")
-	flagSet.Parse(args)
+	parseFlags(flagSet, args)
 
 	if c.flagPolicyId == "" {
 		fmt.Fprintf(os.Stderr, "Error: -policy-id is required\n")

@@ -51,7 +51,7 @@ func (c *ValidateCommand) Run(args []string) int {
 	flagSet.BoolVar(&c.flagStdin, "stdin", false, "If set, will expect a HCL file to be piped in")
 	flagSet.BoolVar(&c.flagStdinJson, "stdinjson", false, "If set, will expect a JSON file to be piped in")
 	flagSet.StringVar(&c.flagInvariants, "invariants", "", "Optional HCL file of invariants to evaluate against the threat models")
-	flagSet.Parse(args)
+	parseFlags(flagSet, args)
 
 	if c.flagConfig != "" {
 		err := c.specCfg.LoadSpecConfigFile(c.flagConfig)
