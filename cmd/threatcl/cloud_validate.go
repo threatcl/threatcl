@@ -92,7 +92,7 @@ func (c *CloudValidateCommand) Run(args []string) int {
 	flagSet := c.GetFlagset("cloud validate")
 	flagSet.BoolVar(&c.flagDiff, "diff", false, "Show a semantic + unified diff when the local file doesn't match the latest cloud version")
 	flagSet.StringVar(&c.flagWith, "with", "", "Glob of the model's other .hcl files for a local whole-set preflight")
-	flagSet.Parse(args)
+	parseFlags(flagSet, args)
 
 	// Get remaining args (the file path)
 	remainingArgs := flagSet.Args()

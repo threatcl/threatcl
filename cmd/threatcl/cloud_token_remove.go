@@ -56,7 +56,7 @@ func (c *CloudTokenRemoveCommand) AutocompleteFlags() complete.Flags {
 
 func (c *CloudTokenRemoveCommand) Run(args []string) int {
 	flagSet := c.GetFlagset("cloud token remove")
-	flagSet.Parse(args)
+	parseFlags(flagSet, args)
 
 	// Get remaining args after flags
 	remainingArgs := flagSet.Args()

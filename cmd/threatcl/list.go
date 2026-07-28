@@ -237,7 +237,7 @@ func (c *ListCommand) Run(args []string) int {
 	flagSet := c.GetFlagset("list")
 	flagSet.StringVar(&c.flagFields, "fields", "", "Comma-separated list of fields for list. Fields include 'number', 'file', 'threatmodel', 'assetcount', 'threatcount', 'usecasecount','tpdcount', 'exclusioncount', 'size', 'internetfacing', 'newinitiative', 'dfd', 'repository', 'riskcount', 'highestseverity' and 'author'.")
 	flagSet.BoolVar(&c.flagNoHeader, "noheader", false, "If set, will not print the header")
-	flagSet.Parse(args)
+	parseFlags(flagSet, args)
 
 	if c.flagConfig != "" {
 		err := c.specCfg.LoadSpecConfigFile(c.flagConfig)

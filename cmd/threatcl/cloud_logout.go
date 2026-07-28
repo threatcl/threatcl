@@ -66,7 +66,7 @@ func (c *CloudLogoutCommand) Run(args []string) int {
 	flagSet := c.GetFlagset("cloud logout")
 	flagSet.StringVar(&orgIdFlag, "org-id", "", "Organization ID to logout from")
 	flagSet.BoolVar(&allFlag, "all", false, "Logout from all organizations")
-	flagSet.Parse(args)
+	parseFlags(flagSet, args)
 
 	// Initialize dependencies
 	_, keyringSvc, fsSvc := c.initDependencies(5 * time.Second)

@@ -48,7 +48,7 @@ func (c *CloudWhoamiCommand) Run(args []string) int {
 
 	flagSet := c.GetFlagset("cloud whoami")
 	flagSet.StringVar(&orgIdFlag, "org-id", "", "Organization ID")
-	flagSet.Parse(args)
+	parseFlags(flagSet, args)
 
 	// Build the cloud client (resolves token + org)
 	client, _, err := c.newCloudClient(orgIdFlag, 10*time.Second)

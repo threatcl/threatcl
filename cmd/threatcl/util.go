@@ -582,3 +582,76 @@ func (g *GlobalCmdOptions) GetFlagset(name string) *flag.FlagSet {
 	flagSet.StringVar(&g.flagConfig, "config", "", "Optional config file")
 	return flagSet
 }
+
+// boolFlag matches the unexported interface the flag package uses to spot
+// flags that don't consume a following argument.
+type boolFlag interface {
+	IsBoolFlag() bool
+}
+
+// parseFlags parses args into flagSet, allowing flags to appear before or
+// after positional arguments. The flag package stops parsing at the first
+// non-flag argument, so without this a documented invocation such as
+// 'threatcl cloud upload <file> -model-id=x' would quietly drop -model-id
+// and treat it as a second file. Every command should parse through here
+// rather than calling flagSet.Parse directly.
+func parseFlags(flagSet *flag.FlagSet, args []string) error {
+	return flagSet.Parse(permuteArgs(flagSet, args))
+}
+
+// permuteArgs hoists flags ahead of positional arguments, preserving the
+// relative order within each group.
+func permuteArgs(flagSet *flag.FlagSet, args []string) []string {
+	flags := make([]string, 0, len(args))
+	positional := make([]string, 0, len(args))
+
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+
+		// Everything past an explicit terminator is positional, even if
+		// it looks like a flag.
+		if arg == "--" {
+			positional = append(positional, args[i+1:]...)
+			break
+		}
+
+		// A bare "-", and anything not starting with "-", is positional.
+		if len(arg) < 2 || arg[0] != '-' {
+			positional = append(positional, arg)
+			continue
+		}
+
+		flags = append(flags, arg)
+
+		name := strings.TrimLeft(arg, "-")
+		if strings.Contains(name, "=") {
+			// -name=value carries its own value
+			continue
+		}
+
+		lookup := flagSet.Lookup(name)
+		if lookup == nil {
+			// Unknown flag - leave it for the flag package to report,
+			// and don't guess about a following value.
+			continue
+		}
+		if bf, ok := lookup.Value.(boolFlag); ok && bf.IsBoolFlag() {
+			continue
+		}
+
+		// The flag takes its value as a separate argument, so carry it
+		// across too.
+		if i+1 < len(args) {
+			i++
+			flags = append(flags, args[i])
+		}
+	}
+
+	if len(positional) == 0 {
+		return flags
+	}
+
+	// The terminator stops a positional that begins with "-" (an oddly
+	// named file, say) from being re-read as a flag.
+	return append(append(flags, "--"), positional...)
+}

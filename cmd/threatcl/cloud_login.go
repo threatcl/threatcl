@@ -77,7 +77,7 @@ func (c *CloudLoginCommand) Run(args []string) int {
 	flagSet := c.GetFlagset("cloud login")
 	flagSet.StringVar(&flagTarget, "target", "", "ThreatCL Cloud web host to authenticate against")
 	flagSet.StringVar(&flagAPIURL, "api-url", "", "Exact API endpoint to authenticate against")
-	flagSet.Parse(args)
+	parseFlags(flagSet, args)
 
 	// Initialize dependencies
 	httpClient, keyringSvc, fsSvc := c.initDependencies(5 * time.Second)

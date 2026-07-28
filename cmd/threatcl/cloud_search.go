@@ -126,7 +126,7 @@ func (c *CloudSearchCommand) Run(args []string) int {
 	flagSet.StringVar(&c.flagThreatModelId, "threatmodel-id", "", "Scope search to a specific threat model")
 	flagSet.StringVar(&c.flagTerm, "term", "", "Free-text search on name and description (case-insensitive)")
 	flagSet.StringVar(&c.flagOrgId, "org-id", "", "Organization ID (optional)")
-	flagSet.Parse(args)
+	parseFlags(flagSet, args)
 
 	// Validate type flag
 	if c.flagType != "threats" && c.flagType != "controls" {

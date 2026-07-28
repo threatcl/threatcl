@@ -75,7 +75,7 @@ func (c *CloudPolicyEvaluateCommand) Run(args []string) int {
 	flagSet.BoolVar(&c.flagFailOnError, "fail-on-error", false, "Exit 1 if error-severity policy fails")
 	flagSet.BoolVar(&c.flagFailOnWarning, "fail-on-warning", false, "Exit 1 if warning+ severity policy fails")
 	flagSet.BoolVar(&c.flagJSON, "json", false, "Output as JSON")
-	flagSet.Parse(args)
+	parseFlags(flagSet, args)
 
 	if c.flagModelId == "" {
 		fmt.Fprintf(os.Stderr, "Error: -model-id is required\n")

@@ -58,7 +58,7 @@ func (c *CloudPolicyDeleteCommand) Run(args []string) int {
 	flagSet.StringVar(&c.flagOrgId, "org-id", "", "Organization ID (optional)")
 	flagSet.StringVar(&c.flagPolicyId, "policy-id", "", "Policy ID (required)")
 	flagSet.BoolVar(&c.flagForce, "force", false, "Skip confirmation prompt")
-	flagSet.Parse(args)
+	parseFlags(flagSet, args)
 
 	if c.flagPolicyId == "" {
 		fmt.Fprintf(os.Stderr, "Error: -policy-id is required\n")

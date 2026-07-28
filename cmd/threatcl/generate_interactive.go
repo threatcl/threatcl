@@ -54,7 +54,7 @@ func (c *GenerateInteractiveCommand) Run(args []string) int {
 
 	flagSet := c.GetFlagset("generate interactive")
 	flagSet.StringVar(&c.flagOut, "out", "", "Where to output HCL file (if empty, write to STDOUT)")
-	flagSet.Parse(args)
+	parseFlags(flagSet, args)
 
 	if c.flagConfig != "" {
 		err := c.specCfg.LoadSpecConfigFile(c.flagConfig)

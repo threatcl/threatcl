@@ -130,7 +130,7 @@ func (c *MermaidCommand) Run(args []string) int {
 	flagSet.BoolVar(&c.flagOverwrite, "overwrite", false, "Overwrite existing files. Defaults to false")
 	flagSet.BoolVar(&c.flagStdout, "stdout", false, "Print the mermaid source to stdout. Default when no -out or -outdir is set")
 	flagSet.IntVar(&c.flagIndex, "index", 0, "index")
-	flagSet.Parse(args)
+	parseFlags(flagSet, args)
 
 	if c.flagConfig != "" {
 		err := c.specCfg.LoadSpecConfigFile(c.flagConfig)

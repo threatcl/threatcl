@@ -89,7 +89,7 @@ func (c *CloudLibraryAssetsCommand) Run(args []string) int {
 	flagSet.StringVar(&c.flagOrgId, "org-id", "", "Organization ID (optional)")
 	flagSet.BoolVar(&c.flagJSON, "json", false, "Output as JSON")
 
-	if err := flagSet.Parse(args); err != nil {
+	if err := parseFlags(flagSet, args); err != nil {
 		return 1
 	}
 

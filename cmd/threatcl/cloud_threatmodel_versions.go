@@ -72,7 +72,7 @@ func (c *CloudThreatmodelVersionsCommand) Run(args []string) int {
 	flagSet.StringVar(&c.flagDownload, "download", "", "Download a specific version of the threat model file to the specified file")
 	flagSet.StringVar(&c.flagVersion, "version", "", "Version number to download (required when using -download)")
 	flagSet.BoolVar(&c.flagOverwrite, "overwrite", false, "Overwrite the file if it already exists when downloading")
-	flagSet.Parse(args)
+	parseFlags(flagSet, args)
 
 	if c.flagModelId == "" {
 		fmt.Fprintf(os.Stderr, "Error: -model-id is required\n")

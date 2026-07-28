@@ -320,6 +320,50 @@ func TestCloudUploadSuccess(t *testing.T) {
 	}
 }
 
+// The Help() text documents 'cloud upload <file> -model-id=...', so the file
+// has to be accepted ahead of the flags as well as after them.
+func TestCloudUploadFileBeforeFlags(t *testing.T) {
+	filePath := uploadTestWriteHCL(t, uploadTestValidHCL)
+
+	tests := []struct {
+		name string
+		args []string
+	}{
+		{"file then -model-id=value", []string{filePath, "-model-id=tm1"}},
+		{"file then -model-id value", []string{filePath, "-model-id", "tm1"}},
+		{"-model-id then file", []string{"-model-id=tm1", filePath}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			httpClient := newMockHTTPClient()
+			keyringSvc := newMockKeyringService()
+			fsSvc := newMockFileSystemService()
+
+			keyringSvc.setMockToken("valid-token", "org123", "Test Org")
+			fsSvc.SetFileContent(filePath, []byte(uploadTestValidHCL))
+
+			uploadPath := "/api/v1/org/org123/models/tm1/upload"
+			httpClient.transport.setResponse("POST", uploadPath, http.StatusOK, `{"success":true}`)
+
+			cmd := uploadTestCommand(t, httpClient, keyringSvc, fsSvc)
+
+			var code int
+			out := capturer.CaptureOutput(func() {
+				code = cmd.Run(tt.args)
+			})
+
+			if code != 0 {
+				t.Errorf("expected exit code 0, got %d\nOutput: %s", code, out)
+			}
+
+			if len(httpClient.transport.getRequestBodies("POST", uploadPath)) != 1 {
+				t.Errorf("expected the upload to reach %s, output was %q", uploadPath, out)
+			}
+		})
+	}
+}
+
 func TestCloudUploadWithOrgIdFlag(t *testing.T) {
 	filePath := uploadTestWriteHCL(t, uploadTestValidHCL)
 

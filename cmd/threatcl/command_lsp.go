@@ -59,7 +59,7 @@ func (c *LSPCommand) Run(args []string) int {
 	flagSet := c.GetFlagset("lsp")
 	flagSet.BoolVar(&c.flagStdio, "stdio", true, "Communicate over stdio (default and only transport)")
 	flagSet.StringVar(&c.flagLog, "log", "", "Optional log file for server diagnostics")
-	flagSet.Parse(args)
+	parseFlags(flagSet, args)
 
 	if c.flagConfig != "" {
 		if err := c.specCfg.LoadSpecConfigFile(c.flagConfig); err != nil {

@@ -98,7 +98,7 @@ func (c *CloudExportCommand) Run(args []string) int {
 	flagSet.BoolVar(&c.flagOverwrite, "overwrite", false, "Overwrite the output file if it exists")
 	flagSet.BoolVar(&c.flagKeepBackend, "keep-backend", false, "Preserve the backend block in output")
 	flagSet.BoolVar(&c.flagIncludeRecommended, "include-recommended", false, "Include library-recommended controls")
-	flagSet.Parse(args)
+	parseFlags(flagSet, args)
 
 	if c.flagModelId == "" {
 		fmt.Fprintf(os.Stderr, "Error: -model-id is required\n")

@@ -91,7 +91,7 @@ func (c *DashboardCommand) Run(args []string) int {
 	flagSet.BoolVar(&c.flagOverwrite, "overwrite", false, "Overwrite existing files in the outdir. Defaults to false")
 	flagSet.BoolVar(&c.flagNoDfd, "nodfd", false, "Do not include generated DFD images. Defaults to false")
 	flagSet.BoolVar(&c.flagDashboardHTML, "dashboard-html", false, "Render as HTML instead of text. Implies --out-ext=html.")
-	flagSet.Parse(args)
+	parseFlags(flagSet, args)
 
 	if c.flagConfig != "" {
 		err := c.specCfg.LoadSpecConfigFile(c.flagConfig)

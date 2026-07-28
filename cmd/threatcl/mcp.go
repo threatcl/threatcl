@@ -48,7 +48,7 @@ Options:
 func (c *MCPCommand) Run(args []string) int {
 	flagSet := c.GetFlagset("mcp")
 	flagSet.StringVar(&c.flagDir, "dir", "", "Directory path to use as root for searching and manipulating HCL files")
-	flagSet.Parse(args)
+	parseFlags(flagSet, args)
 
 	if c.flagConfig != "" {
 		err := c.specCfg.LoadSpecConfigFile(c.flagConfig)

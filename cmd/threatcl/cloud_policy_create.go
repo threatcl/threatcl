@@ -94,7 +94,7 @@ func (c *CloudPolicyCreateCommand) Run(args []string) int {
 	flagSet.StringVar(&c.flagTags, "tags", "", "Comma-separated tags")
 	flagSet.BoolVar(&c.flagEnabled, "enabled", true, "Enable the policy on creation")
 	flagSet.BoolVar(&c.flagJSON, "json", false, "Output as JSON")
-	flagSet.Parse(args)
+	parseFlags(flagSet, args)
 
 	// Validate required flags
 	if c.flagName == "" {

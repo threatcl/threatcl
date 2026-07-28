@@ -1,6 +1,8 @@
 package main
 
 import (
+	"flag"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -13,6 +15,182 @@ func TestGlobalCmdOptions(t *testing.T) {
 
 	if fs == nil {
 		t.Error("Something went wrong with getting the flagset")
+	}
+}
+
+// newPermuteFlagset builds a flagset carrying one of each flag shape the
+// permuter has to reason about: a string flag, a bool flag, and the global
+// -config/-debug pair.
+func newPermuteFlagset(modelId *string, jsonOut *bool) *flag.FlagSet {
+	cmd := &GlobalCmdOptions{}
+	fs := cmd.GetFlagset("test")
+	fs.SetOutput(io.Discard)
+	fs.StringVar(modelId, "model-id", "", "Threat model ID or slug")
+	fs.BoolVar(jsonOut, "json", false, "Output as JSON")
+	return fs
+}
+
+func TestPermuteArgs(t *testing.T) {
+	cases := []struct {
+		name       string
+		in         []string
+		wantFlags  []string
+		wantPosArg []string
+	}{
+		{
+			name:       "flags before positionals is unchanged",
+			in:         []string{"-model-id=abc", "-json", "file.hcl"},
+			wantFlags:  []string{"-model-id=abc", "-json"},
+			wantPosArg: []string{"file.hcl"},
+		},
+		{
+			name:       "flags after positionals are hoisted",
+			in:         []string{"file.hcl", "-model-id=abc", "-json"},
+			wantFlags:  []string{"-model-id=abc", "-json"},
+			wantPosArg: []string{"file.hcl"},
+		},
+		{
+			name:       "flags interspersed with positionals",
+			in:         []string{"a.hcl", "-model-id=abc", "b.hcl", "-json", "c.hcl"},
+			wantFlags:  []string{"-model-id=abc", "-json"},
+			wantPosArg: []string{"a.hcl", "b.hcl", "c.hcl"},
+		},
+		{
+			name:       "space separated flag value travels with its flag",
+			in:         []string{"file.hcl", "-model-id", "abc"},
+			wantFlags:  []string{"-model-id", "abc"},
+			wantPosArg: []string{"file.hcl"},
+		},
+		{
+			name:       "bool flag doesn't swallow the next positional",
+			in:         []string{"-json", "file.hcl"},
+			wantFlags:  []string{"-json"},
+			wantPosArg: []string{"file.hcl"},
+		},
+		{
+			name:       "double dash flags are handled too",
+			in:         []string{"file.hcl", "--model-id", "abc"},
+			wantFlags:  []string{"--model-id", "abc"},
+			wantPosArg: []string{"file.hcl"},
+		},
+		{
+			name:       "terminator makes everything after it positional",
+			in:         []string{"-json", "--", "-weird-name.hcl", "-model-id=abc"},
+			wantFlags:  []string{"-json"},
+			wantPosArg: []string{"-weird-name.hcl", "-model-id=abc"},
+		},
+		{
+			name:       "bare dash is positional",
+			in:         []string{"-", "-json"},
+			wantFlags:  []string{"-json"},
+			wantPosArg: []string{"-"},
+		},
+		{
+			name:       "unknown flag is left for the flag package",
+			in:         []string{"file.hcl", "-nope"},
+			wantFlags:  []string{"-nope"},
+			wantPosArg: []string{"file.hcl"},
+		},
+		{
+			name:       "trailing flag with a missing value doesn't panic",
+			in:         []string{"file.hcl", "-model-id"},
+			wantFlags:  []string{"-model-id"},
+			wantPosArg: []string{"file.hcl"},
+		},
+		{
+			name:       "no args",
+			in:         []string{},
+			wantFlags:  []string{},
+			wantPosArg: []string{},
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			var modelId string
+			var jsonOut bool
+			fs := newPermuteFlagset(&modelId, &jsonOut)
+
+			want := tc.wantFlags
+			if len(tc.wantPosArg) > 0 {
+				want = append(append(append([]string{}, tc.wantFlags...), "--"), tc.wantPosArg...)
+			}
+
+			got := permuteArgs(fs, tc.in)
+			if strings.Join(got, " ") != strings.Join(want, " ") {
+				t.Errorf("permuteArgs(%v) = %v, want %v", tc.in, got, want)
+			}
+		})
+	}
+}
+
+func TestParseFlagsOrderIndependence(t *testing.T) {
+	cases := []struct {
+		name string
+		args []string
+	}{
+		{"flags first", []string{"-model-id=abc", "-json", "file.hcl"}},
+		{"flags last", []string{"file.hcl", "-model-id=abc", "-json"}},
+		{"flags either side", []string{"-json", "file.hcl", "-model-id=abc"}},
+		{"space separated value last", []string{"file.hcl", "-json", "-model-id", "abc"}},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			var modelId string
+			var jsonOut bool
+			fs := newPermuteFlagset(&modelId, &jsonOut)
+
+			if err := parseFlags(fs, tc.args); err != nil {
+				t.Fatalf("parseFlags(%v) errored: %s", tc.args, err)
+			}
+
+			if modelId != "abc" {
+				t.Errorf("-model-id = %q, want \"abc\"", modelId)
+			}
+			if !jsonOut {
+				t.Error("-json was not set")
+			}
+			if got := fs.Args(); len(got) != 1 || got[0] != "file.hcl" {
+				t.Errorf("positional args = %v, want [file.hcl]", got)
+			}
+		})
+	}
+}
+
+// parseFlags must keep a positional that looks like a flag positional, so
+// long as the caller marked it with the terminator.
+func TestParseFlagsTerminatedPositional(t *testing.T) {
+	var modelId string
+	var jsonOut bool
+	fs := newPermuteFlagset(&modelId, &jsonOut)
+
+	if err := parseFlags(fs, []string{"-json", "--", "-oddly-named.hcl"}); err != nil {
+		t.Fatalf("parseFlags errored: %s", err)
+	}
+
+	if !jsonOut {
+		t.Error("-json was not set")
+	}
+	if got := fs.Args(); len(got) != 1 || got[0] != "-oddly-named.hcl" {
+		t.Errorf("positional args = %v, want [-oddly-named.hcl]", got)
+	}
+}
+
+func TestParseFlagsUnknownFlagAfterPositional(t *testing.T) {
+	var modelId string
+	var jsonOut bool
+	cmd := &GlobalCmdOptions{}
+	fs := flag.NewFlagSet("test", flag.ContinueOnError)
+	fs.SetOutput(io.Discard)
+	fs.BoolVar(&cmd.flagDebug, "debug", false, "Enable debug output")
+	fs.StringVar(&cmd.flagConfig, "config", "", "Optional config file")
+	fs.StringVar(&modelId, "model-id", "", "Threat model ID or slug")
+	fs.BoolVar(&jsonOut, "json", false, "Output as JSON")
+
+	// Previously this silently became a second positional argument.
+	if err := parseFlags(fs, []string{"file.hcl", "-nope"}); err == nil {
+		t.Error("expected an error for an undefined flag, got none")
 	}
 }
 

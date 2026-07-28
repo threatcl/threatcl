@@ -118,7 +118,7 @@ func (c *CloudLibraryExportCommand) Run(args []string) int {
 	flagSet.BoolVar(&c.flagIncludeDeprecated, "include-deprecated", false, "Include deprecated items")
 	flagSet.StringVar(&c.flagTags, "tags", "", "Comma-separated tag filter")
 
-	if err := flagSet.Parse(args); err != nil {
+	if err := parseFlags(flagSet, args); err != nil {
 		return 1
 	}
 

@@ -79,7 +79,7 @@ func (c *CloudCreateCommand) Run(args []string) int {
 	flagSet.StringVar(&c.flagName, "name", "", "Threat model name (required)")
 	flagSet.StringVar(&c.flagDescription, "description", "", "Threat model description (optional)")
 	flagSet.StringVar(&c.flagUpload, "upload", "", "HCL file to upload (optional)")
-	flagSet.Parse(args)
+	parseFlags(flagSet, args)
 
 	if c.flagName == "" {
 		fmt.Fprintf(os.Stderr, "Error: -name is required\n")

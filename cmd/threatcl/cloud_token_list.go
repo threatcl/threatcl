@@ -43,7 +43,7 @@ func (c *CloudTokenListCommand) AutocompleteFlags() complete.Flags {
 
 func (c *CloudTokenListCommand) Run(args []string) int {
 	flagSet := c.GetFlagset("cloud token list")
-	flagSet.Parse(args)
+	parseFlags(flagSet, args)
 
 	// Initialize dependencies
 	_, keyringSvc, fsSvc := c.initDependencies(5 * time.Second)

@@ -67,7 +67,7 @@ func (c *CloudThreatmodelCommand) Run(args []string) int {
 	flagSet.StringVar(&c.flagModelId, "model-id", "", "Threat model ID or slug (required)")
 	flagSet.StringVar(&c.flagDownload, "download", "", "Download the threat model file to the specified file")
 	flagSet.BoolVar(&c.flagOverwrite, "overwrite", false, "Overwrite the file if it already exists when downloading")
-	flagSet.Parse(args)
+	parseFlags(flagSet, args)
 
 	if c.flagModelId == "" {
 		fmt.Fprintf(os.Stderr, "Error: -model-id is required\n")
