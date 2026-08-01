@@ -433,7 +433,7 @@ func TestParseCloudHCLChildSegment(t *testing.T) {
 
 // diffChildLocalHCL is one segment of the multi-file "my-tm" cloud model: a
 // dotted id beneath the root "app", plus a cross-file extends.
-const diffChildLocalHCL = `spec_version = "0.6.0"
+const diffChildLocalHCL = `spec_version = "0.7.0"
 
 backend "threatcl-cloud" {
   organization = "test-org"
@@ -455,7 +455,7 @@ threatmodel "App Frontend" {
 // diffChildSegmentCloudHCL is what the cloud stores for the "frontend"
 // segment — the correct baseline for diffChildLocalHCL. Only the threat model
 // description differs.
-const diffChildSegmentCloudHCL = `spec_version = "0.6.0"
+const diffChildSegmentCloudHCL = `spec_version = "0.7.0"
 
 backend "threatcl-cloud" {
   organization = "test-org"
@@ -478,7 +478,7 @@ threatmodel "App Frontend" {
 // different file describing a different threat model. It is what the
 // model-level download returns, and diffing a child segment against it reports
 // two unrelated files as wholly added/removed.
-const diffDefaultSegmentCloudHCL = `spec_version = "0.6.0"
+const diffDefaultSegmentCloudHCL = `spec_version = "0.7.0"
 
 backend "threatcl-cloud" {
   organization = "test-org"

@@ -34,7 +34,7 @@ func TestLoadSetCrossFileExtends(t *testing.T) {
 	// "child.hcl" sorts before "parent.hcl", so discovery yields the child
 	// first - exercising order-independent extends resolution.
 	writeTMFile(t, dir, "child.hcl", `
-spec_version = "0.6.0"
+spec_version = "0.7.0"
 
 threatmodel "Child Model" {
   id = "child"
@@ -43,7 +43,7 @@ threatmodel "Child Model" {
 }
 `)
 	writeTMFile(t, dir, "parent.hcl", `
-spec_version = "0.6.0"
+spec_version = "0.7.0"
 
 threatmodel "Parent Model" {
   id = "parent"
@@ -96,7 +96,7 @@ func TestLoadSetDuplicateNameError(t *testing.T) {
 
 	dir := t.TempDir()
 	model := `
-spec_version = "0.6.0"
+spec_version = "0.7.0"
 
 threatmodel "Same Name" {
   author = "@test"
@@ -135,7 +135,7 @@ func TestLoadSetIntraModelDuplicateSkipsSetGuidance(t *testing.T) {
 		"duplicate threat": {
 			fileName: "threats.hcl",
 			model: `
-spec_version = "0.6.0"
+spec_version = "0.7.0"
 
 threatmodel "App" {
   author = "@test"
@@ -154,7 +154,7 @@ threatmodel "App" {
 		"duplicate control": {
 			fileName: "controls.hcl",
 			model: `
-spec_version = "0.6.0"
+spec_version = "0.7.0"
 
 threatmodel "App" {
   author = "@test"

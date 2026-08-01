@@ -1135,7 +1135,7 @@ func TestCloudValidateWithPreflight(t *testing.T) {
 // singleFileValidateHCL is a plain single-file cloud-backed model: no id, no
 // extends. It is not one segment of anything, but it still gets validated
 // server-side.
-const singleFileValidateHCL = `spec_version = "0.6.0"
+const singleFileValidateHCL = `spec_version = "0.7.0"
 
 backend "threatcl-cloud" {
   organization = "test-org"
@@ -1275,7 +1275,7 @@ func TestCloudValidateSingleFileServerValidationUnavailable(t *testing.T) {
 // A file with no backend 'threatmodel' slug has no model to validate against,
 // so no validate request may be made.
 func TestCloudValidateNoSlugSkipsServerValidation(t *testing.T) {
-	noSlugHCL := `spec_version = "0.6.0"
+	noSlugHCL := `spec_version = "0.7.0"
 
 backend "threatcl-cloud" {
   organization = "test-org"
