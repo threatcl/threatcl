@@ -34,7 +34,7 @@ func TestLoadSetCrossFileExtends(t *testing.T) {
 	// "child.hcl" sorts before "parent.hcl", so discovery yields the child
 	// first - exercising order-independent extends resolution.
 	writeTMFile(t, dir, "child.hcl", `
-spec_version = "0.6.0"
+spec_version = "0.7.0"
 
 threatmodel "Child Model" {
   id = "child"
@@ -43,7 +43,7 @@ threatmodel "Child Model" {
 }
 `)
 	writeTMFile(t, dir, "parent.hcl", `
-spec_version = "0.6.0"
+spec_version = "0.7.0"
 
 threatmodel "Parent Model" {
   id = "parent"
@@ -96,7 +96,7 @@ func TestLoadSetDuplicateNameError(t *testing.T) {
 
 	dir := t.TempDir()
 	model := `
-spec_version = "0.6.0"
+spec_version = "0.7.0"
 
 threatmodel "Same Name" {
   author = "@test"
@@ -114,6 +114,87 @@ threatmodel "Same Name" {
 		if !strings.Contains(msg, want) {
 			t.Errorf("error message should mention %q; got:\n%s", want, msg)
 		}
+	}
+}
+
+// A duplicate *within* one threat model (a repeated threat or control name)
+// is not a set-level collision: it must not pick up the guidance about unique
+// names across a file set, which would send the reader looking at the wrong
+// thing.
+func TestLoadSetIntraModelDuplicateSkipsSetGuidance(t *testing.T) {
+	cfg, err := spec.LoadSpecConfig()
+	if err != nil {
+		t.Fatalf("load spec config: %v", err)
+	}
+
+	cases := map[string]struct {
+		model    string
+		wantMsg  string
+		fileName string
+	}{
+		"duplicate threat": {
+			fileName: "threats.hcl",
+			model: `
+spec_version = "0.7.0"
+
+threatmodel "App" {
+  author = "@test"
+
+  threat "sqli" {
+    description = "one"
+  }
+
+  threat "sqli" {
+    description = "two"
+  }
+}
+`,
+			wantMsg: "duplicate threat 'sqli'",
+		},
+		"duplicate control": {
+			fileName: "controls.hcl",
+			model: `
+spec_version = "0.7.0"
+
+threatmodel "App" {
+  author = "@test"
+
+  threat "sqli" {
+    description = "one"
+
+    control "waf" {
+      description = "a"
+    }
+
+    control "waf" {
+      description = "b"
+    }
+  }
+}
+`,
+			wantMsg: "duplicate control 'waf'",
+		},
+	}
+
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			dir := t.TempDir()
+			writeTMFile(t, dir, tc.fileName, tc.model)
+
+			_, err := LoadSet(cfg, []string{dir})
+			if err == nil {
+				t.Fatal("expected a duplicate error, got nil")
+			}
+			msg := err.Error()
+			if !strings.Contains(msg, tc.wantMsg) {
+				t.Errorf("error should mention %q; got:\n%s", tc.wantMsg, msg)
+			}
+			for _, unwanted := range []string{"parsed together as a set", "Duplicates found:"} {
+				if strings.Contains(msg, unwanted) {
+					t.Errorf("error should not carry set-level guidance %q; got:\n%s", unwanted, msg)
+				}
+			}
+		})
 	}
 }
 

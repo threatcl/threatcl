@@ -430,3 +430,189 @@ func TestParseCloudHCLChildSegment(t *testing.T) {
 		t.Errorf("expected extends to stay populated, got %q", wrapped.Threatmodels[0].Extends)
 	}
 }
+
+// diffChildLocalHCL is one segment of the multi-file "my-tm" cloud model: a
+// dotted id beneath the root "app", plus a cross-file extends.
+const diffChildLocalHCL = `spec_version = "0.7.0"
+
+backend "threatcl-cloud" {
+  organization = "test-org"
+  threatmodel = "my-tm"
+}
+
+threatmodel "App Frontend" {
+  id = "app.frontend"
+  extends = "app"
+  author = "test@example.com"
+  description = "Local frontend description"
+
+  threat "XSS" {
+    description = "reflected XSS"
+  }
+}
+`
+
+// diffChildSegmentCloudHCL is what the cloud stores for the "frontend"
+// segment — the correct baseline for diffChildLocalHCL. Only the threat model
+// description differs.
+const diffChildSegmentCloudHCL = `spec_version = "0.7.0"
+
+backend "threatcl-cloud" {
+  organization = "test-org"
+  threatmodel = "my-tm"
+}
+
+threatmodel "App Frontend" {
+  id = "app.frontend"
+  extends = "app"
+  author = "test@example.com"
+  description = "Cloud frontend description"
+
+  threat "XSS" {
+    description = "reflected XSS"
+  }
+}
+`
+
+// diffDefaultSegmentCloudHCL is the same model's *default* segment: a
+// different file describing a different threat model. It is what the
+// model-level download returns, and diffing a child segment against it reports
+// two unrelated files as wholly added/removed.
+const diffDefaultSegmentCloudHCL = `spec_version = "0.7.0"
+
+backend "threatcl-cloud" {
+  organization = "test-org"
+  threatmodel = "my-tm"
+}
+
+threatmodel "App" {
+  id = "app"
+  author = "test@example.com"
+  description = "Root description"
+
+  threat "Root only threat" {
+    description = "only in the default segment"
+  }
+}
+`
+
+// setupSegmentDiffMocks registers whoami, the model lookup, a non-matching
+// current version, and both download routes: the segment-scoped one (correct)
+// and the model-level one (the default segment). Both are registered so a
+// regression reads as wrong *content* rather than a 404.
+func setupSegmentDiffMocks(httpClient *mockHTTPClient, segment string) {
+	setupDiffModelMocks(httpClient, "non-matching-hash")
+	httpClient.transport.setResponse("GET", "/api/v1/org/org-id/models/my-tm/download",
+		http.StatusOK, diffDefaultSegmentCloudHCL)
+	httpClient.transport.setResponse("GET", "/api/v1/org/org-id/models/my-tm/segments/"+segment+"/download",
+		http.StatusOK, diffChildSegmentCloudHCL)
+}
+
+// A child segment must be diffed against its own stored segment, not against
+// the model's default segment (which the model-level download returns).
+func TestCloudValidateDiffChildSegmentUsesSegmentDownload(t *testing.T) {
+	color.NoColor = true
+
+	httpClient := newMockHTTPClient()
+	setupSegmentDiffMocks(httpClient, "frontend")
+	httpClient.transport.setResponse("POST", "/api/v1/org/org-id/models/my-tm/validate",
+		http.StatusOK, `{"valid":true,"id":"app.frontend","segment":"frontend"}`)
+
+	cmd := newDiffValidateCmd(t, httpClient)
+	filePath := writeTempHCLFile(t, diffChildLocalHCL)
+
+	var code int
+	out := capturer.CaptureOutput(func() {
+		code = cmd.Run([]string{"-diff", filePath})
+	})
+
+	if code != 0 {
+		t.Fatalf("expected exit code 0, got %d\nOutput: %s", code, out)
+	}
+
+	wants := []string{
+		"cloud/my-tm#frontend",                                // the diff names the segment it fetched
+		`~ threat model "App Frontend" (description changed)`, // compared against the frontend segment
+		"Cloud frontend description",                          // the "-" side came from the segment download
+		"Server-side validation passed (id: app.frontend, segment: frontend)",
+	}
+	for _, w := range wants {
+		if !strings.Contains(out, w) {
+			t.Errorf("expected output to contain %q\nfull output:\n%s", w, out)
+		}
+	}
+
+	// Nothing from the default segment may appear: its presence means the
+	// model-level download was used as the baseline.
+	for _, unwanted := range []string{`threat model "App"`, "Root only threat", "Root description"} {
+		if strings.Contains(out, unwanted) {
+			t.Errorf("diff used the default segment as the baseline: found %q\nfull output:\n%s", unwanted, out)
+		}
+	}
+}
+
+// A file declaring the un-dotted root id is the model's default segment and
+// resolves to segment "default", so it too goes through the segment route.
+func TestCloudValidateDiffRootSegmentUsesDefaultSegment(t *testing.T) {
+	color.NoColor = true
+
+	httpClient := newMockHTTPClient()
+	setupDiffModelMocks(httpClient, "non-matching-hash")
+	httpClient.transport.setResponse("POST", "/api/v1/org/org-id/models/my-tm/validate",
+		http.StatusOK, `{"valid":true,"id":"app","segment":"default"}`)
+	httpClient.transport.setResponse("GET", "/api/v1/org/org-id/models/my-tm/segments/default/download",
+		http.StatusOK, diffDefaultSegmentCloudHCL)
+	// The model-level route is deliberately unregistered (404) so using it fails.
+
+	cmd := newDiffValidateCmd(t, httpClient)
+	filePath := writeTempHCLFile(t, strings.Replace(
+		diffDefaultSegmentCloudHCL, "Root description", "Local root description", 1))
+
+	var code int
+	out := capturer.CaptureOutput(func() {
+		code = cmd.Run([]string{"-diff", filePath})
+	})
+
+	if code != 0 {
+		t.Fatalf("expected exit code 0, got %d\nOutput: %s", code, out)
+	}
+	for _, w := range []string{"cloud/my-tm#default", `~ threat model "App" (description changed)`} {
+		if !strings.Contains(out, w) {
+			t.Errorf("expected output to contain %q\nfull output:\n%s", w, out)
+		}
+	}
+	if strings.Contains(out, "could not produce diff") {
+		t.Errorf("expected the segment download to be used\nfull output:\n%s", out)
+	}
+}
+
+// When the segment can't be resolved (older server, transient failure), the
+// diff is skipped rather than run against the wrong baseline.
+func TestCloudValidateDiffChildSegmentSkippedWhenSegmentUnresolved(t *testing.T) {
+	color.NoColor = true
+
+	httpClient := newMockHTTPClient()
+	setupSegmentDiffMocks(httpClient, "frontend")
+	httpClient.transport.setResponse("POST", "/api/v1/org/org-id/models/my-tm/validate",
+		http.StatusInternalServerError, `{"error":"boom"}`)
+
+	cmd := newDiffValidateCmd(t, httpClient)
+	filePath := writeTempHCLFile(t, diffChildLocalHCL)
+
+	var code int
+	out := capturer.CaptureOutput(func() {
+		code = cmd.Run([]string{"-diff", filePath})
+	})
+
+	if code != 0 {
+		t.Fatalf("expected exit code 0, got %d\nOutput: %s", code, out)
+	}
+	if !strings.Contains(out, "-diff skipped") {
+		t.Errorf("expected the diff to be skipped\nfull output:\n%s", out)
+	}
+	for _, unwanted := range []string{"Unified diff", "Structural summary:", "Root only threat"} {
+		if strings.Contains(out, unwanted) {
+			t.Errorf("did not expect output to contain %q\nfull output:\n%s", unwanted, out)
+		}
+	}
+}

@@ -57,3 +57,14 @@ func (c *CloudClient) DownloadModelVersionURL(modelIdOrSlug, version string) str
 	return fmt.Sprintf("%s/api/v1/org/%s/models/%s/versions/%s/download",
 		c.baseURL, url.PathEscape(c.orgId), url.PathEscape(modelIdOrSlug), url.PathEscape(version))
 }
+
+// DownloadSegmentURL returns the API URL for downloading a single segment's
+// current HCL from a multi-file model. The segment key is the one the server
+// derives from a file's threatmodel id ("default" for no id or an un-dotted
+// root id, "frontend" for id "app.frontend"), as reported by the validate
+// endpoint. DownloadModelURL returns only the model's default segment, so any
+// caller holding a specific segment must use this instead.
+func (c *CloudClient) DownloadSegmentURL(modelIdOrSlug, segment string) string {
+	return fmt.Sprintf("%s/api/v1/org/%s/models/%s/segments/%s/download",
+		c.baseURL, url.PathEscape(c.orgId), url.PathEscape(modelIdOrSlug), url.PathEscape(segment))
+}

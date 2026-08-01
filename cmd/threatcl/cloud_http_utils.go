@@ -38,6 +38,14 @@ func handleAPIErrorResponse(resp *http.Response) error {
 		return errors.New("resource not found")
 	}
 
+	// Every endpoint returns the same JSON error envelope, so decode it here
+	// too rather than dumping raw JSON at the user: this is the path all
+	// endpoints other than Upload take, and codes like "duplicate_entity"
+	// carry guidance worth showing wherever they surface.
+	if msg := formatCloudAPIErrorBody(body); msg != "" {
+		return errors.New(msg)
+	}
+
 	return fmt.Errorf(ErrAPIReturnedStatus, resp.StatusCode, string(body))
 }
 

@@ -182,12 +182,24 @@ func hclOrigins(specCfg *spec.ThreatmodelSpecConfig, inputs []spec.NamedInput) m
 	return origins
 }
 
+// isSetDuplicateError reports whether err is the spec's *set-level* threat
+// model collision — a duplicate threatmodel name ("TM 'x': duplicate found") or
+// a duplicate threatmodel id ("TM 'x': duplicate id 'y'"). The spec reports
+// plenty of other duplicates ("duplicate threat", "duplicate control",
+// "duplicate information_asset", "duplicate process found in dfd", ...), but
+// those are collisions *within* one threat model: they are not about parsing
+// files together as a set, and the breakdown below cannot explain them.
+func isSetDuplicateError(err error) bool {
+	msg := err.Error()
+	return strings.Contains(msg, ": duplicate found") || strings.Contains(msg, ": duplicate id '")
+}
+
 // enrichSetError augments a set-parse error with a per-file breakdown when the
 // failure is a duplicate name/id across inputs — the raw spec error names the
-// offending model but not which files collide. Non-duplicate errors are wrapped
+// offending model but not which files collide. Other errors are wrapped
 // unchanged.
 func enrichSetError(err error, specCfg *spec.ThreatmodelSpecConfig, inputs []spec.NamedInput) error {
-	if !strings.Contains(err.Error(), "duplicate") {
+	if !isSetDuplicateError(err) {
 		return fmt.Errorf("error parsing threat model set: %w", err)
 	}
 

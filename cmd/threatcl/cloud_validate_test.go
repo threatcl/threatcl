@@ -1131,3 +1131,187 @@ func TestCloudValidateWithPreflight(t *testing.T) {
 		})
 	}
 }
+
+// singleFileValidateHCL is a plain single-file cloud-backed model: no id, no
+// extends. It is not one segment of anything, but it still gets validated
+// server-side.
+const singleFileValidateHCL = `spec_version = "0.7.0"
+
+backend "threatcl-cloud" {
+  organization = "test-org"
+  threatmodel = "my-tm"
+}
+
+threatmodel "App" {
+  author = "test@example.com"
+  description = "Single file model"
+
+  threat "sqli" {
+    description = "SQL injection"
+  }
+}
+`
+
+// A single-file model must be validated server-side too. That is the only
+// place a name collision produced by cloud library enrichment can be caught,
+// and catching it at validate time keeps it from first appearing at push.
+func TestCloudValidateSingleFileServerValidation(t *testing.T) {
+	tests := []struct {
+		name             string
+		validateResponse string
+		expectedCode     int
+		expectedOut      []string
+		unexpectedOut    []string
+	}{
+		{
+			name:             "valid single-file model reports plain success",
+			validateResponse: `{"valid":true,"segment":"default"}`,
+			expectedCode:     0,
+			expectedOut:      []string{"Server-side validation passed"},
+			// A single-file model *is* the whole model, so naming its
+			// "default" segment would be noise.
+			unexpectedOut: []string{"segment:", "(id:"},
+		},
+		{
+			name:             "duplicate threat name surfaces with guidance",
+			validateResponse: `{"valid":false,"errors":[{"message":"TM 'App': duplicate threat 'sqli'","code":"parsing_error"}]}`,
+			expectedCode:     1,
+			expectedOut: []string{
+				"Server-side validation failed",
+				"TM 'App': duplicate threat 'sqli'",
+				"threat names must be unique within a threat model",
+			},
+		},
+		{
+			name:             "duplicate control name surfaces with guidance",
+			validateResponse: `{"valid":false,"errors":[{"message":"TM 'App' / Threat 'sqli': duplicate control 'waf'","code":"parsing_error"}]}`,
+			expectedCode:     1,
+			expectedOut: []string{
+				"duplicate control 'waf'",
+				"control names unique within a threat",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			dir := t.TempDir()
+			filePath := filepath.Join(dir, "app.hcl")
+			if err := os.WriteFile(filePath, []byte(singleFileValidateHCL), 0600); err != nil {
+				t.Fatalf("failed to write temp file: %v", err)
+			}
+
+			httpClient := newMockHTTPClient()
+			keyringSvc := newMockKeyringService()
+			fsSvc := newMockFileSystemService()
+
+			setupChildSegmentValidateMocks(httpClient, keyringSvc)
+			httpClient.transport.setResponse("POST", "/api/v1/org/org-id/models/my-tm/validate", http.StatusOK, tt.validateResponse)
+
+			cmd := testCloudValidateCommand(t, httpClient, keyringSvc, fsSvc)
+
+			var code int
+			out := capturer.CaptureOutput(func() {
+				code = cmd.Run([]string{filePath})
+			})
+
+			if code != tt.expectedCode {
+				t.Errorf("expected exit code %d, got %d\nOutput: %s", tt.expectedCode, code, out)
+			}
+			for _, want := range tt.expectedOut {
+				if !strings.Contains(out, want) {
+					t.Errorf("expected output to contain %q, got %q", want, out)
+				}
+			}
+			for _, unwanted := range tt.unexpectedOut {
+				if strings.Contains(out, unwanted) {
+					t.Errorf("did not expect output to contain %q, got %q", unwanted, out)
+				}
+			}
+
+			// The endpoint must actually have been called, with the file's content.
+			bodies := httpClient.transport.getRequestBodies("POST", "/api/v1/org/org-id/models/my-tm/validate")
+			if len(bodies) != 1 {
+				t.Fatalf("expected exactly one validate request, got %d", len(bodies))
+			}
+			if !strings.Contains(bodies[0], "Single file model") {
+				t.Errorf("expected validate request to carry the file content, got %q", bodies[0])
+			}
+		})
+	}
+}
+
+// The validate endpoint stays best-effort for single-file models: an older
+// server without it must warn, not fail the command.
+func TestCloudValidateSingleFileServerValidationUnavailable(t *testing.T) {
+	dir := t.TempDir()
+	filePath := filepath.Join(dir, "app.hcl")
+	if err := os.WriteFile(filePath, []byte(singleFileValidateHCL), 0600); err != nil {
+		t.Fatalf("failed to write temp file: %v", err)
+	}
+
+	httpClient := newMockHTTPClient()
+	keyringSvc := newMockKeyringService()
+	fsSvc := newMockFileSystemService()
+
+	setupChildSegmentValidateMocks(httpClient, keyringSvc)
+	// No mock for the validate endpoint: the transport 404s by default.
+
+	cmd := testCloudValidateCommand(t, httpClient, keyringSvc, fsSvc)
+
+	var code int
+	out := capturer.CaptureOutput(func() {
+		code = cmd.Run([]string{filePath})
+	})
+
+	if code != 0 {
+		t.Errorf("expected exit code 0, got %d\nOutput: %s", code, out)
+	}
+	if !strings.Contains(out, "could not run server-side validation") {
+		t.Errorf("expected server-side validation warning, got %q", out)
+	}
+}
+
+// A file with no backend 'threatmodel' slug has no model to validate against,
+// so no validate request may be made.
+func TestCloudValidateNoSlugSkipsServerValidation(t *testing.T) {
+	noSlugHCL := `spec_version = "0.7.0"
+
+backend "threatcl-cloud" {
+  organization = "test-org"
+}
+
+threatmodel "App" {
+  author = "test@example.com"
+  description = "No slug"
+}
+`
+	dir := t.TempDir()
+	filePath := filepath.Join(dir, "app.hcl")
+	if err := os.WriteFile(filePath, []byte(noSlugHCL), 0600); err != nil {
+		t.Fatalf("failed to write temp file: %v", err)
+	}
+
+	httpClient := newMockHTTPClient()
+	keyringSvc := newMockKeyringService()
+	fsSvc := newMockFileSystemService()
+
+	setupChildSegmentValidateMocks(httpClient, keyringSvc)
+
+	cmd := testCloudValidateCommand(t, httpClient, keyringSvc, fsSvc)
+
+	var code int
+	out := capturer.CaptureOutput(func() {
+		code = cmd.Run([]string{filePath})
+	})
+
+	if code != 0 {
+		t.Errorf("expected exit code 0, got %d\nOutput: %s", code, out)
+	}
+	if bodies := httpClient.transport.getRequestBodies("POST", "/api/v1/org/org-id/models/my-tm/validate"); len(bodies) != 0 {
+		t.Errorf("expected no validate request without a model slug, got %d", len(bodies))
+	}
+	if strings.Contains(out, "Server-side validation") {
+		t.Errorf("did not expect server-side validation output, got %q", out)
+	}
+}

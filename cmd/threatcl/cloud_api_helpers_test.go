@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"strings"
@@ -1320,6 +1321,16 @@ func TestFormatCloudAPIErrorBody(t *testing.T) {
 			expected: "already exists",
 		},
 		{
+			name:     "parsing_error appends name-uniqueness guidance",
+			body:     `{"error":{"code":"parsing_error","message":"TM 'App': duplicate threat 'sqli'","status":400}}`,
+			expected: "TM 'App': duplicate threat 'sqli'\nthreat names must be unique within a threat model",
+		},
+		{
+			name:     "duplicate_entity names the remedy",
+			body:     `{"error":{"code":"duplicate_entity","message":"control 'waf' already exists in threat 'sqli'","status":400}}`,
+			expected: "control 'waf' already exists in threat 'sqli'\nRename one of them locally",
+		},
+		{
 			name:     "envelope with code only falls back to code",
 			body:     `{"error":{"code":"internal_error","status":500}}`,
 			expected: "internal_error",
@@ -1350,5 +1361,47 @@ func TestFormatCloudAPIErrorBody(t *testing.T) {
 				t.Errorf("expected result containing %q, got %q", strings.Split(tt.expected, "\n")[1], got)
 			}
 		})
+	}
+}
+
+// A decoded error envelope is already a complete, readable sentence: it must
+// carry its code's guidance and must not be wrapped in "api returned status".
+func TestHandleAPIErrorResponseDecodesEnvelope(t *testing.T) {
+	resp := &http.Response{
+		StatusCode: http.StatusBadRequest,
+		Body:       io.NopCloser(strings.NewReader(`{"error":{"code":"duplicate_entity","message":"control 'waf' already exists in threat 'sqli'","status":400}}`)),
+	}
+
+	err := handleAPIErrorResponse(resp)
+	if err == nil {
+		t.Fatal("expected an error")
+	}
+	if strings.Contains(err.Error(), "api returned status") {
+		t.Errorf("expected no status prefix on a decoded envelope, got %q", err.Error())
+	}
+	for _, want := range []string{"control 'waf' already exists in threat 'sqli'", "Rename one of them locally"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("expected error to contain %q, got %q", want, err.Error())
+		}
+	}
+}
+
+// A body that isn't the envelope keeps the status-prefixed fallback, so
+// nothing is lost when the server returns something unexpected.
+func TestHandleAPIErrorResponseFallsBackToRawBody(t *testing.T) {
+	resp := &http.Response{
+		StatusCode: http.StatusInternalServerError,
+		Body:       io.NopCloser(strings.NewReader(`<html>boom</html>`)),
+	}
+
+	err := handleAPIErrorResponse(resp)
+	if err == nil {
+		t.Fatal("expected an error")
+	}
+	if !strings.Contains(err.Error(), "api returned status 500") {
+		t.Errorf("expected the status-prefixed fallback, got %q", err.Error())
+	}
+	if !strings.Contains(err.Error(), "<html>boom</html>") {
+		t.Errorf("expected the raw body to survive, got %q", err.Error())
 	}
 }

@@ -35,7 +35,7 @@ func testCloudExportCommand(t testing.TB, httpClient HTTPClient, keyringSvc Keyr
 // cloudExportSampleHCL is a minimal threat model with one threat ref and one
 // control ref. It also includes a backend block so we can assert strip/keep
 // behavior. The threat with no ref ensures hydration is selective.
-const cloudExportSampleHCL = `spec_version = "0.6.0"
+const cloudExportSampleHCL = `spec_version = "0.7.0"
 
 backend "threatcl-cloud" {
   organization = "org-123"
@@ -509,7 +509,7 @@ func TestCloudExportRefMissingWarning(t *testing.T) {
 // target that lives in the model's root file — which is NOT part of the
 // download. The export must still parse it file-faithfully.
 func TestCloudExportChildSegment(t *testing.T) {
-	childSegmentHCL := `spec_version = "0.6.0"
+	childSegmentHCL := `spec_version = "0.7.0"
 
 backend "threatcl-cloud" {
   organization = "org-123"

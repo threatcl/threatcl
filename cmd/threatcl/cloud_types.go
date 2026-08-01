@@ -142,9 +142,12 @@ type validateHCLRequest struct {
 }
 
 // validateHCLError is one structured error from the server-side validate
-// endpoint. Code carries machine-readable classifications, including the
-// multi-file set errors: "child_segment_no_root", "id_outside_namespace",
-// "set_validation_failed" and "parsing_error".
+// endpoint. Code carries machine-readable classifications: "parsing_error"
+// (the content failed to parse — HCL syntax, or a duplicate threat name within
+// a threat model or duplicate control name within a threat) and the multi-file
+// set errors "child_segment_no_root", "id_outside_namespace" and
+// "set_validation_failed". The upload path surfaces a further code,
+// "duplicate_entity", through the same guidance in validateHCLErrorHint.
 type validateHCLError struct {
 	Message string `json:"message"`
 	Line    int    `json:"line,omitempty"`

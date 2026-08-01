@@ -16,6 +16,14 @@ import (
 // HCL, prints a semantic/structural summary of how it differs from the local
 // file, then prints a colored unified (git-style) text diff.
 //
+// segment names which stored file to compare against for a multi-file model —
+// the server-derived segment key for the local file (see
+// CloudClient.DownloadSegmentURL). It must be set whenever the local file is
+// one segment of a multi-file model: the model-level download returns only the
+// default segment, so diffing a child segment against it would report the two
+// unrelated files as wholly added/removed. "" selects the model-level download,
+// which is correct for a plain single-file model.
+//
 // Orientation throughout: the cloud version is the "from" side and the local
 // file is the "to" side, matching the git-style "these are my local changes"
 // mental model. So additions ("+") are content present in the local file but not
@@ -23,7 +31,7 @@ import (
 // present in both but changed.
 func runCloudValidateDiff(
 	client *CloudClient,
-	modelIdOrSlug, filePath string,
+	modelIdOrSlug, segment, filePath string,
 	localWrapped *spec.ThreatmodelWrapped,
 	specCfg *spec.ThreatmodelSpecConfig,
 ) error {
@@ -34,7 +42,13 @@ func runCloudValidateDiff(
 	}
 
 	// Download the current cloud HCL. URL shape matches 'cloud export'.
-	cloudRaw, err := client.DownloadContent(client.DownloadModelURL(modelIdOrSlug))
+	downloadURL := client.DownloadModelURL(modelIdOrSlug)
+	fromLabel := "cloud/" + modelIdOrSlug
+	if segment != "" {
+		downloadURL = client.DownloadSegmentURL(modelIdOrSlug, segment)
+		fromLabel += "#" + segment
+	}
+	cloudRaw, err := client.DownloadContent(downloadURL)
 	if err != nil {
 		return fmt.Errorf("downloading cloud version: %w", err)
 	}
@@ -66,7 +80,7 @@ func runCloudValidateDiff(
 	fmt.Println("Unified diff (cloud vs local):")
 	diffText, derr := unifiedColorDiff(
 		string(cloudRaw), string(localRaw),
-		"cloud/"+modelIdOrSlug, filepath.Base(filePath),
+		fromLabel, filepath.Base(filePath),
 	)
 	if derr != nil {
 		return fmt.Errorf("rendering unified diff: %w", derr)

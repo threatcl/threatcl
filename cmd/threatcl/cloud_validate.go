@@ -29,7 +29,11 @@ Usage: threatcl cloud validate <file>
 	  3. The backend has exactly one organization specified
 	  4. The authenticated user is a member of the specified organization
 
-	The file will also be parsed to ensure it is valid HCL.
+	The file will also be parsed to ensure it is valid HCL. When the backend
+	block names a 'threatmodel' slug, the content is additionally validated
+	server-side, which catches collisions only the server can see - such as a
+	control name that collides once a cloud 'ref' is enriched from the
+	library. An unreachable validate endpoint is a warning, not a failure.
 
 Multi-file models:
 
@@ -38,10 +42,10 @@ Multi-file models:
 	id = "app") is the model's default file, and each additional file
 	declares a dotted id beneath it (e.g. id = "app.frontend") and may
 	'extends' the root. When the validated file declares an id or extends,
-	the server also validates it against the model's other stored files and
-	this command reports the server-derived id and segment. (The backend
-	block's 'segment' attribute from earlier specs no longer exists - the
-	threatmodel id alone keys each file.)
+	the server validates it against the model's other stored files as one
+	set and this command reports the server-derived id and segment. (The
+	backend block's 'segment' attribute from earlier specs no longer exists -
+	the threatmodel id alone keys each file.)
 
 Options:
 
@@ -52,6 +56,9 @@ Options:
    When the local file does not match the latest cloud version of the
    threat model, download the cloud version and print a semantic summary
    of the differences followed by a unified (git-style) text diff.
+   For one segment of a multi-file model the comparison is scoped to that
+   file's own segment (shown as 'cloud/<model>#<segment>'), not the
+   model's default segment.
 
  -with=<glob>
    Optional glob of the model's other .hcl files (e.g. -with='models/*.hcl').
@@ -149,6 +156,53 @@ func (c *CloudValidateCommand) Run(args []string) int {
 		}
 	}
 
+	// Server-side validation, run for every cloud-backed file with a resolved
+	// model slug. The server re-parses the content and is authoritative on
+	// checks this side cannot make: name collisions that only appear once a
+	// cloud 'ref' is enriched from the library, and — for a multi-file model —
+	// the assembled set (extends resolution, id/name uniqueness across the
+	// model's other stored files), for which it also reports the parsed id and
+	// the segment it derives.
+	//
+	// Running it for single-file models too is what makes a duplicate threat
+	// or control name a validate-time error rather than a surprise at push.
+	//
+	// The request is made here, ahead of the -diff output below, because the
+	// segment it derives is what scopes the diff download: one segment of a
+	// multi-file model has to be compared against its own stored file, not the
+	// model's default segment. The result is still reported in its original
+	// position further down, so output ordering is unchanged.
+	runServerValidation := tmNameValid != ""
+
+	// A dotted id or extends is what makes this file one segment of a
+	// multi-file model, and only then does the diff need a segment-scoped
+	// download (below).
+	isSegmentFile := runServerValidation && wrapped != nil && len(wrapped.Threatmodels) == 1 &&
+		(wrapped.Threatmodels[0].Id != "" || wrapped.Threatmodels[0].Extends != "")
+
+	var (
+		validateResp    *validateHCLResponse
+		validateReadErr error
+		validateCallErr error
+	)
+	if runServerValidation {
+		var content []byte
+		content, validateReadErr = os.ReadFile(filePath)
+		if validateReadErr == nil {
+			validateResp, validateCallErr = orgClient.ValidateHCLContent(tmNameValid, content)
+		}
+	}
+
+	// The segment the diff compares against, taken only for a genuine segment
+	// file. A file with no id and no extends *is* the model's default segment,
+	// which the model-level download already returns, so it keeps using that
+	// URL rather than following the server's "default" segment key onto a
+	// different route.
+	diffSegment := ""
+	if isSegmentFile && validateResp != nil && validateResp.Valid {
+		diffSegment = validateResp.Segment
+	}
+
 	if tmFileMatchesVersion != "" {
 		fmt.Printf("✓ Local Threat model file matches the latest version of the cloud threat model at org-id: %s, model-id: %s, version: %s\n", orgValid, tmNameValid, tmFileMatchesVersion)
 		if c.flagDiff {
@@ -157,7 +211,13 @@ func (c *CloudValidateCommand) Run(args []string) int {
 	} else if tmNameValid != "" {
 		fmt.Printf("✓ Local Threat model file (org-id: %s, model-id: %s) matches a cloud threat model, but doesn't match the latest version\nConsider running 'threatcl cloud push' to update the local file to the latest version.\n", orgValid, tmNameValid)
 		if c.flagDiff {
-			if diffErr := runCloudValidateDiff(orgClient, tmNameValid, filePath, wrapped, c.specCfg); diffErr != nil {
+			if isSegmentFile && diffSegment == "" {
+				// Without the server-derived segment key the only fetchable
+				// content is the model's default segment, which for a child
+				// segment is a different file entirely — a diff against it
+				// would be noise, so skip it rather than mislead.
+				fmt.Fprintf(os.Stderr, "⚠ Warning: -diff skipped: '%s' is one segment of a multi-file model and its segment could not be resolved from the server\n", filePath)
+			} else if diffErr := runCloudValidateDiff(orgClient, tmNameValid, diffSegment, filePath, wrapped, c.specCfg); diffErr != nil {
 				// Non-fatal: the validation result itself is unchanged.
 				fmt.Fprintf(os.Stderr, "⚠ Warning: could not produce diff: %s\n", diffErr)
 			}
@@ -172,26 +232,25 @@ func (c *CloudValidateCommand) Run(args []string) int {
 		return 1
 	}
 
-	// Server-side set validation for multi-file models: when the file
-	// declares an id or extends, the server assembles it with the model's
-	// other stored files and validates the whole set — it is authoritative
-	// there — and reports the parsed id and derived segment. Files with
-	// neither (plain single-file models) skip this, keeping their output
-	// unchanged.
-	if tmNameValid != "" && wrapped != nil && len(wrapped.Threatmodels) == 1 &&
-		(wrapped.Threatmodels[0].Id != "" || wrapped.Threatmodels[0].Extends != "") {
-		content, readErr := os.ReadFile(filePath)
-		if readErr != nil {
-			fmt.Fprintf(os.Stderr, "⚠ Warning: could not read file for server-side validation: %s\n", readErr)
-		} else if validateResp, vErr := orgClient.ValidateHCLContent(tmNameValid, content); vErr != nil {
+	// Report the server-side validation requested above.
+	if runServerValidation {
+		if validateReadErr != nil {
+			fmt.Fprintf(os.Stderr, "⚠ Warning: could not read file for server-side validation: %s\n", validateReadErr)
+		} else if validateCallErr != nil {
 			// Best effort: an older server without the endpoint (or a
 			// transient failure) doesn't invalidate the checks above.
-			fmt.Fprintf(os.Stderr, "⚠ Warning: could not run server-side validation: %s\n", vErr)
+			fmt.Fprintf(os.Stderr, "⚠ Warning: could not run server-side validation: %s\n", validateCallErr)
 		} else if validateResp.Valid {
-			if validateResp.Id != "" {
+			// The id and segment only mean something for one file of a
+			// multi-file model; a single-file model is the whole model, so
+			// naming its "default" segment would be noise.
+			switch {
+			case isSegmentFile && validateResp.Id != "" && validateResp.Segment != "":
 				fmt.Printf("✓ Server-side validation passed (id: %s, segment: %s)\n", validateResp.Id, validateResp.Segment)
-			} else {
+			case isSegmentFile && validateResp.Segment != "":
 				fmt.Printf("✓ Server-side validation passed (segment: %s)\n", validateResp.Segment)
+			default:
+				fmt.Println("✓ Server-side validation passed")
 			}
 		} else {
 			fmt.Fprintf(os.Stderr, "❌ Server-side validation failed:\n")

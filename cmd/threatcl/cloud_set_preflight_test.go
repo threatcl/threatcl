@@ -9,7 +9,7 @@ import (
 	"github.com/threatcl/spec"
 )
 
-const preflightRootHCL = `spec_version = "0.6.0"
+const preflightRootHCL = `spec_version = "0.7.0"
 
 backend "threatcl-cloud" {
   organization = "test-org"
@@ -23,7 +23,7 @@ threatmodel "App" {
 }
 `
 
-const preflightChildHCL = `spec_version = "0.6.0"
+const preflightChildHCL = `spec_version = "0.7.0"
 
 backend "threatcl-cloud" {
   organization = "test-org"
