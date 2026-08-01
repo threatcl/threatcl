@@ -1,3 +1,35 @@
+## 0.6.5
+
+### 1 Aug, 2026
+
+CHANGES:
+
+* `threatcl cloud validate -diff` now compares one segment of a multi-file
+  model against that same segment in the cloud, instead of always against the
+  model's default segment. The diff header names the segment it fetched
+  (`cloud/<model>#<segment>`); when the segment can't be resolved the diff is
+  skipped with a warning rather than run against the wrong baseline.
+* Bumped to `spec` 0.7.0, which rejects duplicate threat names within a threat
+  model, and duplicate control names within a threat, at parse time (after
+  `expanded_control` and `control_imports` are merged in). `cloud validate` and
+  `cloud push` now fail on these locally, before any network call.
+* Better handling of some threatcl cloud validation errors
+    * `cloud validate` runs server-side validation for every cloud-backed file
+      with a `threatmodel` slug, not just segments of a multi-file model, so a
+      name collision the server sees - including one produced by enriching a
+      cloud `ref` from the library - is reported at validate time instead of
+      first appearing at push.
+    * The `parsing_error` and `duplicate_entity` error codes now render with
+      guidance, and every endpoint (not just upload) decodes the API's error
+      envelope rather than printing raw JSON.
+    * A decoded error envelope is no longer prefixed with
+      `api returned status <N>:`, which added nothing to an already readable
+      message.
+* Duplicate names *within* one threat model (a repeated threat, control,
+  information asset, DFD element, ...) no longer carry the "must be unique when
+  files are parsed together as a set" guidance, which only applies to
+  threatmodel name/id collisions across files.
+
 ## 0.6.4
 
 ### Jul 29, 2026
