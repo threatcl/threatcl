@@ -908,3 +908,82 @@ func TestCloudPushWithPreflightFails(t *testing.T) {
 		t.Errorf("expected the set-level extends error, got %q", out)
 	}
 }
+
+// A duplicate_entity rejection at upload must render as the server's message
+// plus guidance, with no "api returned status 400:" prefix in front of it.
+func TestCloudPushDuplicateEntityError(t *testing.T) {
+	validHCL := `
+spec_version = "0.1.10"
+
+backend "threatcl-cloud" {
+  organization = "test-org"
+  threatmodel = "my-tm"
+}
+
+threatmodel "Test Model" {
+  author = "test@example.com"
+  description = "Test"
+}
+`
+
+	tmpFile, err := os.CreateTemp("", "test-*.hcl")
+	if err != nil {
+		t.Fatalf("failed to create temp file: %v", err)
+	}
+	defer os.Remove(tmpFile.Name())
+
+	if _, err := tmpFile.Write([]byte(validHCL)); err != nil {
+		t.Fatalf("failed to write temp file: %v", err)
+	}
+	tmpFile.Close()
+
+	httpClient := newMockHTTPClient()
+	keyringSvc := newMockKeyringService()
+	fsSvc := newMockFileSystemService()
+
+	keyringSvc.setMockToken("valid-token", "org-id", "Test Org")
+	fsSvc.SetFileContent(tmpFile.Name(), []byte(validHCL))
+
+	httpClient.transport.setResponse("GET", "/api/v1/users/me", http.StatusOK, jsonResponse(whoamiResponse{
+		User: userInfo{Email: "test@example.com"},
+		Organizations: []orgMembership{
+			{Organization: orgInfo{ID: "org-id", Slug: "test-org"}, Role: "admin"},
+		},
+	}))
+	httpClient.transport.setResponse("GET", "/api/v1/org/org-id/models/my-tm", http.StatusOK, jsonResponse(threatModel{
+		ID:   "tm-123",
+		Name: "My TM",
+		Slug: "my-tm",
+	}))
+	httpClient.transport.setResponse("GET", "/api/v1/org/org-id/models/tm-123/versions", http.StatusOK, jsonResponse(threatModelVersionsResponse{
+		Versions: []threatModelVersion{
+			{ID: "v1", Version: "1.0.0", SpecFileHash: "different-hash", IsCurrent: true},
+		},
+		Total: 1,
+	}))
+	httpClient.transport.setResponse("POST", "/api/v1/org/org-id/models/my-tm/upload", http.StatusBadRequest,
+		`{"error":{"code":"duplicate_entity","message":"control 'waf' already exists in threat 'sqli'","status":400}}`)
+
+	cmd := testCloudPushCommand(t, httpClient, keyringSvc, fsSvc)
+
+	var code int
+	out := capturer.CaptureOutput(func() {
+		code = cmd.Run([]string{tmpFile.Name()})
+	})
+
+	if code != 1 {
+		t.Errorf("expected exit code 1, got %d\nOutput: %s", code, out)
+	}
+	for _, want := range []string{
+		"control 'waf' already exists in threat 'sqli'",
+		"Rename one of them locally",
+		"-ignore-linked-controls",
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("expected output to contain %q, got %q", want, out)
+		}
+	}
+	if strings.Contains(out, "api returned status") {
+		t.Errorf("expected no status prefix on a decoded envelope, got %q", out)
+	}
+}

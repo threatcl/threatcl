@@ -104,9 +104,12 @@ func (c *CloudClient) Upload(modelIdOrSlug, filename string, content []byte, ign
 			return fmt.Errorf(ErrThreatModelNotFound, modelIdOrSlug)
 		}
 		// Prefer the API's structured error envelope (with guidance for the
-		// multi-file error codes) over dumping the raw body.
+		// known error codes) over dumping the raw body. A decoded envelope is
+		// already a complete, readable sentence, so it is returned on its own:
+		// prefixing "api returned status 400:" adds nothing the message and
+		// its guidance don't already say.
 		if msg := formatCloudAPIErrorBody(body); msg != "" {
-			return fmt.Errorf(ErrAPIReturnedStatus, resp.StatusCode, msg)
+			return errors.New(msg)
 		}
 		return fmt.Errorf(ErrAPIReturnedStatus, resp.StatusCode, string(body))
 	}
@@ -189,9 +192,10 @@ func (c *CloudClient) ValidateHCLContent(modelIdOrSlug string, content []byte) (
 	return &validateResp, nil
 }
 
-// validateHCLErrorHint maps the validate endpoint's machine-readable error
-// codes for multi-file models to actionable guidance; "" when the message
-// stands on its own.
+// validateHCLErrorHint maps the server's machine-readable error codes to
+// actionable guidance; "" when the message stands on its own. It covers both
+// the validate endpoint's codes (including the multi-file set errors) and the
+// codes the upload path returns through formatCloudAPIErrorBody.
 func validateHCLErrorHint(code string) string {
 	switch code {
 	case "child_segment_no_root":
@@ -200,6 +204,10 @@ func validateHCLErrorHint(code string) string {
 		return "A child file's id must sit beneath the model's root id (root \"app\" → child \"app.frontend\")."
 	case "set_validation_failed":
 		return "The file failed validation against the model's other stored files (extends resolution, name/id uniqueness, reserved id segments, backend agreement)."
+	case "parsing_error":
+		return "The server could not parse this file. Beyond HCL syntax, check name uniqueness: threat names must be unique within a threat model, and control names unique within a threat."
+	case "duplicate_entity":
+		return "Two entities resolved to the same name. Rename one of them locally, then push again. If the collision only appears once a cloud 'ref' is enriched from the library, the colliding name comes from the library entry rather than this file - 'cloud push -ignore-linked-controls' uploads without linking library controls to refs, at the cost of storing the model without those linked controls."
 	}
 	return ""
 }
