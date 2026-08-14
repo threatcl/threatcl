@@ -9,7 +9,7 @@ import (
 
 	"github.com/posener/complete"
 	"github.com/threatcl/spec"
-	"github.com/threatcl/threatcl/internal/invariants"
+	"github.com/threatcl/spec/invariants"
 	"github.com/threatcl/threatcl/internal/tmloader"
 )
 
