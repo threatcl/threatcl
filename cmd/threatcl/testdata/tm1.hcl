@@ -1,4 +1,4 @@
- spec_version = "0.7.0"
+ spec_version = "0.8.0"
 
  threatmodel "tm1 one" {
    description = <<EOT
