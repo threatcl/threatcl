@@ -1,3 +1,22 @@
+## 0.6.6
+
+### 15 Aug, 2026
+
+CHANGES:
+
+* The invariants engine moved out of threatcl and into the spec module, as
+  `github.com/threatcl/spec/invariants`. `threatcl validate -invariants` parses
+  and evaluates exactly as before — same verdicts, same output, same exit codes
+  — but the CLI and Threatcl Cloud now share one parser and one evaluator, so a
+  rule means the same thing wherever it runs.
+* The invariants language reference now lives with the engine, in spec's
+  [`docs/invariants.md`](https://github.com/threatcl/spec/blob/main/docs/invariants.md).
+  threatcl's `docs/invariants.md` covers the CLI — the `-invariants` flag,
+  output, exit codes, and rolling a rule out from `warning` to `error` — and
+  links to the language reference.
+* Bumped to `spec` 0.8.0.
+* Bumped to go 1.26.6
+
 ## 0.6.5
 
 ### 1 Aug, 2026

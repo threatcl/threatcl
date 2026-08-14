@@ -337,8 +337,8 @@ func (c *TerraformCommand) AutocompleteArgs() complete.Predictor {
 
 func (c *TerraformCommand) AutocompleteFlags() complete.Flags {
 	return complete.Flags{
-		"-config":                 predictHCL,
-		"-add-to-existing":        predictHCL,
-		"-tf-collection":          predictJSON,
+		"-config":          predictHCL,
+		"-add-to-existing": predictHCL,
+		"-tf-collection":   predictJSON,
 	}
 }
