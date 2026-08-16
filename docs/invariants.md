@@ -85,3 +85,66 @@ The two severities make invariants easy to adopt in CI without a flag day:
 
 Exemptions live in the invariants file, not in the threat model, so a model
 can't waive a rule for itself.
+
+## Invariants in Threatcl Cloud
+
+Threatcl Cloud's policy engine speaks invariants too, so the same file can gate
+a pull request locally and every model in your organization centrally. A cloud
+policy is either a Rego module (engine `rego`) or a single `invariant` block
+(engine `invariant`); the cloud runs the same evaluator this page describes, so
+a rule's verdict doesn't change when it moves.
+
+Push a whole invariants file with `sync-invariants`. Each `invariant` block
+becomes one policy, addressed by its name label, so re-running it after an edit
+updates the same policies rather than piling up new ones:
+
+```bash
+threatcl cloud policy sync-invariants invariants.hcl
+```
+
+```
+Parsed 3 invariants from invariants.hcl
+
+  + no_public_unauth (created)
+  ~ threats_have_controls (updated)
+
+1 created | 1 updated
+```
+
+The import is all-or-nothing — if any block fails, nothing is imported — and
+the cloud-side settings you manage in the UI (enabled, enforced, category,
+tags) survive a re-run. Individual blocks can also be managed one at a time:
+
+```bash
+threatcl cloud policy validate -engine=invariant invariants.hcl
+threatcl cloud policy create -engine=invariant -file=one-invariant.hcl
+threatcl cloud policy update -policy-id=<uuid> -engine=invariant -file=one-invariant.hcl
+threatcl cloud policies -engine=invariant
+```
+
+`create` takes the policy's name and severity from the block, so there's one
+place to change them. Severity means the same thing it does locally, and there
+is no `info` level for invariants.
+
+Evaluating a model reports violations the way `validate` does, naming the item,
+its segment, and the rendered message:
+
+```bash
+threatcl cloud policy evaluate -model-id=<uuid> -fail-on-error
+```
+
+Two differences are worth knowing before you push a file up:
+
+- **Exemptions resolve against HCL identities, not cloud display names.** A
+  model shown as "Payments Service" in the cloud whose file declares
+  `threatmodel "Payments"` is exempted as `threatmodel["Payments"]`, or by its
+  dotted `id`. Accepting the display name would validate a waiver that never
+  fires. Exemptions are also segment-granular: exempting a root segment leaves
+  its children checked.
+- **Validation is organization-scoped.** The cloud resolves every exemption
+  against the models your org has, so `cloud policy validate` can reject a file
+  that parses cleanly on your laptop.
+
+Not every deployment offers the invariant engine. When it's off, these commands
+report that the feature isn't enabled and evaluation ignores invariant
+policies; run `threatcl validate -invariants` locally in the meantime.

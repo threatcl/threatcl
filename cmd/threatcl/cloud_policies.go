@@ -14,14 +14,18 @@ type CloudPoliciesCommand struct {
 	CloudCommandBase
 	flagOrgId       string
 	flagEnabledOnly bool
+	flagEngine      string
 	flagJSON        bool
 }
 
 func (c *CloudPoliciesCommand) Help() string {
 	helpText := `
-Usage: threatcl cloud policies [-org-id=<orgId>] [-enabled-only] [-json]
+Usage: threatcl cloud policies [-org-id=<orgId>] [-enabled-only] [-engine=<engine>] [-json]
 
 	List policies for an organization.
+
+	Policies are either Rego modules (engine "rego") or single threatcl
+	invariant blocks (engine "invariant").
 
 	If -org-id is not provided, the command will check the THREATCL_CLOUD_ORG
 	environment variable. If that is also not set, it will use the first
@@ -35,6 +39,9 @@ Options:
 
  -enabled-only
    Filter to enabled policies only.
+
+ -engine=<engine>
+   Filter to one engine: rego or invariant.
 
  -json
    Output as JSON.
@@ -52,6 +59,7 @@ func (c *CloudPoliciesCommand) Synopsis() string {
 func (c *CloudPoliciesCommand) AutocompleteFlags() complete.Flags {
 	return complete.Flags{
 		"-config": predictHCL,
+		"-engine": complete.PredictSet(policyEngineRego, policyEngineInvariant),
 	}
 }
 
@@ -59,8 +67,14 @@ func (c *CloudPoliciesCommand) Run(args []string) int {
 	flagSet := c.GetFlagset("cloud policies")
 	flagSet.StringVar(&c.flagOrgId, "org-id", "", "Organization ID (optional)")
 	flagSet.BoolVar(&c.flagEnabledOnly, "enabled-only", false, "Filter to enabled policies only")
+	flagSet.StringVar(&c.flagEngine, "engine", "", "Filter to one engine: rego or invariant")
 	flagSet.BoolVar(&c.flagJSON, "json", false, "Output as JSON")
 	parseFlags(flagSet, args)
+
+	if c.flagEngine != "" && !validPolicyEngine(c.flagEngine) {
+		fmt.Fprintf(os.Stderr, "Error: -engine must be one of: %s, %s\n", policyEngineRego, policyEngineInvariant)
+		return 1
+	}
 
 	// Build the cloud client (resolves token + org)
 	client, _, err := c.newCloudClient(c.flagOrgId, 10*time.Second)
@@ -75,13 +89,17 @@ func (c *CloudPoliciesCommand) Run(args []string) int {
 		return 1
 	}
 
-	// Client-side filtering for enabled-only
-	if c.flagEnabledOnly {
+	// Client-side filtering: the endpoint returns the org's full policy list
+	if c.flagEnabledOnly || c.flagEngine != "" {
 		var filtered []policy
 		for _, p := range policies {
-			if p.Enabled {
-				filtered = append(filtered, p)
+			if c.flagEnabledOnly && !p.Enabled {
+				continue
 			}
+			if c.flagEngine != "" && p.engineName() != c.flagEngine {
+				continue
+			}
+			filtered = append(filtered, p)
 		}
 		policies = filtered
 	}
@@ -111,7 +129,7 @@ func (c *CloudPoliciesCommand) displayPolicies(policies []policy) {
 	fmt.Println("  Policies")
 	fmt.Println(strings.Repeat("=", 100))
 	fmt.Println()
-	fmt.Printf("%-32s %-10s %-8s %-10s %-17s %s\n", "NAME", "SEVERITY", "ENABLED", "ENFORCED", "CATEGORY", "UPDATED")
+	fmt.Printf("%-30s %-10s %-9s %-8s %-9s %-15s %s\n", "NAME", "ENGINE", "SEVERITY", "ENABLED", "ENFORCED", "CATEGORY", "UPDATED")
 	fmt.Println(strings.Repeat("-", 100))
 
 	for _, p := range policies {
@@ -123,12 +141,13 @@ func (c *CloudPoliciesCommand) displayPolicies(policies []policy) {
 		if len(p.UpdatedAt) >= 10 {
 			updated = p.UpdatedAt[:10]
 		}
-		fmt.Printf("%-32s %-10s %-8v %-10v %-17s %s\n",
-			truncateString(p.Name, 31),
+		fmt.Printf("%-30s %-10s %-9s %-8v %-9v %-15s %s\n",
+			truncateString(p.Name, 29),
+			p.engineName(),
 			p.Severity,
 			p.Enabled,
 			p.Enforced,
-			truncateString(category, 16),
+			truncateString(category, 14),
 			updated,
 		)
 	}
