@@ -377,3 +377,122 @@ func TestCloudPoliciesDisplayPoliciesEmpty(t *testing.T) {
 		t.Errorf("expected 'No policies found' message, got %q", out)
 	}
 }
+
+func TestCloudPoliciesRunEngineFilter(t *testing.T) {
+	policies := []policy{
+		{
+			ID:       "pol-1",
+			Name:     "Controls Required",
+			Severity: "error",
+			Enabled:  true,
+		},
+		{
+			ID:       "pol-2",
+			Name:     "threats_have_controls",
+			Engine:   policyEngineInvariant,
+			Severity: "warning",
+			Enabled:  true,
+		},
+	}
+
+	tests := []struct {
+		name    string
+		engine  string
+		expect  string
+		exclude string
+	}{
+		{name: "invariant only", engine: "invariant", expect: "threats_have_controls", exclude: "Controls Required"},
+		// A policy stored before the engine field existed is a rego policy.
+		{name: "rego only", engine: "rego", expect: "Controls Required", exclude: "threats_have_controls"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			httpClient := newMockHTTPClient()
+			keyringSvc := newMockKeyringService()
+			fsSvc := newMockFileSystemService()
+
+			keyringSvc.setMockToken("valid-token", "org123", "Test Org")
+			httpClient.transport.setResponse("GET", "/api/v1/org/org123/policies", http.StatusOK, jsonResponse(policies))
+
+			cmd := testCloudPoliciesCommand(t, httpClient, keyringSvc, fsSvc)
+
+			var code int
+			out := capturer.CaptureOutput(func() {
+				code = cmd.Run([]string{"-org-id", "org123", "-engine", tt.engine})
+			})
+
+			if code != 0 {
+				t.Errorf("expected exit code 0, got %d", code)
+			}
+
+			if !strings.Contains(out, tt.expect) {
+				t.Errorf("expected %q in output, got %q", tt.expect, out)
+			}
+
+			if strings.Contains(out, tt.exclude) {
+				t.Errorf("expected %q NOT in output, got %q", tt.exclude, out)
+			}
+		})
+	}
+}
+
+func TestCloudPoliciesRunInvalidEngine(t *testing.T) {
+	httpClient := newMockHTTPClient()
+	keyringSvc := newMockKeyringService()
+	fsSvc := newMockFileSystemService()
+
+	cmd := testCloudPoliciesCommand(t, httpClient, keyringSvc, fsSvc)
+
+	var code int
+	out := capturer.CaptureOutput(func() {
+		code = cmd.Run([]string{"-org-id", "org123", "-engine", "opa"})
+	})
+
+	if code != 1 {
+		t.Errorf("expected exit code 1, got %d", code)
+	}
+
+	if !strings.Contains(out, "-engine must be one of") {
+		t.Errorf("expected an engine error, got %q", out)
+	}
+}
+
+func TestCloudPoliciesDisplayPoliciesEngineColumn(t *testing.T) {
+	policies := []policy{
+		{
+			ID:        "pol-1",
+			Name:      "Controls Required",
+			Severity:  "error",
+			Enabled:   true,
+			UpdatedAt: "2026-03-10T12:00:00Z",
+		},
+		{
+			ID:        "pol-2",
+			Name:      "threats_have_controls",
+			Engine:    policyEngineInvariant,
+			Severity:  "warning",
+			Enabled:   true,
+			UpdatedAt: "2026-03-11T12:00:00Z",
+		},
+	}
+
+	cmd := testCloudPoliciesCommand(t, nil, nil, nil)
+
+	out := capturer.CaptureStdout(func() {
+		cmd.displayPolicies(policies)
+	})
+
+	if !strings.Contains(out, "ENGINE") {
+		t.Errorf("expected an 'ENGINE' header, got %q", out)
+	}
+
+	if !strings.Contains(out, "invariant") {
+		t.Errorf("expected the invariant engine in output, got %q", out)
+	}
+
+	// A policy from a deployment that predates the field still reads as rego.
+	if !strings.Contains(out, "rego") {
+		t.Errorf("expected an absent engine to display as rego, got %q", out)
+	}
+}

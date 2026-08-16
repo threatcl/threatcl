@@ -82,7 +82,7 @@ func TestCloudPolicyValidateRunMissingFileArg(t *testing.T) {
 		t.Errorf("expected exit code 1, got %d", code)
 	}
 
-	if !strings.Contains(out, ".rego file path is required") {
+	if !strings.Contains(out, "policy file path is required") {
 		t.Errorf("expected error about file path being required, got %q", out)
 	}
 }
@@ -131,7 +131,7 @@ func TestCloudPolicyValidateRunJSON(t *testing.T) {
 		t.Errorf("expected exit code 0, got %d", code)
 	}
 
-	var result regoValidateResponse
+	var result policyValidateResponse
 	if err := json.Unmarshal([]byte(strings.TrimSpace(out)), &result); err != nil {
 		t.Errorf("expected valid JSON output, got error: %v", err)
 	}
@@ -162,7 +162,7 @@ func TestCloudPolicyValidateRunJSONInvalid(t *testing.T) {
 		t.Errorf("expected exit code 1, got %d", code)
 	}
 
-	var result regoValidateResponse
+	var result policyValidateResponse
 	if err := json.Unmarshal([]byte(strings.TrimSpace(out)), &result); err != nil {
 		t.Errorf("expected valid JSON output, got error: %v", err)
 	}
@@ -239,7 +239,7 @@ func TestCloudPolicyValidateRego(t *testing.T) {
 
 	httpClient.transport.setResponse("POST", "/api/v1/org/org123/policies/validate", http.StatusOK, `{"valid":true}`)
 
-	result, err := NewCloudClient("token", "org123", getAPIBaseURL(fsSvc), httpClient).ValidateRego("package threatcl.test\n")
+	result, err := NewCloudClient("token", "org123", getAPIBaseURL(fsSvc), httpClient).ValidatePolicySource(policyEngineRego, "package threatcl.test\n")
 
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
@@ -275,5 +275,97 @@ func TestCloudPolicyValidateRunNoTokenForOrg(t *testing.T) {
 
 	if !strings.Contains(out, "no token found for organization") {
 		t.Errorf("expected error message about no token for org, got %q", out)
+	}
+}
+
+func TestCloudPolicyValidateRunInvariantEngine(t *testing.T) {
+	httpClient := newMockHTTPClient()
+	keyringSvc := newMockKeyringService()
+	fsSvc := newMockFileSystemService()
+
+	keyringSvc.setMockToken("valid-token", "org123", "Test Org")
+	fsSvc.SetFileContent("invariant.hcl", []byte(testInvariantSource))
+
+	httpClient.transport.setResponse("POST", "/api/v1/org/org123/policies/validate", http.StatusOK, `{"valid":true}`)
+
+	cmd := testCloudPolicyValidateCommand(t, httpClient, keyringSvc, fsSvc)
+
+	var code int
+	out := capturer.CaptureOutput(func() {
+		code = cmd.Run([]string{"-org-id", "org123", "-engine", "invariant", "invariant.hcl"})
+	})
+
+	if code != 0 {
+		t.Errorf("expected exit code 0, got %d: %s", code, out)
+	}
+
+	bodies := httpClient.transport.getRequestBodies("POST", "/api/v1/org/org123/policies/validate")
+	if len(bodies) != 1 {
+		t.Fatalf("expected 1 request, got %d", len(bodies))
+	}
+
+	body := map[string]any{}
+	if err := json.Unmarshal([]byte(bodies[0]), &body); err != nil {
+		t.Fatalf("failed to decode request body: %v", err)
+	}
+
+	if body["engine"] != policyEngineInvariant {
+		t.Errorf("expected engine invariant, got %v", body["engine"])
+	}
+	if body["source"] != testInvariantSource {
+		t.Errorf("expected the file contents as source, got %v", body["source"])
+	}
+	if _, ok := body["rego_source"]; ok {
+		t.Error("expected no rego_source for an invariant validation")
+	}
+}
+
+func TestCloudPolicyValidateRunInvariantInvalid(t *testing.T) {
+	httpClient := newMockHTTPClient()
+	keyringSvc := newMockKeyringService()
+	fsSvc := newMockFileSystemService()
+
+	keyringSvc.setMockToken("valid-token", "org123", "Test Org")
+	fsSvc.SetFileContent("invariant.hcl", []byte(testInvariantSource))
+
+	// Exemptions resolve server-side against the org's models, so a file that
+	// parses locally can still be rejected.
+	httpClient.transport.setResponse("POST", "/api/v1/org/org123/policies/validate", http.StatusOK,
+		`{"valid":false,"error":"exemption references unknown threatmodel \"Payments Service\""}`)
+
+	cmd := testCloudPolicyValidateCommand(t, httpClient, keyringSvc, fsSvc)
+
+	var code int
+	out := capturer.CaptureOutput(func() {
+		code = cmd.Run([]string{"-org-id", "org123", "-engine", "invariant", "invariant.hcl"})
+	})
+
+	if code != 1 {
+		t.Errorf("expected exit code 1, got %d", code)
+	}
+
+	if !strings.Contains(out, "unknown threatmodel") {
+		t.Errorf("expected the server's reason in output, got %q", out)
+	}
+}
+
+func TestCloudPolicyValidateRunInvalidEngine(t *testing.T) {
+	httpClient := newMockHTTPClient()
+	keyringSvc := newMockKeyringService()
+	fsSvc := newMockFileSystemService()
+
+	cmd := testCloudPolicyValidateCommand(t, httpClient, keyringSvc, fsSvc)
+
+	var code int
+	out := capturer.CaptureOutput(func() {
+		code = cmd.Run([]string{"-org-id", "org123", "-engine", "opa", "policy.rego"})
+	})
+
+	if code != 1 {
+		t.Errorf("expected exit code 1, got %d", code)
+	}
+
+	if !strings.Contains(out, "-engine must be one of") {
+		t.Errorf("expected an engine error, got %q", out)
 	}
 }

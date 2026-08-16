@@ -10,13 +10,19 @@ import (
 	"github.com/posener/complete"
 )
 
-// policy represents a policy object from the API
+// policy represents a policy object from the API.
+//
+// RegoSource is the deprecated alias of Source. It is absent on invariant
+// policies - their source is HCL, which an older client would try to compile
+// as Rego - so read the source through sourceText().
 type policy struct {
 	ID             string   `json:"id"`
 	OrganizationID string   `json:"organization_id"`
 	Name           string   `json:"name"`
 	Slug           string   `json:"slug"`
 	Description    string   `json:"description"`
+	Engine         string   `json:"engine"`
+	Source         string   `json:"source"`
 	RegoSource     string   `json:"rego_source"`
 	Severity       string   `json:"severity"`
 	Category       string   `json:"category"`
@@ -28,19 +34,38 @@ type policy struct {
 	UpdatedAt      string   `json:"updated_at"`
 }
 
+// engineName is the policy's engine, defaulting to rego for a response from a
+// deployment that predates the field.
+func (p *policy) engineName() string {
+	return policyEngineOrDefault(p.Engine)
+}
+
+// sourceText is the policy's rule text, falling back to the deprecated
+// rego_source for a deployment that predates the source field.
+func (p *policy) sourceText() string {
+	if p.Source != "" {
+		return p.Source
+	}
+	return p.RegoSource
+}
+
 type CloudPolicyCommand struct {
 	CloudCommandBase
-	flagOrgId    string
-	flagPolicyId string
-	flagShowRego bool
-	flagJSON     bool
+	flagOrgId      string
+	flagPolicyId   string
+	flagShowSource bool
+	flagShowRego   bool
+	flagJSON       bool
 }
 
 func (c *CloudPolicyCommand) Help() string {
 	helpText := `
-Usage: threatcl cloud policy -policy-id=<uuid> [-org-id=<orgId>] [-show-rego] [-json]
+Usage: threatcl cloud policy -policy-id=<uuid> [-org-id=<orgId>] [-show-source] [-json]
 
 	Display information about a single policy.
+
+	A policy is either a Rego module (engine "rego") or a single threatcl
+	invariant block (engine "invariant"); the Engine field says which.
 
 	The -policy-id flag is required.
 
@@ -57,8 +82,11 @@ Options:
    Optional organization ID. If not provided, uses THREATCL_CLOUD_ORG env var
    or the first organization from your user profile.
 
+ -show-source
+   Include the full policy source in output.
+
  -show-rego
-   Include full Rego source in output.
+   Deprecated alias for -show-source.
 
  -json
    Output as JSON.
@@ -83,7 +111,8 @@ func (c *CloudPolicyCommand) Run(args []string) int {
 	flagSet := c.GetFlagset("cloud policy")
 	flagSet.StringVar(&c.flagOrgId, "org-id", "", "Organization ID (optional)")
 	flagSet.StringVar(&c.flagPolicyId, "policy-id", "", "Policy ID (required)")
-	flagSet.BoolVar(&c.flagShowRego, "show-rego", false, "Include full Rego source in output")
+	flagSet.BoolVar(&c.flagShowSource, "show-source", false, "Include the full policy source in output")
+	flagSet.BoolVar(&c.flagShowRego, "show-rego", false, "Deprecated alias for -show-source")
 	flagSet.BoolVar(&c.flagJSON, "json", false, "Output as JSON")
 	parseFlags(flagSet, args)
 
@@ -130,6 +159,7 @@ func (c *CloudPolicyCommand) displayPolicy(p *policy) {
 	fmt.Printf("Name:        %s\n", p.Name)
 	fmt.Printf("ID:          %s\n", p.ID)
 	fmt.Printf("Slug:        %s\n", p.Slug)
+	fmt.Printf("Engine:      %s\n", p.engineName())
 	fmt.Printf("Severity:    %s\n", p.Severity)
 	if p.Category != "" {
 		fmt.Printf("Category:    %s\n", p.Category)
@@ -149,10 +179,14 @@ func (c *CloudPolicyCommand) displayPolicy(p *policy) {
 		fmt.Printf("Updated:     %s\n", p.UpdatedAt)
 	}
 
-	if c.flagShowRego && p.RegoSource != "" {
+	if source := p.sourceText(); (c.flagShowSource || c.flagShowRego) && source != "" {
+		heading := "Rego Source:"
+		if p.engineName() == policyEngineInvariant {
+			heading = "Invariant Source:"
+		}
 		fmt.Println()
-		fmt.Println("Rego Source:")
-		for _, line := range strings.Split(p.RegoSource, "\n") {
+		fmt.Println(heading)
+		for _, line := range strings.Split(source, "\n") {
 			fmt.Printf("  %s\n", line)
 		}
 	}

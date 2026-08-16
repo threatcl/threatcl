@@ -256,6 +256,9 @@ func Run(args []string) int {
 		"cloud policy validate": func() (cli.Command, error) {
 			return &CloudPolicyValidateCommand{CloudCommandBase: base()}, nil
 		},
+		"cloud policy sync-invariants": func() (cli.Command, error) {
+			return &CloudPolicySyncInvariantsCommand{CloudCommandBase: base()}, nil
+		},
 		"cloud policy evaluate": func() (cli.Command, error) {
 			return &CloudPolicyEvaluateCommand{CloudCommandBase: base()}, nil
 		},

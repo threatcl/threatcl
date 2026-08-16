@@ -1,3 +1,34 @@
+## 0.6.7
+
+### 16 Aug, 2026
+
+CHANGES:
+
+* The `threatcl cloud policy` commands now speak both policy engines. A cloud
+  policy is either an OPA Rego module (`-engine=rego`, the default) or a single
+  threatcl `invariant` block (`-engine=invariant`), evaluated server-side by the
+  same engine `threatcl validate -invariants` runs locally.
+* New `threatcl cloud policy sync-invariants <file.hcl>`: imports a whole
+  invariants file, one policy per `invariant` block, upserting by the block's
+  name label. The import is all-or-nothing, and cloud-side metadata (enabled,
+  enforced, category, tags) survives a re-run.
+* `cloud policy create` and `cloud policy update` take `-file` (`-rego-file` is
+  now a deprecated alias) and `-engine`. For an invariant policy the block is
+  authoritative: `-name` and `-severity` default to its name label and
+  `severity` attribute, and a `-severity` that contradicts the block is
+  rejected locally rather than at the API.
+* `cloud policy validate` takes `-engine=invariant` to validate an invariants
+  file. This is organization-scoped — the server resolves the block's
+  exemptions against the threat model identities your org's models declare — so
+  it catches waivers a local parse cannot.
+* `cloud policies` gained an ENGINE column and an `-engine` filter;
+  `cloud policy` gained `-show-source` (`-show-rego` is now an alias) and shows
+  the policy's engine.
+* `cloud policy evaluate` and `cloud policy evaluation` now print an
+  invariant's violations beneath its row — the offending item, the segment it
+  came from, and the rendered message — along with any active exemptions and
+  rule-evaluation errors.
+
 ## 0.6.6
 
 ### 15 Aug, 2026

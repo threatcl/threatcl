@@ -10,10 +10,18 @@ import (
 	"net/url"
 )
 
-// policyCreateRequest represents the request body for creating a policy
+// policyCreateRequest represents the request body for creating a policy.
+//
+// Engine is omitted for rego so the request stays byte-identical to what a
+// pre-engine deployment expects; the server defaults an absent engine to rego.
+// Source is the current field and RegoSource its deprecated alias - rego
+// policies send both (the server prefers Source when both are present) so the
+// CLI keeps working against a deployment that only knows the old name.
 type policyCreateRequest struct {
 	Name        string   `json:"name"`
-	RegoSource  string   `json:"rego_source"`
+	Engine      string   `json:"engine,omitempty"`
+	Source      string   `json:"source,omitempty"`
+	RegoSource  string   `json:"rego_source,omitempty"`
 	Severity    string   `json:"severity"`
 	Description *string  `json:"description,omitempty"`
 	Category    *string  `json:"category,omitempty"`
@@ -21,16 +29,43 @@ type policyCreateRequest struct {
 	Enabled     *bool    `json:"enabled,omitempty"`
 }
 
-// policyUpdateRequest represents the request body for updating a policy
+// policyUpdateRequest represents the request body for updating a policy. It
+// follows the same Engine/Source/RegoSource convention as policyCreateRequest.
 type policyUpdateRequest struct {
 	Name        *string  `json:"name,omitempty"`
 	Description *string  `json:"description,omitempty"`
+	Engine      *string  `json:"engine,omitempty"`
+	Source      *string  `json:"source,omitempty"`
 	RegoSource  *string  `json:"rego_source,omitempty"`
 	Severity    *string  `json:"severity,omitempty"`
 	Category    *string  `json:"category,omitempty"`
 	Tags        []string `json:"tags,omitempty"`
 	Enabled     *bool    `json:"enabled,omitempty"`
 	Enforced    *bool    `json:"enforced,omitempty"`
+}
+
+// setSource populates a create request's source fields for the given engine.
+func (p *policyCreateRequest) setSource(engine, source string) {
+	p.Source = source
+	if engine == policyEngineInvariant {
+		p.Engine = policyEngineInvariant
+		return
+	}
+	p.RegoSource = source
+}
+
+// setSource populates an update request's source fields for the given engine.
+// An empty engine means "whatever the stored policy already is": the server
+// resolves it from the row, so only the deprecated alias is added alongside,
+// and never for a policy the caller has told us is an invariant.
+func (p *policyUpdateRequest) setSource(engine, source string) {
+	p.Source = &source
+	if engine == policyEngineInvariant {
+		e := policyEngineInvariant
+		p.Engine = &e
+		return
+	}
+	p.RegoSource = &source
 }
 
 // fetchPolicies retrieves all policies for an organization
@@ -113,6 +148,11 @@ func (c *CloudClient) CreatePolicy(payload *policyCreateRequest) (*policy, error
 		if resp.StatusCode == http.StatusUnauthorized {
 			return nil, errors.New(ErrAuthFailed)
 		}
+		// Decode the JSON error envelope rather than dumping it: codes like
+		// feature_not_enabled and policy_limit_reached carry guidance.
+		if msg := formatCloudAPIErrorBody(body); msg != "" {
+			return nil, errors.New(msg)
+		}
 		return nil, fmt.Errorf(ErrAPIReturnedStatus, resp.StatusCode, string(body))
 	}
 
@@ -155,6 +195,9 @@ func (c *CloudClient) UpdatePolicy(policyId string, payload *policyUpdateRequest
 		}
 		if resp.StatusCode == http.StatusNotFound {
 			return nil, fmt.Errorf("policy not found: %s", policyId)
+		}
+		if msg := formatCloudAPIErrorBody(body); msg != "" {
+			return nil, errors.New(msg)
 		}
 		return nil, fmt.Errorf(ErrAPIReturnedStatus, resp.StatusCode, string(body))
 	}
@@ -214,22 +257,35 @@ type policyEvaluationResult struct {
 	CreatedAt      string         `json:"created_at"`
 }
 
-// regoValidateRequest represents the request body for validating rego
-type regoValidateRequest struct {
-	RegoSource string `json:"rego_source"`
+// policyValidateRequest represents the request body for validating policy
+// source. It carries the same Engine/Source/RegoSource convention as
+// policyCreateRequest.
+type policyValidateRequest struct {
+	Engine     string `json:"engine,omitempty"`
+	Source     string `json:"source,omitempty"`
+	RegoSource string `json:"rego_source,omitempty"`
 }
 
-// regoValidateResponse represents the response from rego validation
-type regoValidateResponse struct {
+// policyValidateResponse represents the response from policy validation
+type policyValidateResponse struct {
 	Valid bool   `json:"valid"`
 	Error string `json:"error,omitempty"`
 }
 
-// validateRego validates rego source against the API
-func (c *CloudClient) ValidateRego(regoSource string) (*regoValidateResponse, error) {
+// ValidatePolicySource validates policy source against the API. Invariant
+// validation is organization-scoped - the server resolves the block's
+// exemption references against the org's threat model identities - so it can
+// fail for reasons a local parse cannot catch.
+func (c *CloudClient) ValidatePolicySource(engine, source string) (*policyValidateResponse, error) {
 	apiURL := fmt.Sprintf("%s/api/v1/org/%s/policies/validate", c.baseURL, url.PathEscape(c.orgId))
 
-	payload := regoValidateRequest{RegoSource: regoSource}
+	payload := policyValidateRequest{Source: source}
+	if engine == policyEngineInvariant {
+		payload.Engine = policyEngineInvariant
+	} else {
+		payload.RegoSource = source
+	}
+
 	payloadBytes, err := json.Marshal(payload)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal payload: %w", err)
@@ -245,7 +301,50 @@ func (c *CloudClient) ValidateRego(regoSource string) (*regoValidateResponse, er
 		return nil, handleAPIErrorResponse(resp)
 	}
 
-	var result regoValidateResponse
+	var result policyValidateResponse
+	if err := decodeJSONResponse(resp, &result); err != nil {
+		return nil, err
+	}
+
+	return &result, nil
+}
+
+// importInvariantsRequest represents the request body for importing a whole
+// invariants file
+type importInvariantsRequest struct {
+	Source string `json:"source"`
+}
+
+// importInvariantsResponse reports which invariant slugs were created and
+// which updated, alongside the resulting policy objects in file order
+type importInvariantsResponse struct {
+	Created  []string `json:"created"`
+	Updated  []string `json:"updated"`
+	Policies []policy `json:"policies"`
+}
+
+// ImportInvariants splits a whole invariants file into one policy per
+// invariant block, upserting by slug. The import is all-or-nothing: a file
+// with any invalid block imports nothing.
+func (c *CloudClient) ImportInvariants(source string) (*importInvariantsResponse, error) {
+	apiURL := fmt.Sprintf("%s/api/v1/org/%s/policies/import-invariants", c.baseURL, url.PathEscape(c.orgId))
+
+	payloadBytes, err := json.Marshal(importInvariantsRequest{Source: source})
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal payload: %w", err)
+	}
+
+	resp, err := makeAuthenticatedRequest("POST", apiURL, c.token, bytes.NewReader(payloadBytes), c.http)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, handleAPIErrorResponse(resp)
+	}
+
+	var result importInvariantsResponse
 	if err := decodeJSONResponse(resp, &result); err != nil {
 		return nil, err
 	}

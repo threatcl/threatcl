@@ -193,11 +193,22 @@ func (c *CloudClient) ValidateHCLContent(modelIdOrSlug string, content []byte) (
 }
 
 // validateHCLErrorHint maps the server's machine-readable error codes to
-// actionable guidance; "" when the message stands on its own. It covers both
-// the validate endpoint's codes (including the multi-file set errors) and the
-// codes the upload path returns through formatCloudAPIErrorBody.
+// actionable guidance; "" when the message stands on its own. It covers the
+// validate endpoint's codes (including the multi-file set errors), the policy
+// endpoints' codes, and the codes the upload path returns - every caller
+// reaches it through formatCloudAPIErrorBody.
 func validateHCLErrorHint(code string) string {
 	switch code {
+	case "feature_not_enabled":
+		return "This deployment does not offer the invariant policy engine. Evaluate the rules locally instead: 'threatcl validate -invariants=<file> <models>'."
+	case "unknown_exemption_model":
+		return "An exemption names a threat model this org doesn't declare. Exemptions resolve against the identities in your HCL - each segment's threatmodel block label, or its dotted id - not the display name shown in the cloud UI."
+	case "invalid_invariant":
+		return "A block failed to parse or validate, so nothing was imported. Check it locally first with 'threatcl validate -invariants=<file> <models>'."
+	case "policy_slug_exists":
+		return "An invariant's slug is its block name label, and it must be unique across the org's policies. Rename the block, or update the existing policy instead."
+	case "policy_limit_reached":
+		return "Your subscription tier's policy limit counts both engines together. Delete an unused policy, or upgrade the tier."
 	case "child_segment_no_root":
 		return "This file declares a child id, but the cloud model has no root yet: declare the root id on the model's default file and push that file first."
 	case "id_outside_namespace":

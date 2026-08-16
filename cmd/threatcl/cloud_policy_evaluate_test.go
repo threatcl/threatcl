@@ -447,3 +447,67 @@ func TestCloudPolicyEvaluateDisplayEvaluation(t *testing.T) {
 		t.Errorf("expected '1/2 passed' in output, got %q", out)
 	}
 }
+
+func TestCloudPolicyEvaluateRunInvariantDetails(t *testing.T) {
+	httpClient := newMockHTTPClient()
+	keyringSvc := newMockKeyringService()
+	fsSvc := newMockFileSystemService()
+
+	keyringSvc.setMockToken("valid-token", "org123", "Test Org")
+
+	eval := policyEvaluation{
+		ID:            "eval-1",
+		ThreatModelID: "model-1",
+		Status:        "completed",
+		TotalPolicies: 2,
+		PassedCount:   1,
+		FailedCount:   1,
+		DurationMs:    42,
+		Results: []policyEvaluationResult{
+			{
+				ID:             "r-1",
+				PolicyName:     "no_public_unauth",
+				PolicySeverity: "error",
+				Passed:         false,
+				Message:        "1 of 14 processes violate this invariant",
+				Details: map[string]any{
+					"engine":        "invariant",
+					"target":        "process",
+					"items_checked": 14,
+					"violations": []any{map[string]any{
+						"item_kind": "process",
+						"item_name": "Public API",
+						"segment":   "models/api.hcl",
+						"message":   "public processes must require auth",
+					}},
+				},
+			},
+			{
+				ID:             "r-2",
+				PolicyName:     "Controls Required",
+				PolicySeverity: "error",
+				Passed:         true,
+				Message:        "All threats have controls",
+				Details:        map[string]any{"threats_without_controls": []any{}},
+			},
+		},
+	}
+	httpClient.transport.setResponse("POST", "/api/v1/org/org123/models/model-1/evaluate-policies", http.StatusCreated, jsonResponse(eval))
+
+	cmd := testCloudPolicyEvaluateCommand(t, httpClient, keyringSvc, fsSvc)
+
+	var code int
+	out := capturer.CaptureOutput(func() {
+		code = cmd.Run([]string{"-org-id", "org123", "-model-id", "model-1", "-fail-on-error"})
+	})
+
+	if code != 1 {
+		t.Errorf("expected exit code 1 for a failed error-severity invariant, got %d", code)
+	}
+
+	// The truncated summary message doesn't say what to go and fix; the
+	// violations do.
+	if !strings.Contains(out, "process 'Public API' (models/api.hcl): public processes must require auth") {
+		t.Errorf("expected the invariant's violations beneath its row, got %q", out)
+	}
+}

@@ -16,7 +16,9 @@ type CloudPolicyUpdateCommand struct {
 	flagPolicyId    string
 	flagName        string
 	flagDescription string
+	flagEngine      string
 	flagSeverity    string
+	flagFile        string
 	flagRegoFile    string
 	flagCategory    string
 	flagTags        string
@@ -30,6 +32,11 @@ func (c *CloudPolicyUpdateCommand) Help() string {
 Usage: threatcl cloud policy update -policy-id=<uuid> [-org-id=<orgId>] [-json]
 
 	Update an existing policy. Only specified fields will be updated.
+
+	A policy's engine is fixed when it is created, so -engine is only needed to
+	tell this command how to read a replacement source file: pass
+	-engine=invariant when updating an invariant policy so the file is parsed
+	as an invariant block before it is sent.
 
 	The -policy-id flag is required.
 
@@ -48,11 +55,20 @@ Options:
  -description=<description>
    New description.
 
+ -engine=<engine>
+   The engine of the policy being updated: rego or invariant. Only affects how
+   -file is read and sent.
+
  -severity=<severity>
-   New severity: error, warning, or info.
+   New severity: error, warning, or info. Invariant policies take their
+   severity from the block and have no "info" level.
+
+ -file=<file>
+   Path to an updated policy source file: a .rego module, or an .hcl file with
+   a single invariant block when -engine=invariant.
 
  -rego-file=<file>
-   Path to updated .rego file.
+   Deprecated alias for -file.
 
  -category=<category>
    New category.
@@ -86,7 +102,9 @@ func (c *CloudPolicyUpdateCommand) Synopsis() string {
 func (c *CloudPolicyUpdateCommand) AutocompleteFlags() complete.Flags {
 	return complete.Flags{
 		"-config":    predictHCL,
+		"-file":      complete.PredictFiles("*.rego"),
 		"-rego-file": complete.PredictFiles("*.rego"),
+		"-engine":    complete.PredictSet(policyEngineRego, policyEngineInvariant),
 		"-severity":  complete.PredictSet("error", "warning", "info"),
 		"-enabled":   complete.PredictSet("true", "false"),
 		"-enforced":  complete.PredictSet("true", "false"),
@@ -99,8 +117,10 @@ func (c *CloudPolicyUpdateCommand) Run(args []string) int {
 	flagSet.StringVar(&c.flagPolicyId, "policy-id", "", "Policy ID (required)")
 	flagSet.StringVar(&c.flagName, "name", "", "New policy name")
 	flagSet.StringVar(&c.flagDescription, "description", "", "New description")
+	flagSet.StringVar(&c.flagEngine, "engine", "", "Engine of the policy being updated: rego or invariant")
 	flagSet.StringVar(&c.flagSeverity, "severity", "", "New severity: error, warning, or info")
-	flagSet.StringVar(&c.flagRegoFile, "rego-file", "", "Path to updated .rego file")
+	flagSet.StringVar(&c.flagFile, "file", "", "Path to an updated policy source file")
+	flagSet.StringVar(&c.flagRegoFile, "rego-file", "", "Deprecated alias for -file")
 	flagSet.StringVar(&c.flagCategory, "category", "", "New category")
 	flagSet.StringVar(&c.flagTags, "tags", "", "Comma-separated tags (replaces existing)")
 	flagSet.StringVar(&c.flagEnabled, "enabled", "", "Toggle enabled (true/false)")
@@ -114,12 +134,14 @@ func (c *CloudPolicyUpdateCommand) Run(args []string) int {
 		return 1
 	}
 
-	if c.flagSeverity != "" {
-		validSeverities := map[string]bool{"error": true, "warning": true, "info": true}
-		if !validSeverities[c.flagSeverity] {
-			fmt.Fprintf(os.Stderr, "Error: -severity must be one of: error, warning, info\n")
-			return 1
-		}
+	if c.flagEngine != "" && !validPolicyEngine(c.flagEngine) {
+		fmt.Fprintf(os.Stderr, "Error: -engine must be one of: %s, %s\n", policyEngineRego, policyEngineInvariant)
+		return 1
+	}
+
+	if c.flagSeverity != "" && !validPolicySeverity(c.flagEngine, c.flagSeverity) {
+		fmt.Fprintf(os.Stderr, "Error: -severity must be one of: %s\n", strings.Join(policySeverities(c.flagEngine), ", "))
+		return 1
 	}
 
 	// Initialize dependencies
@@ -164,15 +186,34 @@ func (c *CloudPolicyUpdateCommand) Run(args []string) int {
 		hasUpdates = true
 	}
 
-	// Read rego file if provided
-	if c.flagRegoFile != "" {
-		regoBytes, err := fsSvc.ReadFile(c.flagRegoFile)
+	// Read the replacement source file if provided
+	sourceFile := c.flagFile
+	if sourceFile == "" {
+		sourceFile = c.flagRegoFile
+	}
+	if sourceFile != "" {
+		sourceBytes, err := fsSvc.ReadFile(sourceFile)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %s: %s\n", ErrFailedToReadFile, err)
 			return 1
 		}
-		regoSource := string(regoBytes)
-		payload.RegoSource = &regoSource
+
+		if c.flagEngine == policyEngineInvariant {
+			inv, err := parseSingleInvariant(sourceBytes, sourceFile)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error parsing invariant file %s: %s\n", sourceFile, err)
+				return 1
+			}
+
+			// The block is authoritative for severity, so a -severity that
+			// disagrees with the file being uploaded is a local error.
+			if _, _, err := invariantPolicyIdentity(inv, "", c.flagSeverity); err != nil {
+				fmt.Fprintf(os.Stderr, "Error: %s\n", err)
+				return 1
+			}
+		}
+
+		payload.setSource(c.flagEngine, string(sourceBytes))
 		hasUpdates = true
 	}
 

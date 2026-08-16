@@ -608,6 +608,21 @@ func testCloudPolicyValidateCommand(t testing.TB, httpClient HTTPClient, keyring
 	}
 }
 
+func testCloudPolicySyncInvariantsCommand(t testing.TB, httpClient HTTPClient, keyringSvc KeyringService, fsSvc FileSystemService) *CloudPolicySyncInvariantsCommand {
+	t.Helper()
+
+	global := &GlobalCmdOptions{}
+
+	return &CloudPolicySyncInvariantsCommand{
+		CloudCommandBase: CloudCommandBase{
+			GlobalCmdOptions: global,
+			httpClient:       httpClient,
+			keyringSvc:       keyringSvc,
+			fsSvc:            fsSvc,
+		},
+	}
+}
+
 func testCloudPolicyEvaluateCommand(t testing.TB, httpClient HTTPClient, keyringSvc KeyringService, fsSvc FileSystemService) *CloudPolicyEvaluateCommand {
 	t.Helper()
 

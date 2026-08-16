@@ -156,6 +156,10 @@ func displayEvaluation(eval *policyEvaluation) {
 				result,
 				truncateString(r.Message, 40),
 			)
+
+			// An invariant reports which items broke the rule; the summary
+			// message alone doesn't say what to go and fix.
+			renderInvariantDetails(os.Stdout, r.invariantDetails())
 		}
 		fmt.Println()
 	}
