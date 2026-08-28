@@ -1,4 +1,4 @@
-spec_version = "0.8.0"
+spec_version = "0.8.1"
 
 threatmodel "mermaid model" {
   description = "A model that embeds a free-form mermaid diagram"
