@@ -1,3 +1,12 @@
+## 0.6.8
+
+### 28 Aug, 2026
+
+CHANGES:
+
+* Bumped to go 1.27.0
+* Bumped threatcl/spec to 0.8.1
+
 ## 0.6.7
 
 ### 16 Aug, 2026
