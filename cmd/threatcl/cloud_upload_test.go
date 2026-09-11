@@ -527,3 +527,117 @@ func TestCloudUploadStructuredErrorEnvelope(t *testing.T) {
 		t.Errorf("expected guidance for child_segment_no_root, got %q", out)
 	}
 }
+
+// cloud upload hits the same endpoint as push, so a CI pipeline using it
+// gets the same explicit attribution.
+func TestCloudUploadSendsGitAttribution(t *testing.T) {
+	filePath := uploadTestWriteHCL(t, uploadTestValidHCL)
+
+	httpClient := newMockHTTPClient()
+	keyringSvc := newMockKeyringService()
+	fsSvc := newMockFileSystemService()
+
+	keyringSvc.setMockToken("valid-token", "org123", "Test Org")
+	fsSvc.SetFileContent(filePath, []byte(uploadTestValidHCL))
+	fsSvc.setEnv(envGitAuthorName, "Env Name")
+	fsSvc.setEnv(envGitCommitSHA, "deadbeef")
+
+	uploadPath := "/api/v1/org/org123/models/tm1/upload"
+	httpClient.transport.setResponse("POST", uploadPath, http.StatusOK, `{"success":true}`)
+
+	cmd := uploadTestCommand(t, httpClient, keyringSvc, fsSvc)
+
+	var code int
+	out := capturer.CaptureOutput(func() {
+		code = cmd.Run([]string{"-model-id", "tm1", "-git-author-email=jane@example.com", filePath})
+	})
+
+	if code != 0 {
+		t.Fatalf("expected exit code 0, got %d\nOutput: %s", code, out)
+	}
+	bodies := httpClient.transport.getRequestBodies("POST", uploadPath)
+	if len(bodies) != 1 {
+		t.Fatalf("expected 1 upload request, got %d", len(bodies))
+	}
+	for _, want := range []string{
+		`name="git_author_email"`, "jane@example.com",
+		`name="git_author_name"`, "Env Name",
+		`name="git_commit_sha"`, "deadbeef",
+	} {
+		if !strings.Contains(bodies[0], want) {
+			t.Errorf("expected upload body to contain %q, got %q", want, bodies[0])
+		}
+	}
+}
+
+func TestCloudUploadRejectsPartialGitAttribution(t *testing.T) {
+	filePath := uploadTestWriteHCL(t, uploadTestValidHCL)
+
+	httpClient := newMockHTTPClient()
+	keyringSvc := newMockKeyringService()
+	fsSvc := newMockFileSystemService()
+
+	keyringSvc.setMockToken("valid-token", "org123", "Test Org")
+	fsSvc.SetFileContent(filePath, []byte(uploadTestValidHCL))
+
+	uploadPath := "/api/v1/org/org123/models/tm1/upload"
+	httpClient.transport.setResponse("POST", uploadPath, http.StatusOK, `{"success":true}`)
+
+	cmd := uploadTestCommand(t, httpClient, keyringSvc, fsSvc)
+
+	var code int
+	out := capturer.CaptureOutput(func() {
+		code = cmd.Run([]string{"-model-id", "tm1", "-git-commit-sha=abc1234", filePath})
+	})
+
+	if code != 1 {
+		t.Fatalf("expected exit code 1, got %d\nOutput: %s", code, out)
+	}
+	if !strings.Contains(out, "-git-author-email (or THREATCL_GIT_AUTHOR_EMAIL) is required") {
+		t.Errorf("expected the missing-email message, got %q", out)
+	}
+	if n := len(httpClient.transport.getRequestBodies("POST", uploadPath)); n != 0 {
+		t.Errorf("expected no upload attempt, got %d", n)
+	}
+}
+
+func TestCloudUploadContributorCeiling(t *testing.T) {
+	filePath := uploadTestWriteHCL(t, uploadTestValidHCL)
+
+	httpClient := newMockHTTPClient()
+	keyringSvc := newMockKeyringService()
+	fsSvc := newMockFileSystemService()
+
+	keyringSvc.setMockToken("valid-token", "org123", "Test Org")
+	fsSvc.SetFileContent(filePath, []byte(uploadTestValidHCL))
+
+	const msg = "This organization has reached its Business plan limit of 100 contributors and cannot add another. Existing contributors are unaffected."
+	httpClient.transport.setResponse("POST", "/api/v1/org/org123/models/tm1/upload", http.StatusPaymentRequired,
+		`{"error":"contributor_ceiling_reached","message":"`+msg+`","ceiling":100,"contributors":100,"tier":"business","upgrade_tier":""}`)
+
+	cmd := uploadTestCommand(t, httpClient, keyringSvc, fsSvc)
+
+	var code int
+	out := capturer.CaptureOutput(func() {
+		code = cmd.Run([]string{"-model-id", "tm1", filePath})
+	})
+
+	if code != 1 {
+		t.Fatalf("expected exit code 1, got %d\nOutput: %s", code, out)
+	}
+	if !strings.Contains(out, msg) {
+		t.Errorf("expected the server message verbatim, got %q", out)
+	}
+	if strings.Contains(out, "api returned status") || strings.Contains(out, `"ceiling"`) {
+		t.Errorf("expected no raw JSON dump in output, got %q", out)
+	}
+}
+
+func TestCloudUploadHelpDocumentsGitAttribution(t *testing.T) {
+	help := (&CloudUploadCommand{}).Help()
+	for _, want := range []string{"-git-author-email=<email>", "-git-author-name=<name>", "-git-commit-sha=<sha>", "THREATCL_GIT_AUTHOR_EMAIL"} {
+		if !strings.Contains(help, want) {
+			t.Errorf("expected help to contain %q", want)
+		}
+	}
+}

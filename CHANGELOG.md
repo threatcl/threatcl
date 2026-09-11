@@ -1,3 +1,22 @@
+## 0.6.9
+
+### 11 Sep, 2026
+
+CHANGES:
+
+* `cloud push` and `cloud upload` can attribute a change to its git author for
+  contributor-based billing: `-git-author-email` (required if any is given),
+  `-git-author-name` and `-git-commit-sha`, each defaulting to
+  `THREATCL_GIT_AUTHOR_EMAIL`, `THREATCL_GIT_AUTHOR_NAME` and
+  `THREATCL_GIT_COMMIT_SHA`. Attribution is only ever sent when given explicitly
+  the CLI never reads it from the local git repository
+* When an organization is at its plan's contributor ceiling, the API's 402
+  `contributor_ceiling_reached` response is now printed as its message (which
+  names the limit and the upgrade path) instead of a raw JSON dump.
+  Other non-2xx responses keep the raw-body fallback.
+* Bumped to Go 1.27.1
+* Bumped other direct deps
+
 ## 0.6.8
 
 ### 28 Aug, 2026

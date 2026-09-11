@@ -46,6 +46,26 @@ type errorResponse struct {
 	} `json:"error"`
 }
 
+// contributorCeilingErrorCode is the code the API returns (HTTP 402) when a
+// push or token mint would introduce a new contributing identity to an
+// organization already at its plan's contributor ceiling.
+const contributorCeilingErrorCode = "contributor_ceiling_reached"
+
+// contributorCeilingResponse is the contributor-ceiling 402 body. Unlike the
+// rest of the API it is FLAT - "error" is a plain string code, not the nested
+// {"error":{"code","message"}} envelope - so decoding it as errorResponse
+// fails and the generic handling would dump the raw JSON. Message is written
+// to be shown to the user verbatim: it names the plan limit, notes that
+// existing contributors are unaffected, and gives the upgrade path.
+type contributorCeilingResponse struct {
+	Error        string `json:"error"`
+	Message      string `json:"message"`
+	Ceiling      int    `json:"ceiling"`
+	Contributors int    `json:"contributors"`
+	Tier         string `json:"tier"`
+	UpgradeTier  string `json:"upgrade_tier"`
+}
+
 type whoamiResponse struct {
 	ID                       string          `json:"id"`
 	User                     userInfo        `json:"user"`

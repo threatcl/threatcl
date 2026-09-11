@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -139,6 +140,12 @@ func (c *CloudLoginCommand) requestDeviceCode(apiURL string, httpClient HTTPClie
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
+		// The device flow mints a personal token, so an org at its plan's
+		// contributor ceiling can refuse a new identity with the flat 402
+		// body; its message is meant to be shown verbatim.
+		if ceiling := parseContributorCeilingError(body); ceiling != nil {
+			return nil, errors.New(ceiling.userMessage())
+		}
 		return nil, fmt.Errorf("API returned status %d: %s", resp.StatusCode, string(body))
 	}
 
@@ -222,6 +229,13 @@ func (c *CloudLoginCommand) pollForToken(deviceResp *deviceCodeResponse, apiURL 
 			return &tokenResp, nil
 		}
 
+		// A contributor-ceiling rejection is terminal: the org cannot admit
+		// this identity, so polling on would only run out the clock. Its
+		// body is flat (not the envelope below), so check for it first.
+		if ceiling := parseContributorCeilingError(body); ceiling != nil {
+			return nil, errors.New(ceiling.userMessage())
+		}
+
 		// Check if it's an authorization_pending error (expected)
 		var errResp errorResponse
 		if err := json.Unmarshal(body, &errResp); err == nil {
@@ -230,6 +244,11 @@ func (c *CloudLoginCommand) pollForToken(deviceResp *deviceCodeResponse, apiURL 
 				fmt.Print(".")
 				<-ticker.C
 				continue
+			}
+			// The same ceiling rejection relayed in the envelope shape is
+			// still the verbatim message, not an "API error:" wrapper.
+			if errResp.Error.Code == contributorCeilingErrorCode && errResp.Error.Message != "" {
+				return nil, errors.New(errResp.Error.Message)
 			}
 			// Some other error
 			return nil, fmt.Errorf("API error: %s (code: %s)", errResp.Error.Message, errResp.Error.Code)

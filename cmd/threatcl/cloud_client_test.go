@@ -201,7 +201,7 @@ func TestCloudClientCreateThreatModelAccepts200(t *testing.T) {
 func TestCloudClientUpload(t *testing.T) {
 	client, rt := newTestClient(http.StatusOK, ``)
 
-	err := client.Upload("my-model", "model.hcl", []byte("spec-bytes"), true)
+	err := client.Upload("my-model", "model.hcl", []byte("spec-bytes"), uploadOptions{IgnoreLinkedControls: true})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -218,6 +218,88 @@ func TestCloudClientUpload(t *testing.T) {
 	}
 	if !strings.Contains(body, "ignore-linked-controls") {
 		t.Errorf("multipart body missing ignore-linked-controls field: %q", body)
+	}
+}
+
+// Attribution fields ride along as ordinary multipart form fields, and only
+// when supplied - a zero attribution sends none of them, so the server keeps
+// attributing the push to the token owner.
+func TestCloudClientUploadGitAttribution(t *testing.T) {
+	client, rt := newTestClient(http.StatusOK, ``)
+
+	err := client.Upload("my-model", "model.hcl", []byte("spec-bytes"), uploadOptions{
+		GitAttribution: gitAttribution{
+			Name:      "Jane Doe",
+			Email:     "jane@example.com",
+			CommitSHA: "abc1234",
+		},
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	body := rt.bodies[len(rt.bodies)-1]
+	for field, value := range map[string]string{
+		"git_author_name":  "Jane Doe",
+		"git_author_email": "jane@example.com",
+		"git_commit_sha":   "abc1234",
+	} {
+		if !strings.Contains(body, `name="`+field+`"`) {
+			t.Errorf("multipart body missing %s field: %q", field, body)
+		}
+		if !strings.Contains(body, value) {
+			t.Errorf("multipart body missing %s value %q: %q", field, value, body)
+		}
+	}
+	if strings.Contains(body, "ignore-linked-controls") {
+		t.Errorf("ignore-linked-controls must not be sent unless asked: %q", body)
+	}
+}
+
+func TestCloudClientUploadGitAttributionOmitsEmptyOptionals(t *testing.T) {
+	client, rt := newTestClient(http.StatusOK, ``)
+
+	err := client.Upload("my-model", "model.hcl", []byte("spec-bytes"), uploadOptions{
+		GitAttribution: gitAttribution{Email: "jane@example.com"},
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	body := rt.bodies[len(rt.bodies)-1]
+	if !strings.Contains(body, `name="git_author_email"`) {
+		t.Errorf("multipart body missing git_author_email: %q", body)
+	}
+	for _, absent := range []string{"git_author_name", "git_commit_sha"} {
+		if strings.Contains(body, absent) {
+			t.Errorf("empty optional %s must be omitted, not sent blank: %q", absent, body)
+		}
+	}
+}
+
+func TestCloudClientUploadNoAttributionByDefault(t *testing.T) {
+	client, rt := newTestClient(http.StatusOK, ``)
+
+	if err := client.Upload("my-model", "model.hcl", []byte("spec-bytes"), uploadOptions{}); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	body := rt.bodies[len(rt.bodies)-1]
+	if strings.Contains(body, "git_author") || strings.Contains(body, "git_commit_sha") {
+		t.Errorf("no attribution fields may be sent unless supplied: %q", body)
+	}
+}
+
+// The contributor-ceiling 402 is a flat body, not the envelope; the server's
+// message must be surfaced verbatim rather than as a raw JSON dump.
+func TestCloudClientUploadContributorCeiling(t *testing.T) {
+	const msg = "This organization has reached its Team plan limit of 25 contributors and cannot add another. Existing contributors are unaffected. To add more, upgrade to Business."
+	client, _ := newTestClient(http.StatusPaymentRequired,
+		`{"error":"contributor_ceiling_reached","message":"`+msg+`","ceiling":25,"contributors":25,"tier":"team","upgrade_tier":"business"}`)
+
+	err := client.Upload("my-model", "model.hcl", []byte("spec-bytes"), uploadOptions{})
+	if err == nil {
+		t.Fatal("expected an error")
+	}
+	if err.Error() != msg {
+		t.Errorf("expected the server message verbatim, got %q", err.Error())
 	}
 }
 
