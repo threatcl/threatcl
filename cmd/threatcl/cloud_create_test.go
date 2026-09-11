@@ -773,7 +773,7 @@ func TestCloudCreateUploadFile(t *testing.T) {
 			content, err := fsSvc.ReadFile(tt.filePath)
 			if err == nil {
 				client := NewCloudClient("token", "org123", getAPIBaseURL(fsSvc), httpClient)
-				err = client.Upload("test-model", filepath.Base(tt.filePath), content, false)
+				err = client.Upload("test-model", filepath.Base(tt.filePath), content, uploadOptions{})
 			} else {
 				err = fmt.Errorf("%s: %w", ErrFailedToReadFile, err)
 			}

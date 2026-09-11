@@ -1343,6 +1343,16 @@ func TestFormatCloudAPIErrorBody(t *testing.T) {
 			name: "non-JSON body is not the envelope",
 			body: `<html>boom</html>`,
 		},
+		{
+			name:     "flat contributor-ceiling body yields its message verbatim",
+			body:     `{"error":"contributor_ceiling_reached","message":"This organization has reached its Team plan limit of 25 contributors and cannot add another. Existing contributors are unaffected. To add more, upgrade to Business.","ceiling":25,"contributors":25,"tier":"team","upgrade_tier":"business"}`,
+			expected: "This organization has reached its Team plan limit of 25 contributors and cannot add another. Existing contributors are unaffected. To add more, upgrade to Business.",
+		},
+		{
+			name:     "contributor-ceiling code in the nested envelope still yields its message",
+			body:     `{"error":{"code":"contributor_ceiling_reached","message":"This organization has reached its Team plan limit of 25 contributors.","status":402}}`,
+			expected: "This organization has reached its Team plan limit of 25 contributors.",
+		},
 	}
 
 	for _, tt := range tests {
@@ -1361,6 +1371,101 @@ func TestFormatCloudAPIErrorBody(t *testing.T) {
 				t.Errorf("expected result containing %q, got %q", strings.Split(tt.expected, "\n")[1], got)
 			}
 		})
+	}
+}
+
+// The contributor-ceiling 402 is the one flat error body the API returns:
+// "error" is a string code, not the {"code","message"} object. Only that
+// exact code is recognised - a legacy flat body with another code, and the
+// nested envelope, are left to the existing handling.
+func TestParseContributorCeilingError(t *testing.T) {
+	const flat = `{"error":"contributor_ceiling_reached","message":"Team plan limit of 25 contributors reached.","ceiling":25,"contributors":25,"tier":"team","upgrade_tier":"business"}`
+
+	got := parseContributorCeilingError([]byte(flat))
+	if got == nil {
+		t.Fatal("expected the flat ceiling body to decode")
+	}
+	want := contributorCeilingResponse{
+		Error:        "contributor_ceiling_reached",
+		Message:      "Team plan limit of 25 contributors reached.",
+		Ceiling:      25,
+		Contributors: 25,
+		Tier:         "team",
+		UpgradeTier:  "business",
+	}
+	if *got != want {
+		t.Errorf("got %+v, want %+v", *got, want)
+	}
+	if got.userMessage() != want.Message {
+		t.Errorf("userMessage must be the server message verbatim, got %q", got.userMessage())
+	}
+
+	for name, body := range map[string]string{
+		"nested envelope with the same code": `{"error":{"code":"contributor_ceiling_reached","message":"x","status":402}}`,
+		"flat body with another code":        `{"error":"unauthorized"}`,
+		"legacy flat not-found body":         `{"error":"not found"}`,
+		"non-JSON body":                      `<html>boom</html>`,
+		"empty body":                         ``,
+	} {
+		t.Run(name, func(t *testing.T) {
+			if r := parseContributorCeilingError([]byte(body)); r != nil {
+				t.Errorf("expected nil, got %+v", *r)
+			}
+		})
+	}
+}
+
+// A server that sends the structured fields but no message still gets a
+// complete sentence rather than an empty error.
+func TestContributorCeilingUserMessageFallback(t *testing.T) {
+	r := &contributorCeilingResponse{Error: "contributor_ceiling_reached", Ceiling: 100, Tier: "business"}
+	got := r.userMessage()
+	if !strings.Contains(got, "100 contributors") {
+		t.Errorf("expected the ceiling in the fallback message, got %q", got)
+	}
+	if strings.Contains(got, "upgrade to") {
+		t.Errorf("no upgrade path should be suggested without an upgrade_tier, got %q", got)
+	}
+
+	r.UpgradeTier = "enterprise"
+	if got := r.userMessage(); !strings.Contains(got, "upgrade to enterprise") {
+		t.Errorf("expected the upgrade tier in the fallback message, got %q", got)
+	}
+}
+
+// The generic handler every non-upload endpoint goes through must print the
+// ceiling message on its own too, since the same 402 can come from the token
+// mint and device-flow endpoints.
+func TestHandleAPIErrorResponseContributorCeiling(t *testing.T) {
+	const msg = "This organization has reached its Team plan limit of 25 contributors and cannot add another. Existing contributors are unaffected. To add more, upgrade to Business."
+	resp := &http.Response{
+		StatusCode: http.StatusPaymentRequired,
+		Body: io.NopCloser(strings.NewReader(
+			`{"error":"contributor_ceiling_reached","message":"` + msg + `","ceiling":25,"contributors":25,"tier":"team","upgrade_tier":"business"}`)),
+	}
+
+	err := handleAPIErrorResponse(resp)
+	if err == nil {
+		t.Fatal("expected an error")
+	}
+	if err.Error() != msg {
+		t.Errorf("expected the server message verbatim, got %q", err.Error())
+	}
+}
+
+// A 402 with any other body keeps the raw-body fallback.
+func TestHandleAPIErrorResponseOther402FallsBack(t *testing.T) {
+	resp := &http.Response{
+		StatusCode: http.StatusPaymentRequired,
+		Body:       io.NopCloser(strings.NewReader(`{"error":"subscription_expired"}`)),
+	}
+
+	err := handleAPIErrorResponse(resp)
+	if err == nil {
+		t.Fatal("expected an error")
+	}
+	if !strings.Contains(err.Error(), "api returned status 402") || !strings.Contains(err.Error(), "subscription_expired") {
+		t.Errorf("expected the status-prefixed raw body, got %q", err.Error())
 	}
 }
 

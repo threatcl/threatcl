@@ -158,7 +158,7 @@ func (c *CloudCreateCommand) Run(args []string) int {
 		fmt.Printf("\nUploading file %s...\n", c.flagUpload)
 		content, uploadErr := fsSvc.ReadFile(c.flagUpload)
 		if uploadErr == nil {
-			uploadErr = client.Upload(threatModel.Slug, filepath.Base(c.flagUpload), content, false)
+			uploadErr = client.Upload(threatModel.Slug, filepath.Base(c.flagUpload), content, uploadOptions{})
 		} else {
 			uploadErr = fmt.Errorf("%s: %w", ErrFailedToReadFile, uploadErr)
 		}

@@ -44,10 +44,22 @@ func (c *CloudClient) FetchUserInfo() (*whoamiResponse, error) {
 	return &whoamiResp, nil
 }
 
+// uploadOptions carries the optional multipart fields an upload can send
+// alongside the spec file.
+type uploadOptions struct {
+	// IgnoreLinkedControls asks the server not to link library controls to
+	// refs during the upload.
+	IgnoreLinkedControls bool
+	// GitAttribution names the git author of the change for contributor
+	// billing; the zero value sends no attribution fields at all. Callers
+	// resolve and validate it (see normalizeGitAttribution) before the upload.
+	GitAttribution gitAttribution
+}
+
 // Upload uploads a threat model spec (already-read file bytes) to the API. The
 // caller reads the file itself and passes the base filename, so the client
 // stays free of filesystem concerns.
-func (c *CloudClient) Upload(modelIdOrSlug, filename string, content []byte, ignoreLinkedControls bool) error {
+func (c *CloudClient) Upload(modelIdOrSlug, filename string, content []byte, opts uploadOptions) error {
 	apiURL := fmt.Sprintf("%s/api/v1/org/%s/models/%s/upload", c.baseURL, url.PathEscape(c.orgId), url.PathEscape(modelIdOrSlug))
 
 	// Create multipart form
@@ -66,10 +78,29 @@ func (c *CloudClient) Upload(modelIdOrSlug, filename string, content []byte, ign
 	}
 
 	// Add ignore-linked-controls field if requested
-	if ignoreLinkedControls {
+	if opts.IgnoreLinkedControls {
 		err = writer.WriteField("ignore-linked-controls", "1")
 		if err != nil {
 			return fmt.Errorf("failed to write ignore-linked-controls field: %w", err)
+		}
+	}
+
+	// Add git-author attribution when supplied. The server rejects a partial
+	// or malformed set (400 invalid_git_attribution) rather than ignoring it,
+	// so only a resolved, validated attribution reaches here; the empty
+	// optional fields are omitted rather than sent blank.
+	if attr := opts.GitAttribution; attr.Supplied() {
+		for _, field := range []struct{ name, value string }{
+			{"git_author_email", attr.Email},
+			{"git_author_name", attr.Name},
+			{"git_commit_sha", attr.CommitSHA},
+		} {
+			if field.value == "" {
+				continue
+			}
+			if err = writer.WriteField(field.name, field.value); err != nil {
+				return fmt.Errorf("failed to write %s field: %w", field.name, err)
+			}
 		}
 	}
 
@@ -239,11 +270,46 @@ func renderValidateHCLErrors(w io.Writer, errs []validateHCLError) {
 	}
 }
 
+// parseContributorCeilingError decodes body as the contributor-ceiling 402
+// (see contributorCeilingResponse). It returns nil for any other body,
+// including the nested envelope and the legacy {"error":"<string>"} shape
+// with a different code, so callers can fall through to their usual handling.
+func parseContributorCeilingError(body []byte) *contributorCeilingResponse {
+	var ceiling contributorCeilingResponse
+	if err := json.Unmarshal(body, &ceiling); err != nil {
+		return nil
+	}
+	if ceiling.Error != contributorCeilingErrorCode {
+		return nil
+	}
+	return &ceiling
+}
+
+// userMessage is the text to print for a contributor-ceiling rejection: the
+// server's message verbatim, which already names the plan limit and the
+// upgrade path. A server that omits the message still gets a full sentence
+// built from the structured fields.
+func (r *contributorCeilingResponse) userMessage() string {
+	if r.Message != "" {
+		return r.Message
+	}
+	msg := fmt.Sprintf("This organization has reached its plan limit of %d contributors and cannot add another. Existing contributors are unaffected.", r.Ceiling)
+	if r.UpgradeTier != "" {
+		msg += fmt.Sprintf(" To add more, upgrade to %s.", r.UpgradeTier)
+	}
+	return msg
+}
+
 // formatCloudAPIErrorBody decodes the API's JSON error envelope
 // ({"error":{"code","message",...}}) into a readable message, appending
-// guidance for the multi-file error codes. Returns "" when the body isn't
-// the envelope, so callers can fall back to the raw body.
+// guidance for the multi-file error codes. It also recognises the one flat
+// body the API returns, the contributor-ceiling 402, whose message is shown
+// verbatim. Returns "" when the body is neither, so callers can fall back to
+// the raw body.
 func formatCloudAPIErrorBody(body []byte) string {
+	if ceiling := parseContributorCeilingError(body); ceiling != nil {
+		return ceiling.userMessage()
+	}
 	var envelope errorResponse
 	if err := json.Unmarshal(body, &envelope); err != nil {
 		return ""

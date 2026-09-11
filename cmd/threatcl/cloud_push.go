@@ -17,12 +17,13 @@ type CloudPushCommand struct {
 	flagNoUpdateLocal        bool
 	flagIgnoreLinkedControls bool
 	flagWith                 string
+	gitAttrFlags             gitAttributionFlags
 	specCfg                  *spec.ThreatmodelSpecConfig
 }
 
 func (c *CloudPushCommand) Help() string {
 	helpText := `
-Usage: threatcl cloud push <file> [-no-create] [-no-update-local] [-ignore-linked-controls] [-with=<glob>]
+Usage: threatcl cloud push <file> [-no-create] [-no-update-local] [-ignore-linked-controls] [-with=<glob>] [-git-author-email=<email>] [-git-author-name=<name>] [-git-commit-sha=<sha>]
 
 	Push a threat model HCL file to ThreatCL Cloud.
 
@@ -69,9 +70,10 @@ Options:
    server applies (extends resolution, name/id uniqueness, namespace rules,
    backend agreement), failing fast on errors.
 
+` + cloudGitAttributionOptionsHelp() + `
  -config=<file>
    Optional config file
-` + cloudEnvVarHelpNoOrg()
+` + cloudEnvVarHelpNoOrg() + cloudGitAttributionEnvHelp()
 	return strings.TrimSpace(helpText)
 }
 
@@ -93,6 +95,7 @@ func (c *CloudPushCommand) Run(args []string) int {
 	flagSet.BoolVar(&c.flagNoUpdateLocal, "no-update-local", false, "Don't update local HCL file with threatmodel slug")
 	flagSet.BoolVar(&c.flagIgnoreLinkedControls, "ignore-linked-controls", false, "Don't link controls from the control library during upload")
 	flagSet.StringVar(&c.flagWith, "with", "", "Glob of the model's other .hcl files for a local whole-set preflight")
+	c.gitAttrFlags.addFlags(flagSet)
 	parseFlags(flagSet, args)
 
 	// Get file path from remaining args
@@ -137,6 +140,15 @@ func (c *CloudPushCommand) Run(args []string) int {
 		return 1
 	}
 
+	// Resolve git-author attribution (flags over env) and validate it locally
+	// before any network work, so a malformed value fails fast here rather
+	// than as a 400 after the model has been created.
+	gitAttr, err := c.gitAttrFlags.resolve(fsSvc)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "❌ %s\n", err)
+		return 1
+	}
+
 	// Step 2: Run validateThreatModel on the original file
 	// Note: validateThreatModel handles preprocessing internally for HCL parsing,
 	// while using the original content for hash calculation
@@ -177,7 +189,10 @@ func (c *CloudPushCommand) Run(args []string) int {
 		if readErr != nil {
 			return fmt.Errorf("%s: %w", ErrFailedToReadFile, readErr)
 		}
-		return orgClient.Upload(slug, filepath.Base(filePath), content, c.flagIgnoreLinkedControls)
+		return orgClient.Upload(slug, filepath.Base(filePath), content, uploadOptions{
+			IgnoreLinkedControls: c.flagIgnoreLinkedControls,
+			GitAttribution:       gitAttr,
+		})
 	}
 
 	// Case: tmNameValid and tmFileMatchesVersion - version already matches

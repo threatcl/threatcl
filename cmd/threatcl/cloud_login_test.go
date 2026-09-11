@@ -613,3 +613,162 @@ func intPtr(i int) *int {
 func int64Ptr(i int64) *int64 {
 	return &i
 }
+
+const loginCeilingMessage = "This organization has reached its Team plan limit of 25 contributors and cannot add another. Existing contributors are unaffected. To add more, upgrade to Business."
+
+const loginCeilingBody = `{"error":"contributor_ceiling_reached","message":"` + loginCeilingMessage + `","ceiling":25,"contributors":25,"tier":"team","upgrade_tier":"business"}`
+
+// The device flow mints a personal token, so a new member of an org at its
+// contributor ceiling is refused with the flat 402. Polling must stop and
+// print the message rather than treat the unfamiliar body as "unexpected"
+// and poll until the code expires.
+func TestCloudLoginPollForTokenContributorCeiling(t *testing.T) {
+	httpClient := newMockHTTPClient()
+	fsSvc := newMockFileSystemService()
+
+	deviceResp := &deviceCodeResponse{
+		DeviceCode: "device-code-123",
+		ExpiresIn:  600,
+		Interval:   1,
+	}
+	httpClient.transport.setResponse("POST", "/api/v1/auth/device/poll", http.StatusPaymentRequired, loginCeilingBody)
+
+	cmd := testCloudLoginCommand(t, httpClient, nil, fsSvc)
+
+	start := time.Now()
+	resp, err := cmd.pollForToken(deviceResp, defaultAPIBaseURL, httpClient)
+	if resp != nil {
+		t.Fatalf("expected no token, got %+v", resp)
+	}
+	if err == nil {
+		t.Fatal("expected an error")
+	}
+	if err.Error() != loginCeilingMessage {
+		t.Errorf("expected the server message verbatim, got %q", err.Error())
+	}
+	if elapsed := time.Since(start); elapsed > 5*time.Second {
+		t.Errorf("expected polling to stop immediately, took %s", elapsed)
+	}
+}
+
+// The same rejection relayed in the nested envelope shape is still printed
+// as the bare message, not wrapped as "API error: ... (code: ...)".
+func TestCloudLoginPollForTokenContributorCeilingEnvelope(t *testing.T) {
+	httpClient := newMockHTTPClient()
+	fsSvc := newMockFileSystemService()
+
+	deviceResp := &deviceCodeResponse{DeviceCode: "device-code-123", ExpiresIn: 600, Interval: 1}
+
+	errResp := errorResponse{}
+	errResp.Error.Code = "contributor_ceiling_reached"
+	errResp.Error.Message = loginCeilingMessage
+	errResp.Error.Status = http.StatusPaymentRequired
+	httpClient.transport.setResponse("POST", "/api/v1/auth/device/poll", http.StatusPaymentRequired, jsonResponse(errResp))
+
+	cmd := testCloudLoginCommand(t, httpClient, nil, fsSvc)
+
+	_, err := cmd.pollForToken(deviceResp, defaultAPIBaseURL, httpClient)
+	if err == nil {
+		t.Fatal("expected an error")
+	}
+	if err.Error() != loginCeilingMessage {
+		t.Errorf("expected the server message verbatim, got %q", err.Error())
+	}
+}
+
+// Other envelope errors during polling keep their existing wrapper.
+func TestCloudLoginPollForTokenOtherErrorUnchanged(t *testing.T) {
+	httpClient := newMockHTTPClient()
+	fsSvc := newMockFileSystemService()
+
+	deviceResp := &deviceCodeResponse{DeviceCode: "device-code-123", ExpiresIn: 600, Interval: 1}
+
+	errResp := errorResponse{}
+	errResp.Error.Code = "access_denied"
+	errResp.Error.Message = "User denied authorization"
+	httpClient.transport.setResponse("POST", "/api/v1/auth/device/poll", http.StatusBadRequest, jsonResponse(errResp))
+
+	cmd := testCloudLoginCommand(t, httpClient, nil, fsSvc)
+
+	_, err := cmd.pollForToken(deviceResp, defaultAPIBaseURL, httpClient)
+	if err == nil {
+		t.Fatal("expected an error")
+	}
+	if !strings.Contains(err.Error(), "API error: User denied authorization (code: access_denied)") {
+		t.Errorf("expected the existing wrapper, got %q", err.Error())
+	}
+}
+
+func TestCloudLoginRequestDeviceCodeContributorCeiling(t *testing.T) {
+	httpClient := newMockHTTPClient()
+	fsSvc := newMockFileSystemService()
+
+	httpClient.transport.setResponse("POST", "/api/v1/auth/device", http.StatusPaymentRequired, loginCeilingBody)
+
+	cmd := testCloudLoginCommand(t, httpClient, nil, fsSvc)
+
+	_, err := cmd.requestDeviceCode(defaultAPIBaseURL, httpClient)
+	if err == nil {
+		t.Fatal("expected an error")
+	}
+	if err.Error() != loginCeilingMessage {
+		t.Errorf("expected the server message verbatim, got %q", err.Error())
+	}
+}
+
+// Any other non-2xx from the device-code request keeps the raw-body fallback.
+func TestCloudLoginRequestDeviceCodeOtherErrorUnchanged(t *testing.T) {
+	httpClient := newMockHTTPClient()
+	fsSvc := newMockFileSystemService()
+
+	httpClient.transport.setResponse("POST", "/api/v1/auth/device", http.StatusServiceUnavailable, `{"error":"maintenance"}`)
+
+	cmd := testCloudLoginCommand(t, httpClient, nil, fsSvc)
+
+	_, err := cmd.requestDeviceCode(defaultAPIBaseURL, httpClient)
+	if err == nil {
+		t.Fatal("expected an error")
+	}
+	if !strings.Contains(err.Error(), "API returned status 503") || !strings.Contains(err.Error(), "maintenance") {
+		t.Errorf("expected the status-prefixed raw body, got %q", err.Error())
+	}
+}
+
+// End to end: a ceiling rejection while polling ends 'cloud login' with the
+// message and a non-zero exit, and never reaches the token store.
+func TestCloudLoginRunContributorCeiling(t *testing.T) {
+	httpClient := newMockHTTPClient()
+	keyringSvc := newMockKeyringService()
+	fsSvc := newMockFileSystemService()
+
+	keyringSvc.setError(fmt.Errorf("no token"))
+
+	httpClient.transport.setResponse("POST", "/api/v1/auth/device", http.StatusOK, jsonResponse(deviceCodeResponse{
+		DeviceCode:      "device-code-123",
+		ExpiresIn:       600,
+		Interval:        1,
+		UserCode:        "ABC-123",
+		VerificationURL: "https://example.com/verify",
+	}))
+	httpClient.transport.setResponse("POST", "/api/v1/auth/device/poll", http.StatusPaymentRequired, loginCeilingBody)
+
+	cmd := testCloudLoginCommand(t, httpClient, keyringSvc, fsSvc)
+
+	var code int
+	out := capturer.CaptureOutput(func() {
+		code = cmd.Run([]string{})
+	})
+
+	if code != 1 {
+		t.Errorf("expected exit code 1, got %d\nOutput: %s", code, out)
+	}
+	if !strings.Contains(out, loginCeilingMessage) {
+		t.Errorf("expected the server message verbatim, got %q", out)
+	}
+	if strings.Contains(out, `"upgrade_tier"`) || strings.Contains(out, "timed out") {
+		t.Errorf("expected neither a JSON dump nor a timeout, got %q", out)
+	}
+	if strings.Contains(out, "Successfully authenticated") {
+		t.Errorf("expected no success message, got %q", out)
+	}
+}

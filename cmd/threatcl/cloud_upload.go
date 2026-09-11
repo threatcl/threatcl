@@ -13,14 +13,15 @@ import (
 
 type CloudUploadCommand struct {
 	CloudCommandBase
-	flagOrgId   string
-	flagModelId string
-	specCfg     *spec.ThreatmodelSpecConfig
+	flagOrgId    string
+	flagModelId  string
+	gitAttrFlags gitAttributionFlags
+	specCfg      *spec.ThreatmodelSpecConfig
 }
 
 func (c *CloudUploadCommand) Help() string {
 	helpText := `
-Usage: threatcl cloud upload <file> -model-id=<modelId_or_slug> [-org-id=<orgId>]
+Usage: threatcl cloud upload <file> -model-id=<modelId_or_slug> [-org-id=<orgId>] [-git-author-email=<email>] [-git-author-name=<name>] [-git-commit-sha=<sha>]
 
 	Upload a threat model HCL file to ThreatCL Cloud.
 
@@ -54,9 +55,10 @@ Options:
    Optional organization ID. If not provided, uses THREATCL_CLOUD_ORG env var
    or the first organization from your user profile.
 
+` + cloudGitAttributionOptionsHelp() + `
  -config=<file>
    Optional config file
-` + cloudEnvVarHelp()
+` + cloudEnvVarHelp() + cloudGitAttributionEnvHelp()
 	return strings.TrimSpace(helpText)
 }
 
@@ -75,6 +77,7 @@ func (c *CloudUploadCommand) Run(args []string) int {
 	flagSet := c.GetFlagset("cloud upload")
 	flagSet.StringVar(&c.flagOrgId, "org-id", "", "Organization ID (optional)")
 	flagSet.StringVar(&c.flagModelId, "model-id", "", "Threat model ID or slug (required)")
+	c.gitAttrFlags.addFlags(flagSet)
 	parseFlags(flagSet, args)
 
 	if c.flagModelId == "" {
@@ -109,13 +112,22 @@ func (c *CloudUploadCommand) Run(args []string) int {
 	// Initialize dependencies - use longer timeout for file uploads
 	httpClient, keyringSvc, fsSvc := c.initDependencies(30 * time.Second)
 
+	// Resolve git-author attribution (flags over env) and validate it locally
+	// before any network work, so a malformed value fails fast here rather
+	// than as a 400 from the API.
+	gitAttr, err := c.gitAttrFlags.resolve(fsSvc)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %s\n", err)
+		return 1
+	}
+
 	// Step 1: Validate and parse the HCL file. The file may be a single
 	// segment of a multi-file cloud model whose extends target lives in
 	// another file; the server validates the whole set, so parse
 	// file-faithfully and leave extends unresolved.
 	tmParser := spec.NewThreatmodelParser(c.specCfg)
 	tmParser.SetSkipExtendsResolution(true)
-	err := tmParser.ParseFile(filePath, false)
+	err = tmParser.ParseFile(filePath, false)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error parsing HCL file: %s\n", err)
 		return 1
@@ -148,7 +160,7 @@ func (c *CloudUploadCommand) Run(args []string) int {
 	// Upload the file. The caller reads it so the client stays filesystem-free.
 	content, uploadErr := fsSvc.ReadFile(filePath)
 	if uploadErr == nil {
-		uploadErr = client.Upload(c.flagModelId, filepath.Base(filePath), content, false)
+		uploadErr = client.Upload(c.flagModelId, filepath.Base(filePath), content, uploadOptions{GitAttribution: gitAttr})
 	} else {
 		uploadErr = fmt.Errorf("%s: %w", ErrFailedToReadFile, uploadErr)
 	}

@@ -987,3 +987,268 @@ threatmodel "Test Model" {
 		t.Errorf("expected no status prefix on a decoded envelope, got %q", out)
 	}
 }
+
+// pushExistingModelHCL is a cloud-backed file addressing the existing model
+// "my-tm" in org "test-org"; setupExistingModelPushMocks pairs with it.
+const pushExistingModelHCL = `
+spec_version = "0.1.10"
+
+backend "threatcl-cloud" {
+  organization = "test-org"
+  threatmodel = "my-tm"
+}
+
+threatmodel "Test Model" {
+  author = "test@example.com"
+  description = "Test"
+}
+`
+
+// setupExistingModelPushMocks wires the whoami/model/versions responses so a
+// push of pushExistingModelHCL reaches the upload endpoint as a new version.
+// The upload response itself is left to the caller.
+func setupExistingModelPushMocks(t testing.TB, httpClient *mockHTTPClient, keyringSvc *mockKeyringService, fsSvc *mockFileSystemService) string {
+	t.Helper()
+
+	filePath := filepath.Join(t.TempDir(), "push-test.hcl")
+	if err := os.WriteFile(filePath, []byte(pushExistingModelHCL), 0644); err != nil {
+		t.Fatalf("failed to write temp file: %v", err)
+	}
+
+	keyringSvc.setMockToken("valid-token", "org-id", "Test Org")
+	fsSvc.SetFileContent(filePath, []byte(pushExistingModelHCL))
+
+	httpClient.transport.setResponse("GET", "/api/v1/users/me", http.StatusOK, jsonResponse(whoamiResponse{
+		User: userInfo{Email: "test@example.com"},
+		Organizations: []orgMembership{
+			{Organization: orgInfo{ID: "org-id", Slug: "test-org"}, Role: "admin"},
+		},
+	}))
+	httpClient.transport.setResponse("GET", "/api/v1/org/org-id/models/my-tm", http.StatusOK, jsonResponse(threatModel{
+		ID:   "tm-123",
+		Name: "My TM",
+		Slug: "my-tm",
+	}))
+	httpClient.transport.setResponse("GET", "/api/v1/org/org-id/models/tm-123/versions", http.StatusOK, jsonResponse(threatModelVersionsResponse{
+		Versions: []threatModelVersion{
+			{ID: "v1", Version: "1.0.0", SpecFileHash: "different-hash", IsCurrent: true},
+		},
+		Total: 1,
+	}))
+
+	return filePath
+}
+
+// Attribution given by flag reaches the upload as multipart fields.
+func TestCloudPushSendsGitAttributionFromFlags(t *testing.T) {
+	httpClient := newMockHTTPClient()
+	keyringSvc := newMockKeyringService()
+	fsSvc := newMockFileSystemService()
+	filePath := setupExistingModelPushMocks(t, httpClient, keyringSvc, fsSvc)
+
+	const uploadPath = "/api/v1/org/org-id/models/my-tm/upload"
+	httpClient.transport.setResponse("POST", uploadPath, http.StatusOK, `{"success":true}`)
+
+	cmd := testCloudPushCommand(t, httpClient, keyringSvc, fsSvc)
+
+	var code int
+	out := capturer.CaptureOutput(func() {
+		code = cmd.Run([]string{
+			"-git-author-name=Jane Doe",
+			"-git-author-email=jane@example.com",
+			"-git-commit-sha=abc1234",
+			filePath,
+		})
+	})
+
+	if code != 0 {
+		t.Fatalf("expected exit code 0, got %d\nOutput: %s", code, out)
+	}
+	bodies := httpClient.transport.getRequestBodies("POST", uploadPath)
+	if len(bodies) != 1 {
+		t.Fatalf("expected 1 upload request, got %d", len(bodies))
+	}
+	for _, want := range []string{
+		`name="git_author_name"`, "Jane Doe",
+		`name="git_author_email"`, "jane@example.com",
+		`name="git_commit_sha"`, "abc1234",
+	} {
+		if !strings.Contains(bodies[0], want) {
+			t.Errorf("expected upload body to contain %q, got %q", want, bodies[0])
+		}
+	}
+}
+
+// Attribution given by environment variable reaches the upload the same way,
+// with the display-name email form reduced to the bare address the server
+// accepts (and its display name filling the author name).
+func TestCloudPushSendsGitAttributionFromEnv(t *testing.T) {
+	httpClient := newMockHTTPClient()
+	keyringSvc := newMockKeyringService()
+	fsSvc := newMockFileSystemService()
+	filePath := setupExistingModelPushMocks(t, httpClient, keyringSvc, fsSvc)
+	fsSvc.setEnv(envGitAuthorEmail, "Jane Doe <jane@example.com>")
+
+	const uploadPath = "/api/v1/org/org-id/models/my-tm/upload"
+	httpClient.transport.setResponse("POST", uploadPath, http.StatusOK, `{"success":true}`)
+
+	cmd := testCloudPushCommand(t, httpClient, keyringSvc, fsSvc)
+
+	var code int
+	out := capturer.CaptureOutput(func() {
+		code = cmd.Run([]string{filePath})
+	})
+
+	if code != 0 {
+		t.Fatalf("expected exit code 0, got %d\nOutput: %s", code, out)
+	}
+	bodies := httpClient.transport.getRequestBodies("POST", uploadPath)
+	if len(bodies) != 1 {
+		t.Fatalf("expected 1 upload request, got %d", len(bodies))
+	}
+	body := bodies[0]
+	if !strings.Contains(body, `name="git_author_email"`) || !strings.Contains(body, "\r\n\r\njane@example.com\r\n") {
+		t.Errorf("expected the bare address as git_author_email, got %q", body)
+	}
+	if strings.Contains(body, "<jane@example.com>") {
+		t.Errorf("display-name form must be stripped before sending, got %q", body)
+	}
+	if !strings.Contains(body, `name="git_author_name"`) || !strings.Contains(body, "Jane Doe") {
+		t.Errorf("expected the display name as git_author_name, got %q", body)
+	}
+	if strings.Contains(body, "git_commit_sha") {
+		t.Errorf("git_commit_sha must be omitted when not supplied, got %q", body)
+	}
+}
+
+// Without any explicit attribution nothing is sent: the CLI never reads the
+// local git repo to fill it in.
+func TestCloudPushSendsNoGitAttributionByDefault(t *testing.T) {
+	httpClient := newMockHTTPClient()
+	keyringSvc := newMockKeyringService()
+	fsSvc := newMockFileSystemService()
+	filePath := setupExistingModelPushMocks(t, httpClient, keyringSvc, fsSvc)
+
+	const uploadPath = "/api/v1/org/org-id/models/my-tm/upload"
+	httpClient.transport.setResponse("POST", uploadPath, http.StatusOK, `{"success":true}`)
+
+	cmd := testCloudPushCommand(t, httpClient, keyringSvc, fsSvc)
+
+	var code int
+	out := capturer.CaptureOutput(func() {
+		code = cmd.Run([]string{filePath})
+	})
+
+	if code != 0 {
+		t.Fatalf("expected exit code 0, got %d\nOutput: %s", code, out)
+	}
+	bodies := httpClient.transport.getRequestBodies("POST", uploadPath)
+	if len(bodies) != 1 {
+		t.Fatalf("expected 1 upload request, got %d", len(bodies))
+	}
+	if strings.Contains(bodies[0], "git_author") || strings.Contains(bodies[0], "git_commit_sha") {
+		t.Errorf("expected no attribution fields, got %q", bodies[0])
+	}
+}
+
+// A name without an email is an error the server would answer with 400;
+// it must fail locally, before any request is made.
+func TestCloudPushRejectsPartialGitAttribution(t *testing.T) {
+	httpClient := newMockHTTPClient()
+	keyringSvc := newMockKeyringService()
+	fsSvc := newMockFileSystemService()
+	filePath := setupExistingModelPushMocks(t, httpClient, keyringSvc, fsSvc)
+
+	const uploadPath = "/api/v1/org/org-id/models/my-tm/upload"
+	httpClient.transport.setResponse("POST", uploadPath, http.StatusOK, `{"success":true}`)
+
+	cmd := testCloudPushCommand(t, httpClient, keyringSvc, fsSvc)
+
+	var code int
+	out := capturer.CaptureOutput(func() {
+		code = cmd.Run([]string{"-git-author-name=Jane Doe", filePath})
+	})
+
+	if code != 1 {
+		t.Fatalf("expected exit code 1, got %d\nOutput: %s", code, out)
+	}
+	if !strings.Contains(out, "-git-author-email (or THREATCL_GIT_AUTHOR_EMAIL) is required") {
+		t.Errorf("expected the missing-email message, got %q", out)
+	}
+	if n := len(httpClient.transport.getRequestBodies("POST", uploadPath)); n != 0 {
+		t.Errorf("expected no upload attempt, got %d", n)
+	}
+	if n := len(httpClient.transport.getRequestBodies("GET", "/api/v1/users/me")); n != 0 {
+		t.Errorf("expected attribution to fail before any network call, but whoami was called %d times", n)
+	}
+}
+
+func TestCloudPushRejectsMalformedGitCommitSHA(t *testing.T) {
+	httpClient := newMockHTTPClient()
+	keyringSvc := newMockKeyringService()
+	fsSvc := newMockFileSystemService()
+	filePath := setupExistingModelPushMocks(t, httpClient, keyringSvc, fsSvc)
+
+	cmd := testCloudPushCommand(t, httpClient, keyringSvc, fsSvc)
+
+	var code int
+	out := capturer.CaptureOutput(func() {
+		code = cmd.Run([]string{"-git-author-email=jane@example.com", "-git-commit-sha=not-a-sha", filePath})
+	})
+
+	if code != 1 {
+		t.Fatalf("expected exit code 1, got %d\nOutput: %s", code, out)
+	}
+	if !strings.Contains(out, "invalid git commit SHA") {
+		t.Errorf("expected the SHA validation message, got %q", out)
+	}
+}
+
+// At the contributor ceiling the server answers 402 with a flat body whose
+// message is meant to be shown as-is; the raw JSON must not be dumped.
+func TestCloudPushContributorCeiling(t *testing.T) {
+	httpClient := newMockHTTPClient()
+	keyringSvc := newMockKeyringService()
+	fsSvc := newMockFileSystemService()
+	filePath := setupExistingModelPushMocks(t, httpClient, keyringSvc, fsSvc)
+
+	const msg = "This organization has reached its Team plan limit of 25 contributors and cannot add another. Existing contributors are unaffected. To add more, upgrade to Business."
+	httpClient.transport.setResponse("POST", "/api/v1/org/org-id/models/my-tm/upload", http.StatusPaymentRequired,
+		`{"error":"contributor_ceiling_reached","message":"`+msg+`","ceiling":25,"contributors":25,"tier":"team","upgrade_tier":"business"}`)
+
+	cmd := testCloudPushCommand(t, httpClient, keyringSvc, fsSvc)
+
+	var code int
+	out := capturer.CaptureOutput(func() {
+		code = cmd.Run([]string{"-git-author-email=new@example.com", filePath})
+	})
+
+	if code != 1 {
+		t.Fatalf("expected exit code 1, got %d\nOutput: %s", code, out)
+	}
+	if !strings.Contains(out, msg) {
+		t.Errorf("expected the server message verbatim, got %q", out)
+	}
+	for _, absent := range []string{"api returned status", `"ceiling"`, `"upgrade_tier"`, "contributor_ceiling_reached"} {
+		if strings.Contains(out, absent) {
+			t.Errorf("expected no raw JSON dump (%q) in output, got %q", absent, out)
+		}
+	}
+}
+
+// The push help documents the attribution flags and their env var fallbacks.
+func TestCloudPushHelpDocumentsGitAttribution(t *testing.T) {
+	help := (&CloudPushCommand{}).Help()
+	for _, want := range []string{
+		"-git-author-email=<email>",
+		"-git-author-name=<name>",
+		"-git-commit-sha=<sha>",
+		"THREATCL_GIT_AUTHOR_EMAIL",
+		"THREATCL_GIT_AUTHOR_NAME",
+		"THREATCL_GIT_COMMIT_SHA",
+	} {
+		if !strings.Contains(help, want) {
+			t.Errorf("expected help to contain %q", want)
+		}
+	}
+}
