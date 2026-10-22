@@ -355,8 +355,8 @@ github.com/tetratelabs/wazero v1.10.1 h1:2DugeJf6VVk58KTPszlNfeeN8AhhpwcZqkJj2ww
 github.com/tetratelabs/wazero v1.10.1/go.mod h1:DRm5twOQ5Gr1AoEdSi0CLjDQF1J9ZAuyqFIjl1KKfQU=
 github.com/threatcl/go-otm v0.0.2 h1:zN/Wwiy6QVw0SRm+YiZA7lDf2yI0jVyxPmNW1k9kgpw=
 github.com/threatcl/go-otm v0.0.2/go.mod h1:U1CNSpdQQ8S0lqr5LNn3tFZxsLgBKOz27+5k+IzFho0=
-github.com/threatcl/spec v0.8.3 h1:EYgf+IPlhywBFD9rtD36fJvEhoTORqBB6xQO98L6Irg=
-github.com/threatcl/spec v0.8.3/go.mod h1:SW0kGyzRFV1K9tYHs4RA3HA8NAy/slURoFQAioOk4p4=
+github.com/threatcl/spec v0.8.4 h1:7gJjmH2TuBg4r8CwBnLpqY54geZVxXQLDXLdQgZpGYo=
+github.com/threatcl/spec v0.8.4/go.mod h1:OP0Qq7nUvmzOggigkCqC5Zo/eWHoyarswDsQck64h4A=
 github.com/tliron/commonlog v0.2.21 h1:V1v+6opmzuOqDxxnxxM5RWtlHZmqZlDxkKeZGs6DpPg=
 github.com/tliron/commonlog v0.2.21/go.mod h1:W6XVoS/zo7mHXv2Kz8HKnBq+U34dFysJ2KUh2Aboibw=
 github.com/tliron/glsp v0.2.2 h1:IKPfwpE8Lu8yB6Dayta+IyRMAbTVunudeauEgjXBt+c=

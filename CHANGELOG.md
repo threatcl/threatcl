@@ -1,3 +1,12 @@
+## 0.6.11
+
+### 22 Oct, 2026
+
+CHANGES:
+
+* Bumped to threatcl/spec v0.8.4
+* Bumped to go 1.27.3
+
 ## 0.6.10
 
 ### 15 Oct, 2026
