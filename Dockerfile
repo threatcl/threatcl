@@ -1,7 +1,7 @@
 # Local from-source image build (`make image`). The released image is built
 # from Dockerfile.goreleaser instead; both use the same `FROM scratch` runtime
 # shape (static binary + CA certs + nonroot passwd/group from an alpine donor).
-FROM golang:1.27.3-alpine3.23@sha256:7fd63dd7c37f5ddaef15bd8fd3f3e4f90f0d50cd9cae255c7cf73887a494d8df AS builder
+FROM golang:1.27.3-alpine3.23@sha256:8a5046497cda39860b832ffdbe8dd66018a0f05bb01352f533a36e7e2ced66a0 AS builder
 
 RUN apk update
 RUN apk upgrade
@@ -11,7 +11,7 @@ COPY . .
 ENV CGO_ENABLED=0
 RUN go build -o threatcl ./cmd/threatcl
 
-FROM alpine:3.24@sha256:294b683cb724975bec92580e1e685676bd4b50bda910ddb8c51d4cabeaec77e6 AS donor
+FROM alpine:3.24@sha256:be2656061b536c1883c4034790e21d0a09c5aaaf51968b89368a3c0371ea2c9a AS donor
 
 RUN addgroup -S threatcl && adduser -S -G threatcl threatcl
 
