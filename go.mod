@@ -13,7 +13,7 @@ require (
 	github.com/hashicorp/hcl/v2 v2.25.0
 	github.com/hashicorp/terraform-json v0.29.0
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51
-	github.com/mark3labs/mcp-go v1.4.0
+	github.com/mark3labs/mcp-go v1.5.0
 	github.com/microcosm-cc/bluemonday v1.0.27
 	github.com/mitchellh/cli v1.1.5
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2
@@ -25,7 +25,7 @@ require (
 	github.com/tliron/commonlog v0.2.21
 	github.com/tliron/glsp v0.2.2
 	github.com/vektah/gqlparser/v2 v2.5.64
-	github.com/yuin/goldmark v1.8.6
+	github.com/yuin/goldmark v1.8.7
 	github.com/zclconf/go-cty v1.19.0
 	github.com/zenizh/go-capturer v0.0.0-20211219060012-52ea6c8fed04
 )
