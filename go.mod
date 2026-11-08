@@ -21,7 +21,7 @@ require (
 	github.com/rs/cors v1.11.1
 	github.com/ryanuber/columnize v2.1.2+incompatible
 	github.com/threatcl/go-otm v0.0.2
-	github.com/threatcl/spec v0.8.4
+	github.com/threatcl/spec v0.8.5
 	github.com/tliron/commonlog v0.2.21
 	github.com/tliron/glsp v0.2.2
 	github.com/vektah/gqlparser/v2 v2.5.64
@@ -121,7 +121,7 @@ require (
 	github.com/huandu/xstrings v1.3.2 // indirect
 	github.com/iancoleman/strcase v0.3.0 // indirect
 	github.com/imdario/mergo v0.3.12 // indirect
-	github.com/klauspost/compress v1.20.1 // indirect
+	github.com/klauspost/compress v1.20.3 // indirect
 	github.com/lucasb-eyer/go-colorful v1.3.0 // indirect
 	github.com/mattn/go-colorable v0.1.16 // indirect
 	github.com/mattn/go-isatty v0.0.24 // indirect
