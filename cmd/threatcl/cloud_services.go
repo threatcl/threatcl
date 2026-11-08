@@ -48,7 +48,11 @@ func (d *defaultHTTPClient) Do(req *http.Request) (*http.Response, error) {
 }
 
 func (d *defaultHTTPClient) Post(url, contentType string, body io.Reader) (*http.Response, error) {
-	return http.Post(url, contentType, body)
+	// Post (used by the device-flow login) has always run without a client
+	// timeout, since it used to go through http.Post. Keep that, but reuse
+	// d.client's transport so these requests still carry the User-Agent.
+	client := &http.Client{Transport: d.client.Transport}
+	return client.Post(url, contentType, body)
 }
 
 // defaultKeyringService wraps keyring to implement KeyringService interface
