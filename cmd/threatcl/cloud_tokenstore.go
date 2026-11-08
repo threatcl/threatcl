@@ -67,11 +67,7 @@ func getToken(keyringSvc KeyringService, fsSvc FileSystemService) (string, error
 func validateToken(token string, httpClient HTTPClient, fsSvc FileSystemService) (bool, error) {
 	// Use default implementations if not provided
 	if httpClient == nil {
-		httpClient = &defaultHTTPClient{
-			client: &http.Client{
-				Timeout: 5 * time.Second,
-			},
-		}
+		httpClient = newDefaultHTTPClient(5 * time.Second)
 	}
 	if fsSvc == nil {
 		fsSvc = &defaultFileSystemService{}

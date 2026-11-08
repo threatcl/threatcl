@@ -1,3 +1,12 @@
+## 0.6.12
+
+### 8 Nov, 2026
+
+CHANGES:
+
+* Adjusted cloud commands HTTP client
+* Bumped to threatcl/spec v0.8.5
+
 ## 0.6.11
 
 ### 22 Oct, 2026

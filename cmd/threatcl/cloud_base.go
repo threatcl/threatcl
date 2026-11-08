@@ -3,7 +3,6 @@ package main
 import (
 	"errors"
 	"fmt"
-	"net/http"
 	"os"
 	"time"
 )
@@ -21,11 +20,7 @@ type CloudCommandBase struct {
 func (b *CloudCommandBase) initDependencies(timeout time.Duration) (HTTPClient, KeyringService, FileSystemService) {
 	httpClient := b.httpClient
 	if httpClient == nil {
-		httpClient = &defaultHTTPClient{
-			client: &http.Client{
-				Timeout: timeout,
-			},
-		}
+		httpClient = newDefaultHTTPClient(timeout)
 	}
 
 	keyringSvc := b.keyringSvc
