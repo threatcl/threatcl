@@ -1,3 +1,13 @@
+## 0.6.13
+
+### 12 Nov, 2026
+
+CHANGES:
+
+* Bumped to threatcl/spec v0.8.6
+* Bumped to go 1.27.4
+* Bumped golang.org/x/net to v0.62.0
+
 ## 0.6.12
 
 ### 8 Nov, 2026
