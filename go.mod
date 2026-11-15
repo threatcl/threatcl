@@ -26,7 +26,7 @@ require (
 	github.com/tliron/glsp v0.2.2
 	github.com/vektah/gqlparser/v2 v2.5.64
 	github.com/yuin/goldmark v1.8.7
-	github.com/zclconf/go-cty v1.19.0
+	github.com/zclconf/go-cty v1.20.0
 	github.com/zenizh/go-capturer v0.0.0-20211219060012-52ea6c8fed04
 )
 
