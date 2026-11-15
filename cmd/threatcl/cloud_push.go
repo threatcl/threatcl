@@ -195,6 +195,14 @@ func (c *CloudPushCommand) Run(args []string) int {
 		})
 	}
 
+	// A child segment's hash never matches the model version's representative
+	// spec_file_hash (the default segment's file), so validateThreatModel can't
+	// tell an unchanged child from a changed one, and every push of it would mint
+	// a new version. Compare it against its own stored segment file instead.
+	if tmNameValid != "" && tmFileMatchesVersion == "" && isChildSegmentFile(wrapped) {
+		tmFileMatchesVersion = currentChildSegmentVersion(orgClient, fsSvc, tmNameValid, filePath)
+	}
+
 	// Case: tmNameValid and tmFileMatchesVersion - version already matches
 	if tmNameValid != "" && tmFileMatchesVersion != "" {
 		fmt.Printf("✓ Cloud version matches local version (v%s), not pushing\n", tmFileMatchesVersion)
@@ -309,4 +317,28 @@ func (c *CloudPushCommand) Run(args []string) int {
 	// Fallback - should not reach here
 	fmt.Fprintf(os.Stderr, "Unexpected state during push operation\n")
 	return 1
+}
+
+// currentChildSegmentVersion returns the model's current version when the
+// child segment file at filePath is byte-identical to that segment's stored
+// file, and "" otherwise. The segment key is derived server-side from the
+// model's root id, so it is resolved through the validate endpoint first.
+//
+// Best effort: any failure (an older server, a not-yet-pushed segment, invalid
+// content) returns "" so the push goes ahead and the upload reports any real
+// problem, exactly as before this check existed.
+func currentChildSegmentVersion(client *CloudClient, fsSvc FileSystemService, modelSlug, filePath string) string {
+	content, err := fsSvc.ReadFile(filePath)
+	if err != nil {
+		return ""
+	}
+	resp, err := client.ValidateHCLContent(modelSlug, content)
+	if err != nil || resp == nil || !resp.Valid || resp.Segment == "" || resp.Segment == "default" {
+		return ""
+	}
+	version, err := matchCurrentSegmentVersion(client, modelSlug, resp.Segment, content)
+	if err != nil {
+		return ""
+	}
+	return version
 }

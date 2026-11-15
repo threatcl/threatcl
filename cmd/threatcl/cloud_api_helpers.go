@@ -733,6 +733,47 @@ func validateThreatModel(client *CloudClient, filePath string, specCfg *spec.Thr
 	return wrapped, orgValid, tmNameValid, tmFileMatchesVersion, nil
 }
 
+// isChildSegmentFile reports whether wrapped is one child file of a multi-file
+// model: a single threat model declaring a dotted id. Only a dotted id maps to
+// a segment other than "default" (no id, an un-dotted root id, or extends alone
+// all derive "default"), so this is exactly the case where the model-level
+// version hash cannot describe the file.
+func isChildSegmentFile(wrapped *spec.ThreatmodelWrapped) bool {
+	return wrapped != nil && len(wrapped.Threatmodels) == 1 &&
+		strings.Contains(wrapped.Threatmodels[0].Id, ".")
+}
+
+// matchCurrentSegmentVersion compares a child segment's local bytes against
+// that segment's stored file in the model's current version, returning the
+// current version string when they are identical and "" when they differ.
+//
+// validateThreatModel can't make this call for a child segment: a version's
+// spec_file_hash is one representative hash for the whole model - the default
+// segment's file - so a child's hash never matches it, not even straight after
+// the child was pushed. The per-segment file is reachable only by its segment
+// key, which the server derives from the model's root id, so the caller
+// resolves it first (ValidateHCLContent).
+func matchCurrentSegmentVersion(client *CloudClient, modelIdOrSlug, segment string, localContent []byte) (string, error) {
+	cloudRaw, err := client.DownloadContent(client.DownloadSegmentURL(modelIdOrSlug, segment))
+	if err != nil {
+		return "", fmt.Errorf("downloading segment %q: %w", segment, err)
+	}
+	if !bytes.Equal(cloudRaw, localContent) {
+		return "", nil
+	}
+
+	versions, err := client.FetchThreatModelVersions(modelIdOrSlug)
+	if err != nil {
+		return "", fmt.Errorf("fetching threat model versions: %w", err)
+	}
+	for _, v := range versions.Versions {
+		if v.IsCurrent {
+			return v.Version, nil
+		}
+	}
+	return "", nil
+}
+
 // preprocessHCLForControls preprocesses HCL content to inject empty description
 // fields into control blocks that have a "ref" attribute but no "description".
 // This allows controls to be defined with just a ref, with the description
