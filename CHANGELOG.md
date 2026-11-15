@@ -1,3 +1,11 @@
+## 0.6.14
+
+### 15 Nov, 2026
+
+CHANGES:
+
+* Tweaked the cloud validate -diff commands and cloud push with multi-segment files
+
 ## 0.6.13
 
 ### 12 Nov, 2026
