@@ -1252,3 +1252,76 @@ func TestCloudPushHelpDocumentsGitAttribution(t *testing.T) {
 		}
 	}
 }
+
+// setupChildSegmentUpToDateMocks layers the child-segment up-to-date check's
+// routes over setupChildSegmentPushMocks: the validate endpoint resolving the
+// "frontend" segment, that segment's stored file, and the versions list by
+// slug. The model version's hash stays "different-hash" - it is the default
+// segment's and never matches a child file.
+func setupChildSegmentUpToDateMocks(httpClient *mockHTTPClient, keyringSvc *mockKeyringService, storedSegment string) {
+	setupChildSegmentPushMocks(httpClient, keyringSvc)
+	httpClient.transport.setResponse("POST", "/api/v1/org/org-id/models/my-tm/validate",
+		http.StatusOK, `{"valid":true,"id":"app.frontend","segment":"frontend"}`)
+	httpClient.transport.setResponse("GET", "/api/v1/org/org-id/models/my-tm/segments/frontend/download",
+		http.StatusOK, storedSegment)
+	httpClient.transport.setResponse("GET", "/api/v1/org/org-id/models/my-tm/versions", http.StatusOK,
+		jsonResponse(threatModelVersionsResponse{
+			Versions: []threatModelVersion{{ID: "v1", Version: "1.0.0", SpecFileHash: "different-hash", IsCurrent: true}},
+			Total:    1,
+		}))
+}
+
+func runChildSegmentPush(t *testing.T, storedSegment string) (*mockHTTPClient, int, string) {
+	t.Helper()
+	dir := t.TempDir()
+	filePath := filepath.Join(dir, "frontend.hcl")
+	if err := os.WriteFile(filePath, []byte(preflightChildHCL), 0600); err != nil {
+		t.Fatalf("failed to write temp file: %v", err)
+	}
+
+	httpClient := newMockHTTPClient()
+	keyringSvc := newMockKeyringService()
+	fsSvc := newMockFileSystemService()
+	setupChildSegmentUpToDateMocks(httpClient, keyringSvc, storedSegment)
+	fsSvc.SetFileContent(filePath, []byte(preflightChildHCL))
+
+	cmd := testCloudPushCommand(t, httpClient, keyringSvc, fsSvc)
+
+	var code int
+	out := capturer.CaptureOutput(func() {
+		code = cmd.Run([]string{filePath})
+	})
+	return httpClient, code, out
+}
+
+// An unchanged child segment must not mint a new version: its own stored
+// segment file is the baseline, not the model's representative hash.
+func TestCloudPushChildSegmentUnchangedSkipsUpload(t *testing.T) {
+	httpClient, code, out := runChildSegmentPush(t, preflightChildHCL)
+
+	if code != 0 {
+		t.Fatalf("expected exit code 0, got %d\nOutput: %s", code, out)
+	}
+	if !strings.Contains(out, "Cloud version matches local version (v1.0.0), not pushing") {
+		t.Errorf("expected the up-to-date message, got %q", out)
+	}
+	if uploads := httpClient.transport.getRequestBodies("POST", "/api/v1/org/org-id/models/my-tm/upload"); len(uploads) != 0 {
+		t.Errorf("expected no upload for an unchanged child segment, got %d", len(uploads))
+	}
+}
+
+// A changed child segment still uploads.
+func TestCloudPushChildSegmentChangedUploads(t *testing.T) {
+	stored := strings.Replace(preflightChildHCL, "Frontend segment", "Older frontend segment", 1)
+	httpClient, code, out := runChildSegmentPush(t, stored)
+
+	if code != 0 {
+		t.Fatalf("expected exit code 0, got %d\nOutput: %s", code, out)
+	}
+	if !strings.Contains(out, "Successfully pushed threat model") {
+		t.Errorf("expected success message, got %q", out)
+	}
+	if uploads := httpClient.transport.getRequestBodies("POST", "/api/v1/org/org-id/models/my-tm/upload"); len(uploads) != 1 {
+		t.Errorf("expected exactly one upload for a changed child segment, got %d", len(uploads))
+	}
+}

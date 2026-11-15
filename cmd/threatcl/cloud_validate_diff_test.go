@@ -616,3 +616,118 @@ func TestCloudValidateDiffChildSegmentSkippedWhenSegmentUnresolved(t *testing.T)
 		}
 	}
 }
+
+// setupCurrentSegmentMatchMocks registers the routes the child-segment
+// up-to-date check uses: the frontend segment's current file (storedSegment)
+// and the versions list by slug, whose current entry is "1.0.4". The model's
+// representative hash (setupDiffModelMocks) is the default segment's, so it
+// never matches a child file - which is the bug these tests pin down.
+func setupCurrentSegmentMatchMocks(httpClient *mockHTTPClient, storedSegment string) {
+	setupDiffModelMocks(httpClient, hashOf(diffDefaultSegmentCloudHCL))
+	httpClient.transport.setResponse("POST", "/api/v1/org/org-id/models/my-tm/validate",
+		http.StatusOK, `{"valid":true,"id":"app.frontend","segment":"frontend"}`)
+	httpClient.transport.setResponse("GET", "/api/v1/org/org-id/models/my-tm/segments/frontend/download",
+		http.StatusOK, storedSegment)
+	httpClient.transport.setResponse("GET", "/api/v1/org/org-id/models/my-tm/versions", http.StatusOK,
+		jsonResponse(threatModelVersionsResponse{
+			Versions: []threatModelVersion{
+				{ID: "v5", Version: "1.0.4", SpecFileHash: hashOf(diffDefaultSegmentCloudHCL), IsCurrent: true},
+				{ID: "v4", Version: "1.0.3", SpecFileHash: hashOf(diffDefaultSegmentCloudHCL)},
+			},
+			Total: 2,
+		}))
+}
+
+// A child segment that is byte-identical to its stored segment file is up to
+// date, even though the model version's hash (the default segment's) differs.
+func TestCloudValidateChildSegmentMatchesCurrentSegment(t *testing.T) {
+	color.NoColor = true
+
+	httpClient := newMockHTTPClient()
+	setupCurrentSegmentMatchMocks(httpClient, diffChildLocalHCL)
+
+	cmd := newDiffValidateCmd(t, httpClient)
+	filePath := writeTempHCLFile(t, diffChildLocalHCL)
+
+	var code int
+	out := capturer.CaptureOutput(func() {
+		code = cmd.Run([]string{"-diff", filePath})
+	})
+
+	if code != 0 {
+		t.Fatalf("expected exit code 0, got %d\nOutput: %s", code, out)
+	}
+	wants := []string{
+		"matches the latest version of the cloud threat model at org-id: org-id, model-id: my-tm, version: 1.0.4",
+		"local file already matches the latest version; nothing to diff",
+		"Server-side validation passed (id: app.frontend, segment: frontend)",
+	}
+	for _, w := range wants {
+		if !strings.Contains(out, w) {
+			t.Errorf("expected output to contain %q\nfull output:\n%s", w, out)
+		}
+	}
+	for _, unwanted := range []string{"doesn't match the latest version", "Unified diff"} {
+		if strings.Contains(out, unwanted) {
+			t.Errorf("did not expect output to contain %q\nfull output:\n%s", unwanted, out)
+		}
+	}
+}
+
+// A child segment that differs from its stored segment file is still reported
+// as out of date, and -diff runs against that segment.
+func TestCloudValidateChildSegmentDiffersFromCurrentSegment(t *testing.T) {
+	color.NoColor = true
+
+	httpClient := newMockHTTPClient()
+	setupCurrentSegmentMatchMocks(httpClient, diffChildSegmentCloudHCL)
+
+	cmd := newDiffValidateCmd(t, httpClient)
+	filePath := writeTempHCLFile(t, diffChildLocalHCL)
+
+	var code int
+	out := capturer.CaptureOutput(func() {
+		code = cmd.Run([]string{"-diff", filePath})
+	})
+
+	if code != 0 {
+		t.Fatalf("expected exit code 0, got %d\nOutput: %s", code, out)
+	}
+	for _, w := range []string{
+		"doesn't match the latest version",
+		"cloud/my-tm#frontend",
+		`~ threat model "App Frontend" (description changed)`,
+	} {
+		if !strings.Contains(out, w) {
+			t.Errorf("expected output to contain %q\nfull output:\n%s", w, out)
+		}
+	}
+}
+
+// When the segment comparison itself fails, validate says so and falls back
+// to the "doesn't match" result rather than claiming the file is current.
+func TestCloudValidateChildSegmentMatchCheckFails(t *testing.T) {
+	color.NoColor = true
+
+	httpClient := newMockHTTPClient()
+	setupCurrentSegmentMatchMocks(httpClient, diffChildLocalHCL)
+	httpClient.transport.setResponse("GET", "/api/v1/org/org-id/models/my-tm/segments/frontend/download",
+		http.StatusInternalServerError, `{"error":"boom"}`)
+
+	cmd := newDiffValidateCmd(t, httpClient)
+	filePath := writeTempHCLFile(t, diffChildLocalHCL)
+
+	var code int
+	out := capturer.CaptureOutput(func() {
+		code = cmd.Run([]string{filePath})
+	})
+
+	if code != 0 {
+		t.Fatalf("expected exit code 0, got %d\nOutput: %s", code, out)
+	}
+	for _, w := range []string{"could not compare", "doesn't match the latest version"} {
+		if !strings.Contains(out, w) {
+			t.Errorf("expected output to contain %q\nfull output:\n%s", w, out)
+		}
+	}
+}

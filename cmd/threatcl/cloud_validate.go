@@ -181,12 +181,12 @@ func (c *CloudValidateCommand) Run(args []string) int {
 		(wrapped.Threatmodels[0].Id != "" || wrapped.Threatmodels[0].Extends != "")
 
 	var (
+		content         []byte
 		validateResp    *validateHCLResponse
 		validateReadErr error
 		validateCallErr error
 	)
 	if runServerValidation {
-		var content []byte
 		content, validateReadErr = os.ReadFile(filePath)
 		if validateReadErr == nil {
 			validateResp, validateCallErr = orgClient.ValidateHCLContent(tmNameValid, content)
@@ -201,6 +201,20 @@ func (c *CloudValidateCommand) Run(args []string) int {
 	diffSegment := ""
 	if isSegmentFile && validateResp != nil && validateResp.Valid {
 		diffSegment = validateResp.Segment
+	}
+
+	// A child segment's hash never matches the model version's representative
+	// spec_file_hash (that's the default segment's file), so validateThreatModel
+	// reports a child as out of date even right after it was pushed. Judge it
+	// against its own stored segment file instead. The default segment needs no
+	// such check: the representative hash is its own.
+	if tmFileMatchesVersion == "" && diffSegment != "" && diffSegment != "default" {
+		matched, matchErr := matchCurrentSegmentVersion(orgClient, tmNameValid, diffSegment, content)
+		if matchErr != nil {
+			fmt.Fprintf(os.Stderr, "⚠ Warning: could not compare '%s' with the cloud copy of its segment: %s\n", filePath, matchErr)
+		} else {
+			tmFileMatchesVersion = matched
+		}
 	}
 
 	if tmFileMatchesVersion != "" {
